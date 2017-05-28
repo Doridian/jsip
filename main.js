@@ -2,8 +2,10 @@ let ourIp, serverIp, mtu, ws;
 
 function sendReply(ipHdr, payload) {
 	const fullLength = payload.getFullLength();
+	const hdrLen = ipHdr.getContentOffset();
+	const mss = mtu - hdrLen;
 
-	if (fullLength + ipHdr.getContentOffset() <= mtu) {
+	if (fullLength <= mss) {
 		ipHdr.setContentLength(fullLength);
 
 		const reply = new ArrayBuffer(ipHdr.getFullLength());
@@ -13,8 +15,39 @@ function sendReply(ipHdr, payload) {
 		offset += payload.toPacket(reply, offset);
 
 		ws.send(reply);
+	} else if (ipHdr.df) {
+		console.log('Needing to send packet too big for MTU/MSS, but DF set');
 	} else {
-		console.log('Cannot yet send fragmented reply');
+		const pieceMax = Math.ceil(fullLength / mss) - 1;
+		ipHdr.mf = true;
+
+		const replyPacket = new ArrayBuffer(fullLength);
+		payload.toPacket(replyPacket, 0);
+		const r8 = new Uint8Array(replyPacket);
+
+		let pktData = new ArrayBuffer(hdrLen + mss);
+		let p8 = new Uint8Array(pktData);
+
+		for (let i = 0; i <= pieceMax; i++) {
+			const offset = mss * i;
+			let pieceLen = mss;
+			if (i === pieceMax) {
+				ipHdr.mf = false;
+				pieceLen = replyPacket.byteLength % mss;
+				pktData = new ArrayBuffer(hdrLen + pieceLen);
+				p8 = new Uint8Array(pktData);
+			}
+
+			ipHdr.frag_offset = offset >>> 3;
+			ipHdr.setContentLength(pieceLen);
+
+			ipHdr.toPacket(pktData, 0);
+			for (let j = 0; j < pieceLen; j++) {
+				p8[j + hdrLen] = r8[j + offset];
+			}
+
+			ws.send(pktData);
+		}
 	}
 }
 
@@ -103,7 +136,7 @@ function pump() {
 		let curFrag = fragmentCache[pktId];
 		if (!curFrag) {
 			curFrag = {
-				time: Date.getTime(),
+				time: Date.now(),
 			};
 			fragmentCache[pktId] = curFrag;
 		}
