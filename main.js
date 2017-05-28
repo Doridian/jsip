@@ -186,7 +186,6 @@ function pump() {
 					curPiecePos += curPiece.pktData.byteLength;
 					curPiece = curFrag[curPiecePos];
 				}
-				console.log(d8);
 				return handlePacket(ipHdr, fullData);
 			}
 		}
