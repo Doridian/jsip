@@ -169,7 +169,7 @@ function handleWSData(buffer) {
 }
 
 function main() {
-	ws = new WebSocket('wss://tun.doridian.net');
+	ws = new WebSocket('ws://127.0.0.1:9000');
 	ws.binaryType = 'arraybuffer';
 
 	ws.onmessage = function(msg) {
