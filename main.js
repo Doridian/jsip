@@ -15,12 +15,10 @@ function main() {
 			console.log(`Server IP: ${serverIp}`);
 		} else {
 			const ipHdr = IPHdr.fromPacket(data);
-			const pkt = new ArrayBuffer(20);
-			ipHdr.toPacket(pkt, 0);
-			console.log(new Uint8Array(data, 0, 20), new Uint8Array(pkt));
 			switch (ipHdr.protocol) {
 				case 1: // ICMP
-
+					const icmpHdr = ICMPHdr.fromPacket(data, ipHdr.getContentOffset(), ipHdr.getContentLength());
+					console.log(icmpHdr);
 			}
 		}
 	}
