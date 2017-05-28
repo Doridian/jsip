@@ -7,7 +7,6 @@ function main() {
 
 	ws.onmessage = function(msg) {
 		const data = msg.data;
-		console.log(typeof data);
 		if (typeof data === 'string') {
 			const spl = data.split('|');
 			ourIp = IPAddr.fromString(spl[1]);
@@ -15,9 +14,11 @@ function main() {
 			console.log(`Our IP: ${ourIp}`);
 			console.log(`Server IP: ${serverIp}`);
 		} else {
-			const raw = new Uint8Array(data);
-			const ipHdr = IPHdr.fromPacket(raw);
-			console.log(ipHdr);
+			const ipHdr = IPHdr.fromPacket(data);
+			switch (ipHdr.protocol) {
+				case 1: // ICMP
+
+			}
 		}
 	}
 }
