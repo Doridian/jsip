@@ -15,7 +15,9 @@ function main() {
 			console.log(`Server IP: ${serverIp}`);
 		} else {
 			const ipHdr = IPHdr.fromPacket(data);
-			console.log(ipHdr);
+			const pkt = new ArrayBuffer(20);
+			ipHdr.toPacket(pkt, 0);
+			console.log(new Uint8Array(data, 0, 20), new Uint8Array(pkt));
 			switch (ipHdr.protocol) {
 				case 1: // ICMP
 
