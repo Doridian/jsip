@@ -1,3 +1,5 @@
+'use strict';
+
 let worker;
 function main() {
 	worker = new Worker('worker.js');
