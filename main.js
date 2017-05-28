@@ -83,111 +83,78 @@ function handlePacket(ipHdr, data) {
 	}
 }
 
-let availableData = 0;
-let buffers = [];
-
 const fragmentCache = {};
 
-function pump() {
-	while (availableData > 20) {
-		const ipHdr = IPHdr.fromPacket(buffers[0]);
-		if (availableData < ipHdr.getFullLength()) {
-			return;
-		}
+function handleWSData(buffer) {
+	const ipHdr = IPHdr.fromPacket(buffer);
 
-		const data = new ArrayBuffer(ipHdr.getFullLength());
-		const d8 = new Uint8Array(data);
-		let left = d8.length;
-		let offset = 0;
-		while (left > 0) {
-			const b = buffers[0];
-			const b8 = new Uint8Array(b);
-			if (b8.length >= left) {
-				for (let i = 0; i < b8.length; i++) {
-					d8[offset + i] = b8[i];
-				}
-				buffers.shift();
-				left -= b8.length;
-				offset += b8.length;
-			} else {
-				for (let i = 0; i < left; i++) {
-					d8[offset + i] = b8[i];
-				}
-				buffers[0] = b.slice(left);
+	if (!ipHdr.daddr.equals(ourIp)) {
+		console.log(`Discarding packet not meant for us, but for ${ipHdr.daddr.toString()}`);
+		return;
+	}
+
+	const isFrag = ipHdr.mf || ipHdr.frag_offset > 0;
+	const pktData = buffer.slice(ipHdr.getContentOffset());
+
+	if (!isFrag) {
+		return handlePacket(ipHdr, pktData);
+	}
+
+	const pktId = ipHdr.id + (ipHdr.saddr.toInt() << 16);
+	let curFrag = fragmentCache[pktId];
+	if (!curFrag) {
+		curFrag = {
+			time: Date.now(),
+		};
+		fragmentCache[pktId] = curFrag;
+	}
+
+	const fragOffset = ipHdr.frag_offset << 3;
+	curFrag[fragOffset] = {
+		ipHdr,
+		pktData,
+	};
+	if (!ipHdr.mf) {
+		curFrag.last = fragOffset;
+	}
+	if (ipHdr.frag_offset === 0) {
+		curFrag.validUntil = 0;
+	}
+
+	// Check if we got all fragments
+	if (curFrag.validUntil !== undefined && curFrag.last !== undefined) {
+		let curPiecePos = curFrag.validUntil;
+		let curPiece = curFrag[curPiecePos];
+		let gotAll = false;
+		while (true) {
+			curPiecePos += curPiece.pktData.byteLength;
+			curPiece = curFrag[curPiecePos];
+			if (!curPiece) {
+				break;
+			}
+			if (!curPiece.ipHdr.mf) {
+				gotAll = true;
 				break;
 			}
 		}
 
-		availableData -= d8.length;
-
-		if (!ipHdr.daddr.equals(ourIp)) {
-			console.log(`Discarding packet not meant for us, but for ${ipHdr.daddr.toString()}`);
-			return;
-		}
-
-		const isFrag = ipHdr.mf || ipHdr.frag_offset > 0;
-		const pktData = data.slice(ipHdr.getContentOffset());
-
-		if (!isFrag) {
-			return handlePacket(ipHdr, pktData);
-		}
-
-		const pktId = ipHdr.id + (ipHdr.saddr.toInt() << 16);
-		let curFrag = fragmentCache[pktId];
-		if (!curFrag) {
-			curFrag = {
-				time: Date.now(),
-			};
-			fragmentCache[pktId] = curFrag;
-		}
-
-		const fragOffset = ipHdr.frag_offset << 3;
-		curFrag[fragOffset] = {
-			ipHdr,
-			pktData,
-		};
-		if (!ipHdr.mf) {
-			curFrag.last = fragOffset;
-		}
-		if (ipHdr.frag_offset === 0) {
-			curFrag.validUntil = 0;
-		}
-
-		// Check if we got all fragments
-		if (curFrag.validUntil !== undefined && curFrag.last !== undefined) {
-			let curPiecePos = curFrag.validUntil;
+		if (gotAll) {
+			const fullData = new ArrayBuffer(curFrag[curFrag.last].pktData.byteLength + curFrag.last);
+			const d8 = new Uint8Array(fullData);
+			let curPiecePos = 0;
 			let curPiece = curFrag[curPiecePos];
-			let gotAll = false;
 			while (true) {
-				curPiecePos += curPiece.pktData.byteLength;
-				curPiece = curFrag[curPiecePos];
-				if (!curPiece) {
-					break;
+				const p8 = new Uint8Array(curPiece.pktData);
+				for (let i = 0; i < p8.length; i++) {
+					d8[curPiecePos + i] = p8[i];
 				}
 				if (!curPiece.ipHdr.mf) {
-					gotAll = true;
 					break;
 				}
+				curPiecePos += curPiece.pktData.byteLength;
+				curPiece = curFrag[curPiecePos];
 			}
-
-			if (gotAll) {
-				const fullData = new ArrayBuffer(curFrag[curFrag.last].pktData.byteLength + curFrag.last);
-				const d8 = new Uint8Array(fullData);
-				let curPiecePos = 0;
-				let curPiece = curFrag[curPiecePos];
-				while (true) {
-					const p8 = new Uint8Array(curPiece.pktData);
-					for (let i = 0; i < p8.length; i++) {
-						d8[curPiecePos + i] = p8[i];
-					}
-					if (!curPiece.ipHdr.mf) {
-						break;
-					}
-					curPiecePos += curPiece.pktData.byteLength;
-					curPiece = curFrag[curPiecePos];
-				}
-				return handlePacket(ipHdr, fullData);
-			}
+			return handlePacket(ipHdr, fullData);
 		}
 	}
 }
@@ -210,9 +177,7 @@ function main() {
 			mtu -= 4;
 			console.log(`TUN-MTU: ${mtu}`);
 		} else {
-			buffers.push(data);
-			availableData += data.byteLength;
-			pump();
+			handleWSData(data);
 		}
 	}
 }
