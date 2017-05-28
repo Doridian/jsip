@@ -15,6 +15,7 @@ function main() {
 			console.log(`Server IP: ${serverIp}`);
 		} else {
 			const ipHdr = IPHdr.fromPacket(data);
+			console.log(ipHdr);
 			switch (ipHdr.protocol) {
 				case 1: // ICMP
 
