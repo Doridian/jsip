@@ -206,7 +206,9 @@ function main() {
 			mtu = parseInt(spl[2]);
 			console.log(`Our IP: ${ourIp}`);
 			console.log(`Server IP: ${serverIp}`);
-			console.log(`MTU: ${mtu}`)
+			console.log(`Link-MTU: ${mtu}`);
+			mtu -= 4;
+			console.log(`TUN-MTU: ${mtu}`);
 		} else {
 			buffers.push(data);
 			availableData += data.byteLength;
