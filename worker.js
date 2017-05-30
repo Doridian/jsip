@@ -1,15 +1,16 @@
 'use strict';
 
+let ourIp, serverIp, mtu, ws;
+
 importScripts(
 	'lib/util.js',
 	'lib/bitfield.js',
 	'lib/ip.js',
 	'lib/icmp.js',
 	'lib/udp.js',
-	'lib/tcp.js'
+	'lib/tcp.js',
+	'lib/tcp_stack.js'
 );
-
-let ourIp, serverIp, mtu, ws;
 
 function sendPacket(ipHdr, payload) {
 	const fullLength = payload.getFullLength();
@@ -22,18 +23,18 @@ function sendPacket(ipHdr, payload) {
 		const reply = new ArrayBuffer(ipHdr.getFullLength());
 
 		let offset = 0;
-		offset += ipHdr.toPacket(reply, offset);
-		offset += payload.toPacket(reply, offset);
+		offset += ipHdr.toPacket(reply, offset, ipHdr);
+		offset += payload.toPacket(reply, offset, ipHdr);
 
 		ws.send(reply);
 	} else if (ipHdr.df) {
-		console.log('Needing to send packet too big for MTU/MSS, but DF set');
+		throw new Error('Needing to send packet too big for MTU/MSS, but DF set');
 	} else {
 		const pieceMax = Math.ceil(fullLength / mss) - 1;
 		ipHdr.mf = true;
 
 		const replyPacket = new ArrayBuffer(fullLength);
-		payload.toPacket(replyPacket, 0);
+		payload.toPacket(replyPacket, 0, ipHdr);
 		const r8 = new Uint8Array(replyPacket);
 
 		let pktData = new ArrayBuffer(hdrLen + mss);
@@ -52,7 +53,7 @@ function sendPacket(ipHdr, payload) {
 			ipHdr.frag_offset = offset >>> 3;
 			ipHdr.setContentLength(pieceLen);
 
-			ipHdr.toPacket(pktData, 0);
+			ipHdr.toPacket(pktData, 0, ipHdr);
 			for (let j = 0; j < pieceLen; j++) {
 				p8[j + hdrLen] = r8[j + offset];
 			}
@@ -64,7 +65,7 @@ function sendPacket(ipHdr, payload) {
 
 function handlePacket(ipHdr, data) {
 	switch (ipHdr.protocol) {
-		case 1: // ICMP
+		case PROTO_ICMP: // ICMP
 			const icmpPkt = ICMPPkt.fromPacket(data, 0, data.byteLength);
 			switch (icmpPkt.type) {
 				case 8: // PING
@@ -80,13 +81,15 @@ function handlePacket(ipHdr, data) {
 					break;
 				default:
 					console.log(`Unhandled ICMP type ${icmpPkt.type}`);
+					break;
 			}
 			break;
-		case 6: // TCP
+		case PROTO_TCP: // TCP
 			const tcpPkt = TCPPkt.fromPacket(data, 0, data.byteLength, ipHdr);
-			console.log(tcpPkt);
+			const tcpData = tcpGotPacket(ipHdr, tcpPkt);
+			console.log(tcpData);
 			break;
-		case 17: // UDP
+		case PROTO_UDP: // UDP
 			const udpPkt = UDPPkt.fromPacket(data, 0, data.byteLength, ipHdr);
 			console.log(udpPkt);
 			break;
@@ -98,7 +101,7 @@ function handlePacket(ipHdr, data) {
 
 const fragmentCache = {};
 
-function handleWSData(buffer) {
+function handleIP(buffer) {
 	const ipHdr = IPHdr.fromPacket(buffer);
 
 	if (!ipHdr.daddr.equals(ourIp)) {
@@ -189,7 +192,7 @@ function main() {
 			mtu -= 4;
 			console.log(`TUN-MTU: ${mtu}`);
 		} else {
-			handleWSData(data);
+			handleIP(data);
 		}
 	}
 }
