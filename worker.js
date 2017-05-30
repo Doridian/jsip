@@ -90,7 +90,7 @@ function handlePacket(ipHdr, data) {
 			break;
 		case PROTO_UDP: // UDP
 			const udpPkt = UDPPkt.fromPacket(data, 0, data.byteLength, ipHdr);
-			console.log(udpPkt);
+			// TODO: UDP handlers
 			break;
 		default:
 			console.log(`Unhandled IP protocol ${ipHdr.protocol}`);
