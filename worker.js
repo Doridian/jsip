@@ -86,8 +86,7 @@ function handlePacket(ipHdr, data) {
 			break;
 		case PROTO_TCP: // TCP
 			const tcpPkt = TCPPkt.fromPacket(data, 0, data.byteLength, ipHdr);
-			const tcpData = tcpGotPacket(ipHdr, tcpPkt);
-			console.log(tcpData);
+			tcpGotPacket(ipHdr, tcpPkt);
 			break;
 		case PROTO_UDP: // UDP
 			const udpPkt = UDPPkt.fromPacket(data, 0, data.byteLength, ipHdr);
