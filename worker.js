@@ -11,7 +11,7 @@ importScripts(
 
 let ourIp, serverIp, mtu, ws;
 
-function sendReply(ipHdr, payload) {
+function sendPacket(ipHdr, payload) {
 	const fullLength = payload.getFullLength();
 	const hdrLen = ipHdr.getContentOffset();
 	const mss = mtu - hdrLen;
@@ -68,10 +68,7 @@ function handlePacket(ipHdr, data) {
 			const icmpPkt = ICMPPkt.fromPacket(data, 0, data.byteLength);
 			switch (icmpPkt.type) {
 				case 8: // PING
-					const replyIp = new IPHdr();
-					replyIp.protocol = 1;
-					replyIp.saddr = ourIp;
-					replyIp.daddr = ipHdr.saddr;
+					const replyIp = ipHdr.makeReply();
 
 					const replyICMP = new ICMPPkt();
 					replyICMP.type = 0;
@@ -79,7 +76,7 @@ function handlePacket(ipHdr, data) {
 					replyICMP.rest = icmpPkt.rest;
 					replyICMP.data = icmpPkt.data;
 
-					sendReply(replyIp, replyICMP);
+					sendPacket(replyIp, replyICMP);
 					break;
 				default:
 					console.log(`Unhandled ICMP type ${icmpPkt.type}`);
@@ -95,6 +92,7 @@ function handlePacket(ipHdr, data) {
 			break;
 		default:
 			console.log(`Unhandled IP protocol ${ipHdr.protocol}`);
+			break;
 	}
 }
 
