@@ -5,7 +5,8 @@ importScripts(
 	'lib/bitfield.js',
 	'lib/ip.js',
 	'lib/icmp.js',
-	'lib/udp.js'
+	'lib/udp.js',
+	'lib/tcp.js'
 );
 
 let ourIp, serverIp, mtu, ws;
@@ -85,9 +86,12 @@ function handlePacket(ipHdr, data) {
 			}
 			break;
 		case 6: // TCP
+			const tcpPkt = TCPPkt.fromPacket(data, 0, data.byteLength, ipHdr);
+			console.log(tcpPkt);
 			break;
 		case 17: // UDP
 			const udpPkt = UDPPkt.fromPacket(data, 0, data.byteLength, ipHdr);
+			console.log(udpPkt);
 			break;
 		default:
 			console.log(`Unhandled IP protocol ${ipHdr.protocol}`);
