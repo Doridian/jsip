@@ -66,10 +66,10 @@ function sendPacket(ipHdr, payload) {
 
 function handlePacket(ipHdr, data) {
 	switch (ipHdr.protocol) {
-		case PROTO_ICMP: // ICMP
+		case PROTO_ICMP:
 			const icmpPkt = ICMPPkt.fromPacket(data, 0, data.byteLength);
 			switch (icmpPkt.type) {
-				case 8: // PING
+				case 8: // PING / Echo Request
 					const replyIp = ipHdr.makeReply();
 
 					const replyICMP = new ICMPPkt();
@@ -175,6 +175,16 @@ function handleIP(buffer) {
 	}
 }
 
+function timeoutFragments() {
+	const cutoff = Date.now() - 30000;
+	for (let id in fragmentCache) {
+		const frag = fragmentCache[id];
+		if (frag.time < cutoff) {
+			delete fragmentCache[id];
+		}
+	}
+}
+
 function main() {
 	ws = new WebSocket('ws://127.0.0.1:9000');
 	ws.binaryType = 'arraybuffer';
@@ -198,3 +208,5 @@ function main() {
 }
 
 main();
+
+setInterval(1000, timeoutFragments);
