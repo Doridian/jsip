@@ -9,7 +9,8 @@ importScripts(
 	'lib/icmp.js',
 	'lib/udp.js',
 	'lib/tcp.js',
-	'lib/tcp_stack.js'
+	'lib/tcp_stack.js',
+	'lib/udp_stack.js'
 );
 
 function sendPacket(ipHdr, payload) {
@@ -90,7 +91,7 @@ function handlePacket(ipHdr, data) {
 			break;
 		case PROTO_UDP: // UDP
 			const udpPkt = UDPPkt.fromPacket(data, 0, data.byteLength, ipHdr);
-			// TODO: UDP handlers
+			udpGotPacket(ipHdr, udpPkt);
 			break;
 		default:
 			console.log(`Unhandled IP protocol ${ipHdr.protocol}`);
