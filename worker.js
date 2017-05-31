@@ -185,6 +185,22 @@ function timeoutFragments() {
 	}
 }
 
+function test() {
+	console.log('XXX');
+	const conn = tcpConnect(serverIp, 8000, (data, tcpConn) => {
+		console.log('Data!', new Uint8Array(data));
+	}, (res) => {
+		console.log('Connection!', res);
+		const s = 'GET / HTTP/1.0\r\n\r\n';
+		const d = new ArrayBuffer(s.length);
+		const d8 = new Uint8Array(d);
+		for (let i = 0; i < s.length; i++) {
+			d8[i] = s.charCodeAt(i);
+		}
+		conn.send(d);
+	});
+}
+
 function main() {
 	ws = new WebSocket('ws://127.0.0.1:9000');
 	ws.binaryType = 'arraybuffer';
@@ -201,6 +217,8 @@ function main() {
 			console.log(`Link-MTU: ${mtu}`);
 			mtu -= 4;
 			console.log(`TUN-MTU: ${mtu}`);
+
+			//setTimeout(test, 5000);
 		} else {
 			handleIP(data);
 		}
@@ -209,4 +227,4 @@ function main() {
 
 main();
 
-setInterval(1000, timeoutFragments);
+setInterval(timeoutFragments, 1000);
