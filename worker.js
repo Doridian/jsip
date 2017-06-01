@@ -2,16 +2,18 @@
 
 let ourIp, serverIp, mtu, ws;
 
-importScripts(
-	'lib/util.js',
-	'lib/bitfield.js',
-	'lib/ip.js',
-	'lib/icmp.js',
-	'lib/udp.js',
-	'lib/tcp.js',
-	'lib/tcp_stack.js',
-	'lib/udp_stack.js'
-);
+try {
+	importScripts(
+		'lib/util.js',
+		'lib/bitfield.js',
+		'lib/ip.js',
+		'lib/icmp.js',
+		'lib/udp.js',
+		'lib/tcp.js',
+		'lib/tcp_stack.js',
+		'lib/udp_stack.js'
+	);
+} catch(e) { }
 
 function sendPacket(ipHdr, payload) {
 	const fullLength = payload.getFullLength();
@@ -225,6 +227,6 @@ function main() {
 	}
 }
 
-main();
+//main();
 
 setInterval(timeoutFragments, 1000);
