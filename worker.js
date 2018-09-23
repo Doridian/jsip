@@ -189,7 +189,7 @@ function timeoutFragments() {
 
 function test() {
 	console.log('XXX');
-	const conn = tcpConnect(serverIp, 8000, (data, tcpConn) => {
+	const conn = tcpConnect(serverIp, 80, (data, tcpConn) => {
 		console.log('Data!', new Uint8Array(data));
 	}, (res) => {
 		console.log('Connection!', res);
