@@ -7,6 +7,7 @@ try {
 		'lib/util.js',
 		'lib/bitfield.js',
 		'lib/ip.js',
+		'lib/http.js',
 		'lib/icmp.js',
 		'lib/udp.js',
 		'lib/tcp.js',
@@ -105,6 +106,9 @@ const fragmentCache = {};
 
 function handleIP(buffer) {
 	const ipHdr = IPHdr.fromPacket(buffer);
+	if (!ipHdr) {
+		return;
+	}
 
 	if (!ipHdr.daddr.equals(ourIp)) {
 		console.log(`Discarding packet not meant for us, but for ${ipHdr.daddr.toString()}`);
@@ -187,24 +191,8 @@ function timeoutFragments() {
 	}
 }
 
-function test() {
-	console.log('XXX');
-	const conn = tcpConnect(serverIp, 80, (data, tcpConn) => {
-		console.log('Data!', new Uint8Array(data));
-	}, (res) => {
-		console.log('Connection!', res);
-		const s = 'GET / HTTP/1.0\r\n\r\n';
-		const d = new ArrayBuffer(s.length);
-		const d8 = new Uint8Array(d);
-		for (let i = 0; i < s.length; i++) {
-			d8[i] = s.charCodeAt(i);
-		}
-		conn.send(d);
-	});
-}
-
 function main() {
-	ws = new WebSocket('ws://' + document.location.hostname + ':9000');
+	ws = new WebSocket('ws://23.226.229.226:9000');
 	ws.binaryType = 'arraybuffer';
 
 	ws.onmessage = function(msg) {
@@ -218,6 +206,8 @@ function main() {
 			ourIp = IPAddr.fromString(ip);
 			serverIp = IPAddr.fromString(ip);
 			serverIp.d = 0;
+
+			_httpSetIP(serverIp);
 
 			mtu = parseInt(spl[4], 10);
 			console.log(`Our IP: ${ourIp}`);
