@@ -192,7 +192,8 @@ function timeoutFragments() {
 }
 
 function workerMain(cb) {
-	ws = new WebSocket('ws://23.226.229.226:9000');
+	const proto = (document.location.protocol === 'http:') ? 'ws:' : 'wss:';
+	ws = new WebSocket(`${proto}//${document.location.host}`);
 	ws.binaryType = 'arraybuffer';
 
 	ws.onmessage = function(msg) {
