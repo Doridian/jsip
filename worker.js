@@ -7,12 +7,12 @@ try {
 		'lib/util.js',
 		'lib/bitfield.js',
 		'lib/ip.js',
-		'lib/http.js',
 		'lib/icmp.js',
 		'lib/udp.js',
 		'lib/tcp.js',
 		'lib/tcp_stack.js',
-		'lib/udp_stack.js'
+		'lib/udp_stack.js',
+		'lib/http.js',
 	);
 } catch(e) { }
 
@@ -193,7 +193,11 @@ function timeoutFragments() {
 
 function workerMain(cb) {
 	const proto = (document.location.protocol === 'http:') ? 'ws:' : 'wss:';
-	ws = new WebSocket(`${proto}//${document.location.host}/ws`);
+	_workerMain(`${proto}//${document.location.host}/ws`, cb);
+}
+
+function _workerMain(url, cb) {
+	ws = new WebSocket(url);
 	ws.binaryType = 'arraybuffer';
 
 	ws.onmessage = function(msg) {
@@ -227,6 +231,21 @@ function workerMain(cb) {
 	}
 }
 
-//workerMain();
+onmessage = function (e) {
+	const cmd = e.data[0];
+	const _id = e.data[1];
+	switch (e.data[0]) {
+		case 'connect':
+			_workerMain(e.data[2], () => {
+				postMessage(['connect', _id, ourIp, serverIp, mtu]);
+			});
+			break;
+		case 'httpGet':
+			httpGet(e.data[2], (err, res) => {
+				postMessage(['httpGet', _id, err, res]);
+			});
+			break;
+	}
+};
 
 setInterval(timeoutFragments, 1000);
