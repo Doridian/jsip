@@ -210,10 +210,16 @@ function main() {
 	ws.onmessage = function(msg) {
 		const data = msg.data;
 		if (typeof data === 'string') {
+			// 1|init|TUN|192.168.3.1/24|1280
 			const spl = data.split('|');
-			ourIp = IPAddr.fromString(spl[1]);
-			serverIp = IPAddr.fromString(spl[0]);
-			mtu = parseInt(spl[2]);
+
+			// TODO: Handle CIDR
+			const ip = spl[3].split('/')[0];
+			ourIp = IPAddr.fromString(ip);
+			serverIp = IPAddr.fromString(ip);
+			serverIp.d = 0;
+
+			mtu = parseInt(spl[4], 10);
 			console.log(`Our IP: ${ourIp}`);
 			console.log(`Server IP: ${serverIp}`);
 			console.log(`Link-MTU: ${mtu}`);
