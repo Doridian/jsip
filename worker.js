@@ -1,6 +1,6 @@
 'use strict';
 
-let ourIp, serverIp, ourSubnet, gatewayIp, ourMac, mtu, ws, sendEth, ethBcastHdr;
+let ourIp, serverIp, ourSubnet, gatewayIp, ourMac, mtu, mss, ws, sendEth, ethBcastHdr;
 
 try {
 	importScripts(
@@ -73,9 +73,9 @@ function sendPacket(ipHdr, payload) {
 function _sendPacket(ipHdr, payload, ethIPHdr) {
 	const fullLength = payload.getFullLength(); 
 	const hdrLen = (ethIPHdr ? ETH_LEN : 0) + ipHdr.getContentOffset();
-	const mss = mtu - hdrLen;
+	const _mss = mtu - hdrLen;
 
-	if (fullLength <= mss) {
+	if (fullLength <= _mss) {
 		ipHdr.setContentLength(fullLength);
 
 		const reply = new ArrayBuffer((ethIPHdr ? ETH_LEN : 0) + ipHdr.getFullLength());
@@ -91,25 +91,27 @@ function _sendPacket(ipHdr, payload, ethIPHdr) {
 	} else if (ipHdr.df) {
 		throw new Error('Needing to send packet too big for MTU/MSS, but DF set');
 	} else {
-		const pieceMax = Math.ceil(fullLength / mss) - 1;
+		const pieceMax = Math.ceil(fullLength / _mss) - 1;
 		ipHdr.mf = true;
 
 		const replyPacket = new ArrayBuffer(fullLength);
 		payload.toPacket(replyPacket, 0, ipHdr);
 		const r8 = new Uint8Array(replyPacket);
 
-		let pktData = new ArrayBuffer(hdrLen + mss);
+		let pktData = new ArrayBuffer(hdrLen + _mss);
 		let p8 = new Uint8Array(pktData);
 
 		for (let i = 0; i <= pieceMax; i++) {
-			const offset = mss * i;
-			let pieceLen = mss;
+			const offset = _mss * i;
+			let pieceLen = _mss;
 			if (i === pieceMax) {
 				ipHdr.mf = false;
-				pieceLen = replyPacket.byteLength % mss;
+				pieceLen = replyPacket.byteLength % _mss;
 				pktData = new ArrayBuffer(hdrLen + pieceLen);
 				p8 = new Uint8Array(pktData);
 			}
+
+			console.log(offset, pieceLen, fullLength);
 
 			ipHdr.frag_offset = offset >>> 3;
 			ipHdr.setContentLength(pieceLen);
@@ -362,7 +364,17 @@ function handleInit(data, cb) {
 			break;
 	}
 
+	console.log(`Mode: ${spl[2]}`);
+
+	console.log(`Link-MTU: ${mtu}`);
+	mtu -= 4;
+	console.log(`TUN-MTU: ${mtu}`);
+
+	mss = mtu - 40;
+
 	if (sendEth) {
+		mss -= ETH_LEN;
+
 		ourMac = MACAddr.fromBytes(randomByte(), randomByte(), randomByte(), randomByte(), randomByte(), randomByte());
 		console.log(`Our MAC: ${ourMac}`);
 		ethBcastHdr = new EthHdr();
@@ -373,13 +385,7 @@ function handleInit(data, cb) {
 
 	ourIp = ourSubnet.ip;
 	gatewayIp = serverIp;
-
-	console.log(`Mode: ${spl[2]}`);
 	configOut();
-
-	console.log(`Link-MTU: ${mtu}`);
-	mtu -= 4;
-	console.log(`TUN-MTU: ${mtu}`);
 
 	if (needDHCP) {
 		console.log('Starting DHCP procedure...');
