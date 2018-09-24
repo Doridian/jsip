@@ -20,6 +20,7 @@ try {
 
 const arpCache = {};
 const arpQueue = {};
+let ipDoneCB = null;
 
 function makeEthIPHdr(destIp, cb) {
 	if (!ourSubnet.contains(destIp)) {
@@ -330,6 +331,64 @@ function workerMain(cb) {
 	_workerMain(`${proto}//doridian.net/ws`, cb);
 }
 
+function configOut() {
+	console.log(`Our Subnet: ${ourSubnet}`);
+	console.log(`Our IP: ${ourIp}`);
+	console.log(`Server IP: ${serverIp}`);
+	console.log(`Gateway IP: ${gatewayIp}`);
+}
+
+function handleInit(data, cb) {
+	let needDHCP = false;
+	// 1|init|TUN|192.168.3.1/24|1280
+	const spl = data.split('|');
+
+	switch (spl[2]) {
+		case 'TAP':
+			sendEth = true;
+		case 'TUN':
+			ourSubnet = IPNet.fromString(spl[3]);
+			serverIp = ourSubnet.getAddress(0);
+
+			mtu = parseInt(spl[4], 10);
+			break;
+		case 'TAP_NOCONF':
+			sendEth = true;
+			ourSubnet = IPNet.fromString(`169.254.${randomByte()}.${randomByte()}/16`);
+			serverIp = IPAddr.fromBytes(255, 255, 255, 255);
+
+			mtu = parseInt(spl[3], 10);
+			needDHCP = true;
+			break;
+	}
+
+	if (sendEth) {
+		ourMac = MACAddr.fromBytes(randomByte(), randomByte(), randomByte(), randomByte(), randomByte(), randomByte());
+		console.log(`Our MAC: ${ourMac}`);
+		ethBcastHdr = new EthHdr();
+		ethBcastHdr.ethtype = ETH_IP;
+		ethBcastHdr.saddr = ourMac;
+		ethBcastHdr.daddr = MAC_BROADCAST;
+	}
+
+	ourIp = ourSubnet.ip;
+	gatewayIp = serverIp;
+
+	console.log(`Mode: ${spl[2]}`);
+	configOut();
+
+	console.log(`Link-MTU: ${mtu}`);
+	mtu -= 4;
+	console.log(`TUN-MTU: ${mtu}`);
+
+	if (needDHCP) {
+		console.log('Starting DHCP procedure...');
+		ipDoneCB = cb;
+	} else if (cb) {
+		setTimeout(cb, 0);
+	}
+}
+
 function _workerMain(url, cb) {
 	ws = new WebSocket(url);
 	ws.binaryType = 'arraybuffer';
@@ -341,52 +400,7 @@ function _workerMain(url, cb) {
 			return;
 		}
 
-		// 1|init|TUN|192.168.3.1/24|1280
-		const spl = data.split('|');
-
-		switch (spl[2]) {
-			case 'TAP':
-				sendEth = true;
-			case 'TUN':
-				ourSubnet = IPNet.fromString(spl[3]);
-				serverIp = ourSubnet.getAddress(0);
-
-				mtu = parseInt(spl[4], 10);
-				break;
-			case 'TAP_NOCONF':
-				sendEth = true;
-				ourSubnet = IPNet.fromString(`169.254.${randomByte()}.${randomByte()}/16`);
-				serverIp = IPAddr.fromBytes(255, 255, 255, 255);
-
-				mtu = parseInt(spl[3], 10);
-				break;
-		}
-
-		if (sendEth) {
-			ourMac = MACAddr.fromBytes(randomByte(), randomByte(), randomByte(), randomByte(), randomByte(), randomByte());
-			console.log(`Our MAC: ${ourMac}`);
-			ethBcastHdr = new EthHdr();
-			ethBcastHdr.ethtype = ETH_IP;
-			ethBcastHdr.saddr = ourMac;
-			ethBcastHdr.daddr = MAC_BROADCAST;
-		}
-
-		ourIp = ourSubnet.ip;
-		gatewayIp = serverIp;
-
-		console.log(`Mode: ${spl[2]}`);
-		console.log(`Our Subnet: ${ourSubnet}`);
-		console.log(`Our IP: ${ourIp}`);
-		console.log(`Server IP: ${serverIp}`);
-		console.log(`Gateway IP: ${gatewayIp}`);
-
-		console.log(`Link-MTU: ${mtu}`);
-		mtu -= 4;
-		console.log(`TUN-MTU: ${mtu}`);
-
-		if (cb) {
-			setTimeout(cb, 0);
-		}
+		handleInit(data, cb);
 	}
 }
 
