@@ -1,6 +1,6 @@
 'use strict';
 
-let ourIp, serverIp, ourMac, mtu, ws, sendEth, ethBcastHdr;
+let ourIp, serverIp, ourSubnet, ourMac, mtu, ws, sendEth, ethBcastHdr;
 
 try {
 	importScripts(
@@ -344,18 +344,14 @@ function _workerMain(url, cb) {
 			case 'TAP':
 				sendEth = true;
 			case 'TUN':
-				// TODO: Handle CIDR
-				const ip = spl[3].split('/')[0];
-				ourIp = IPAddr.fromString(ip);
-				serverIp = IPAddr.fromString(ip);
-				serverIp.d = 0;
+				ourSubnet = IPNet.fromString(spl[3]);
+				serverIp = ourSubnet.getAddress(0);
 
 				mtu = parseInt(spl[4], 10);
-
 				break;
 			case 'TAP_NOCONF':
 				sendEth = true;
-				ourIp = IPAddr.fromBytes(169, 254, randomByte(), randomByte());
+				ourSubnet = IPNet.fromString(`169.254.${randomByte()}.${randomByte()}/16`);
 				serverIp = IPAddr.fromBytes(255, 255, 255, 255);
 
 				mtu = parseInt(spl[3], 10);
@@ -371,6 +367,9 @@ function _workerMain(url, cb) {
 			ethBcastHdr.daddr = MAC_BROADCAST;
 		}
 
+		ourIp = ourSubnet.ip;
+
+		console.log(`Our Subnet: ${ourSubnet}`);
 		console.log(`Our IP: ${ourIp}`);
 		console.log(`Server IP: ${serverIp}`);
 
