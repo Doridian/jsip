@@ -14,24 +14,29 @@ try {
 		'lib/tcp.js',
 		'lib/tcp_stack.js',
 		'lib/udp_stack.js',
+		'lib/dhcp.js',
 		'lib/http.js',
 	);
 } catch(e) { }
 
-const arpCache = {};
+const arpCache = {
+	[IP_BROADCAST.toString()]: MAC_BROADCAST,
+};
 const arpQueue = {};
 let ipDoneCB = null;
 
 function makeEthIPHdr(destIp, cb) {
-	if (!ourSubnet.contains(destIp)) {
+	if (ourSubnet && !ourSubnet.contains(destIp)) {
 		destIp = gatewayIp;
 	}
+
+	const destIpStr = destIp.toString();
 
 	const ethHdr = new EthHdr(false);
 	ethHdr.ethtype = ETH_IP;
 	ethHdr.saddr = ourMac;
-	if (arpCache[destIp]) {
-		ethHdr.daddr = arpCache[destIp];
+	if (arpCache[destIpStr]) {
+		ethHdr.daddr = arpCache[destIpStr];
 		cb(ethHdr);
 		return;
 	}
@@ -41,10 +46,10 @@ function makeEthIPHdr(destIp, cb) {
 		cb(ethHdr);
 	};
 
-	if (!arpQueue[destIp]) {
-		arpQueue[destIp] = [_cb];
+	if (!arpQueue[destIpStr]) {
+		arpQueue[destIpStr] = [_cb];
 	} else {
-		arpQueue[destIp].push(_cb);
+		arpQueue[destIpStr].push(_cb);
 		return;
 	}
 
@@ -227,10 +232,6 @@ function handleIP(buffer) {
 				handleARP(ethHdr, buffer, offset);
 				return;
 			case ETH_IP:
-				if (isBroadcast) {
-					console.log('Ignoring broadcast IP packet');
-					return;
-				}
 				// Fall through to the normal handling
 				break;
 			default:
@@ -244,7 +245,11 @@ function handleIP(buffer) {
 		return;
 	}
 
-	if (!ipHdr.daddr.equals(ourIp)) {
+	if (ipHdr.daddr.equals(IP_BROADCAST)) {
+		ipHdr.daddr = ourIp;
+	}
+
+	if (ourIp && !ipHdr.daddr.equals(ourIp)) {
 		console.log(`Discarding packet not meant for us, but for ${ipHdr.daddr.toString()}`);
 		return;
 	}
@@ -351,18 +356,16 @@ function handleInit(data, cb) {
 		case 'TUN':
 			ourSubnet = IPNet.fromString(spl[3]);
 			serverIp = ourSubnet.getAddress(0);
-
-			mtu = parseInt(spl[4], 10);
 			break;
 		case 'TAP_NOCONF':
 			sendEth = true;
-			ourSubnet = IPNet.fromString(`169.254.${randomByte()}.${randomByte()}/16`);
-			serverIp = IPAddr.fromBytes(255, 255, 255, 255);
-
-			mtu = parseInt(spl[3], 10);
+			ourSubnet = null;
+			serverIp = null;
 			needDHCP = true;
 			break;
 	}
+
+	mtu = parseInt(spl[4], 10);
 
 	console.log(`Mode: ${spl[2]}`);
 
@@ -383,13 +386,18 @@ function handleInit(data, cb) {
 		ethBcastHdr.daddr = MAC_BROADCAST;
 	}
 
-	ourIp = ourSubnet.ip;
+	if (ourSubnet) {
+		ourIp = ourSubnet.ip;
+	} else {
+		ourIp = null;
+	}
 	gatewayIp = serverIp;
 	configOut();
 
 	if (needDHCP) {
 		console.log('Starting DHCP procedure...');
 		ipDoneCB = cb;
+		dhcpNegotiate();
 	} else if (cb) {
 		setTimeout(cb, 0);
 	}
