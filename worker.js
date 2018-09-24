@@ -22,6 +22,10 @@ const arpCache = {};
 const arpQueue = {};
 
 function makeEthIPHdr(destIp, cb) {
+	if (!ourSubnet.contains(destIp)) {
+		destIp = serverIp;
+	}
+
 	const ethHdr = new EthHdr(false);
 	ethHdr.ethtype = ETH_IP;
 	ethHdr.saddr = ourMac;
