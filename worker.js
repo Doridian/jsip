@@ -1,12 +1,14 @@
 'use strict';
 
-let ourIp, serverIp, mtu, ws;
+let ourIp, serverIp, ourMac, mtu, ws, sendEth, ethBcastHdr;
 
 try {
 	importScripts(
 		'lib/util.js',
 		'lib/bitfield.js',
+		'lib/ethernet.js',
 		'lib/ip.js',
+		'lib/arp.js',
 		'lib/icmp.js',
 		'lib/udp.js',
 		'lib/tcp.js',
@@ -16,17 +18,67 @@ try {
 	);
 } catch(e) { }
 
+const arpCache = {};
+const arpQueue = {};
+
+function makeEthIPHdr(destIp, cb) {
+	const ethHdr = new EthHdr(false);
+	ethHdr.ethtype = ETH_IP;
+	ethHdr.saddr = ourMac;
+	if (arpCache[destIp]) {
+		ethHdr.daddr = arpCache[destIp];
+		cb(ethHdr);
+		return;
+	}
+
+	const _cb = (addr) => {
+		ethHdr.daddr = addr;
+		cb(ethHdr);
+	};
+
+	if (!arpQueue[destIp]) {
+		arpQueue[destIp] = [_cb];
+	} else {
+		arpQueue[destIp].push(_cb);
+		return;
+	}
+
+	const arpReq = new ARPPkt();
+	arpReq.operation = ARP_REQUEST;
+	arpReq.sha = ourMac;
+	arpReq.spa = ourIp;
+	arpReq.tha = MAC_BROADCAST;
+	arpReq.tpa = destIp;
+	sendARPPkt(arpReq);
+}
+
 function sendPacket(ipHdr, payload) {
-	const fullLength = payload.getFullLength();
-	const hdrLen = ipHdr.getContentOffset();
+	if (!sendEth) {
+		_sendPacket(ipHdr, payload);
+		return;
+	}
+	makeEthIPHdr(ipHdr.daddr, (ethHdr) => {
+		if (!ethHdr) {
+			return;
+		}
+		_sendPacket(ipHdr, payload, ethHdr);
+	});
+}
+
+function _sendPacket(ipHdr, payload, ethIPHdr) {
+	const fullLength = payload.getFullLength(); 
+	const hdrLen = (ethIPHdr ? ETH_LEN : 0) + ipHdr.getContentOffset();
 	const mss = mtu - hdrLen;
 
 	if (fullLength <= mss) {
 		ipHdr.setContentLength(fullLength);
 
-		const reply = new ArrayBuffer(ipHdr.getFullLength());
+		const reply = new ArrayBuffer((ethIPHdr ? ETH_LEN : 0) + ipHdr.getFullLength());
 
 		let offset = 0;
+		if (ethIPHdr) {
+			offset += ethIPHdr.toPacket(reply, offset);
+		}
 		offset += ipHdr.toPacket(reply, offset, ipHdr);
 		offset += payload.toPacket(reply, offset, ipHdr);
 
@@ -57,7 +109,12 @@ function sendPacket(ipHdr, payload) {
 			ipHdr.frag_offset = offset >>> 3;
 			ipHdr.setContentLength(pieceLen);
 
-			ipHdr.toPacket(pktData, 0, ipHdr);
+			if (ethIPHdr) {
+				ethIPHdr.toPacket(pktData, 0);
+				ipHdr.toPacket(pktData, ETH_LEN, ipHdr);
+			} else {
+				ipHdr.toPacket(pktData, 0, ipHdr);
+			}
 			for (let j = 0; j < pieceLen; j++) {
 				p8[j + hdrLen] = r8[j + offset];
 			}
@@ -67,10 +124,12 @@ function sendPacket(ipHdr, payload) {
 	}
 }
 
-function handlePacket(ipHdr, data) {
+function handlePacket(ipHdr, data, offset) {
+	const len = data.byteLength - offset;
+
 	switch (ipHdr.protocol) {
 		case PROTO_ICMP:
-			const icmpPkt = ICMPPkt.fromPacket(data, 0, data.byteLength);
+			const icmpPkt = ICMPPkt.fromPacket(data, offset, len);
 			switch (icmpPkt.type) {
 				case 8: // PING / Echo Request
 					const replyIp = ipHdr.makeReply();
@@ -89,11 +148,11 @@ function handlePacket(ipHdr, data) {
 			}
 			break;
 		case PROTO_TCP: // TCP
-			const tcpPkt = TCPPkt.fromPacket(data, 0, data.byteLength, ipHdr);
+			const tcpPkt = TCPPkt.fromPacket(data, offset, len, ipHdr);
 			tcpGotPacket(ipHdr, tcpPkt);
 			break;
 		case PROTO_UDP: // UDP
-			const udpPkt = UDPPkt.fromPacket(data, 0, data.byteLength, ipHdr);
+			const udpPkt = UDPPkt.fromPacket(data, offset, len, ipHdr);
 			udpGotPacket(ipHdr, udpPkt);
 			break;
 		default:
@@ -104,8 +163,76 @@ function handlePacket(ipHdr, data) {
 
 const fragmentCache = {};
 
+function sendARPPkt(arpPkt, fromAddr) {
+	const pkt = new ArrayBuffer(ETH_LEN + ARP_LEN);
+
+	const ethHdr = new EthHdr(false);
+	ethHdr.daddr = fromAddr || MAC_BROADCAST;
+	ethHdr.saddr = ourMac;
+	ethHdr.ethtype = ETH_ARP;
+
+	ethHdr.toPacket(pkt, 0);
+	arpPkt.toPacket(pkt, ETH_LEN);
+
+	ws.send(pkt);
+}
+
+function handleARP(ethHdr, buffer, offset) {
+	const arpPkt = ARPPkt.fromPacket(buffer, offset);
+	switch (arpPkt.operation) {
+		case ARP_REQUEST:
+			if (arpPkt.tpa.equals(ourIp)) {
+				const arpReply = arpPkt.makeReply();
+				sendARPPkt(arpReply, ethHdr.saddr);
+			}
+			break;
+		case ARP_REPLY:
+			const ip = arpPkt.spa;
+			const mac = arpPkt.sha;
+			arpCache[ip] = mac;
+			if (arpQueue[ip]) {
+				arpQueue[ip].forEach(cb => cb(mac));
+				delete arpQueue[ip];
+			}
+			break;
+	}
+}
+
 function handleIP(buffer) {
-	const ipHdr = IPHdr.fromPacket(buffer);
+	let offset = 0;
+	if (sendEth) {
+		const ethHdr = EthHdr.fromPacket(buffer);
+		if (!ethHdr) {
+			return;
+		}
+
+		const isBroadcast = ethHdr.daddr.equals(MAC_BROADCAST);
+
+		if (!ethHdr.daddr.equals(ourMac) && !isBroadcast) {
+			console.log(`Discarding packet not meant for us, but for ${ethHdr.daddr.toString()}`);
+			return;
+		}
+
+		offset += ethHdr.getContentOffset();
+
+		switch (ethHdr.ethtype) {
+			case ETH_ARP:
+				handleARP(ethHdr, buffer, offset);
+				return;
+			case ETH_IP:
+				if (isBroadcast) {
+					console.log('Ignoring broadcast IP packet');
+					return;
+				}
+				// Fall through to the normal handling
+				break;
+			default:
+				// We only care about ARP and IPv4
+				return;
+		}
+	}
+
+	const ipHdr = IPHdr.fromPacket(buffer, offset);
 	if (!ipHdr) {
 		return;
 	}
@@ -116,10 +243,11 @@ function handleIP(buffer) {
 	}
 
 	const isFrag = ipHdr.mf || ipHdr.frag_offset > 0;
-	const pktData = buffer.slice(ipHdr.getContentOffset());
+	offset += ipHdr.getContentOffset();
+	//const pktData = buffer.slice(ipHdr.getContentOffset());
 
 	if (!isFrag) {
-		return handlePacket(ipHdr, pktData);
+		return handlePacket(ipHdr, buffer, offset);
 	}
 
 	const pktId = ipHdr.id + (ipHdr.saddr.toInt() << 16);
@@ -134,7 +262,9 @@ function handleIP(buffer) {
 	const fragOffset = ipHdr.frag_offset << 3;
 	curFrag[fragOffset] = {
 		ipHdr,
-		pktData,
+		buffer,
+		offset,
+		len: buffer.byteLength - offset,
 	};
 	if (!ipHdr.mf) {
 		curFrag.last = fragOffset;
@@ -149,7 +279,7 @@ function handleIP(buffer) {
 		let curPiece = curFrag[curPiecePos];
 		let gotAll = false;
 		while (true) {
-			curPiecePos += curPiece.pktData.byteLength;
+			curPiecePos += curPiece.len;
 			curPiece = curFrag[curPiecePos];
 			if (!curPiece) {
 				break;
@@ -161,19 +291,19 @@ function handleIP(buffer) {
 		}
 
 		if (gotAll) {
-			const fullData = new ArrayBuffer(curFrag[curFrag.last].pktData.byteLength + curFrag.last);
+			const fullData = new ArrayBuffer(curFrag[curFrag.last].len + curFrag.last);
 			const d8 = new Uint8Array(fullData);
 			let curPiecePos = 0;
 			let curPiece = curFrag[curPiecePos];
 			while (true) {
-				const p8 = new Uint8Array(curPiece.pktData);
+				const p8 = new Uint8Array(curPiece.buffer, curPiece.offset);
 				for (let i = 0; i < p8.length; i++) {
 					d8[curPiecePos + i] = p8[i];
 				}
 				if (!curPiece.ipHdr.mf) {
 					break;
 				}
-				curPiecePos += curPiece.pktData.byteLength;
+				curPiecePos += curPiece.len;
 				curPiece = curFrag[curPiecePos];
 			}
 			return handlePacket(ipHdr, fullData);
@@ -193,7 +323,7 @@ function timeoutFragments() {
 
 function workerMain(cb) {
 	const proto = (document.location.protocol === 'http:') ? 'ws:' : 'wss:';
-	_workerMain(`${proto}//${document.location.host}/ws`, cb);
+	_workerMain(`${proto}//doridian.net/ws`, cb);
 }
 
 function _workerMain(url, cb) {
@@ -210,17 +340,40 @@ function _workerMain(url, cb) {
 		// 1|init|TUN|192.168.3.1/24|1280
 		const spl = data.split('|');
 
-		// TODO: Handle CIDR
-		const ip = spl[3].split('/')[0];
-		ourIp = IPAddr.fromString(ip);
-		serverIp = IPAddr.fromString(ip);
-		serverIp.d = 0;
+		switch (spl[2]) {
+			case 'TAP':
+				sendEth = true;
+			case 'TUN':
+				// TODO: Handle CIDR
+				const ip = spl[3].split('/')[0];
+				ourIp = IPAddr.fromString(ip);
+				serverIp = IPAddr.fromString(ip);
+				serverIp.d = 0;
 
-		_httpSetIP(serverIp);
+				mtu = parseInt(spl[4], 10);
 
-		mtu = parseInt(spl[4], 10);
+				break;
+			case 'TAP_NOCONF':
+				sendEth = true;
+				ourIp = IPAddr.fromBytes(169, 254, randomByte(), randomByte());
+				serverIp = IPAddr.fromBytes(255, 255, 255, 255);
+
+				mtu = parseInt(spl[3], 10);
+				break;
+		}
+
+		if (sendEth) {
+			ourMac = MACAddr.fromBytes(randomByte(), randomByte(), randomByte(), randomByte(), randomByte(), randomByte());
+			console.log(`Our MAC: ${ourMac}`);
+			ethBcastHdr = new EthHdr();
+			ethBcastHdr.ethtype = ETH_IP;
+			ethBcastHdr.saddr = ourMac;
+			ethBcastHdr.daddr = MAC_BROADCAST;
+		}
+
 		console.log(`Our IP: ${ourIp}`);
 		console.log(`Server IP: ${serverIp}`);
+
 		console.log(`Link-MTU: ${mtu}`);
 		mtu -= 4;
 		console.log(`TUN-MTU: ${mtu}`);
