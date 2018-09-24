@@ -1,6 +1,6 @@
 'use strict';
 
-let ourIp, serverIp, ourSubnet, ourMac, mtu, ws, sendEth, ethBcastHdr;
+let ourIp, serverIp, ourSubnet, gatewayIp, ourMac, mtu, ws, sendEth, ethBcastHdr;
 
 try {
 	importScripts(
@@ -23,7 +23,7 @@ const arpQueue = {};
 
 function makeEthIPHdr(destIp, cb) {
 	if (!ourSubnet.contains(destIp)) {
-		destIp = serverIp;
+		destIp = gatewayIp;
 	}
 
 	const ethHdr = new EthHdr(false);
@@ -372,10 +372,13 @@ function _workerMain(url, cb) {
 		}
 
 		ourIp = ourSubnet.ip;
+		gatewayIp = serverIp;
 
+		console.log(`Mode: ${spl[2]}`);
 		console.log(`Our Subnet: ${ourSubnet}`);
 		console.log(`Our IP: ${ourIp}`);
 		console.log(`Server IP: ${serverIp}`);
+		console.log(`Gateway IP: ${gatewayIp}`);
 
 		console.log(`Link-MTU: ${mtu}`);
 		mtu -= 4;
@@ -393,7 +396,7 @@ onmessage = function (e) {
 	switch (e.data[0]) {
 		case 'connect':
 			_workerMain(e.data[2], () => {
-				postMessage(['connect', _id, ourIp, serverIp, mtu]);
+				postMessage(['connect', _id, ourIp, serverIp, gatewayIp, ourSubnet, mtu]);
 			});
 			break;
 		case 'httpGet':
