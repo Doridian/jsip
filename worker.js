@@ -1,6 +1,6 @@
 'use strict';
 
-let ourIp, serverIp, ourSubnet, gatewayIp, ourMac, mtu, mss, ws, sendEth, ethBcastHdr;
+let ourIp, serverIp, ourSubnet, gatewayIp, ourMac, mtu, mss, ws, sendEth, ethBcastHdr, dnsServerIps;
 
 try {
 	importScripts(
@@ -15,6 +15,7 @@ try {
 		'lib/tcp_stack.js',
 		'lib/udp_stack.js',
 		'lib/dhcp.js',
+		'lib/dns.js',
 		'lib/http.js',
 	);
 } catch(e) { }
@@ -46,11 +47,11 @@ function makeEthIPHdr(destIp, cb) {
 		cb(ethHdr);
 	};
 
-	if (!arpQueue[destIpStr]) {
-		arpQueue[destIpStr] = [_cb];
-	} else {
+	if (arpQueue[destIpStr]) {
 		arpQueue[destIpStr].push(_cb);
 		return;
+	} else {
+		arpQueue[destIpStr] = [_cb];
 	}
 
 	const arpReq = new ARPPkt();
@@ -378,7 +379,7 @@ function handleInit(data, cb) {
 	if (sendEth) {
 		mss -= ETH_LEN;
 
-		ourMac = MACAddr.fromBytes(randomByte(), randomByte(), randomByte(), randomByte(), randomByte(), randomByte());
+		ourMac = MACAddr.fromBytes(0x0A, randomByte(), randomByte(), randomByte(), randomByte(), randomByte());
 		console.log(`Our MAC: ${ourMac}`);
 		ethBcastHdr = new EthHdr();
 		ethBcastHdr.ethtype = ETH_IP;
@@ -392,6 +393,7 @@ function handleInit(data, cb) {
 		ourIp = null;
 	}
 	gatewayIp = serverIp;
+	dnsServerIps = [gatewayIp];
 	configOut();
 
 	if (needDHCP) {
