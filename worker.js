@@ -404,6 +404,8 @@ function handleInit(data, cb) {
 }
 
 function _workerMain(url, cb) {
+	console.log(`Connecting to WSVPN: ${url}`);
+
 	ws = new WebSocket(url);
 	ws.binaryType = 'arraybuffer';
 
