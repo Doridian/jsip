@@ -41,45 +41,48 @@ function _sendPacket(ipHdr: IPHdr, payload: IPacket, ethIPHdr?: EthHdr) {
         offset += payload.toPacket(reply, offset, ipHdr);
 
         config.ws!.send(reply);
-    } else if (ipHdr.df) {
+        return;
+    }
+
+    if (ipHdr.df) {
         throw new Error("Needing to send packet too big for MTU/MSS, but DF set");
-    } else {
-        const maxPacketSizeFrag = (maxPacketSize >>> 3) << 3;
+    }
 
-        const pieceMax = Math.ceil(fullLength / maxPacketSizeFrag) - 1;
-        ipHdr.mf = true;
+    const maxPacketSizeFrag = (maxPacketSize >>> 3) << 3;
 
-        const replyPacket = new ArrayBuffer(fullLength);
-        payload.toPacket(replyPacket, 0, ipHdr);
-        const r8 = new Uint8Array(replyPacket);
+    const pieceMax = Math.ceil(fullLength / maxPacketSizeFrag) - 1;
+    ipHdr.mf = true;
 
-        let pktData = new ArrayBuffer(hdrLen + maxPacketSizeFrag);
-        let p8 = new Uint8Array(pktData);
+    const replyPacket = new ArrayBuffer(fullLength);
+    payload.toPacket(replyPacket, 0, ipHdr);
+    const r8 = new Uint8Array(replyPacket);
 
-        for (let i = 0; i <= pieceMax; i++) {
-            const offset = maxPacketSizeFrag * i;
-            let pieceLen = maxPacketSizeFrag;
-            if (i === pieceMax) {
-                ipHdr.mf = false;
-                pieceLen = replyPacket.byteLength % maxPacketSizeFrag;
-                pktData = new ArrayBuffer(hdrLen + pieceLen);
-                p8 = new Uint8Array(pktData);
-            }
+    let pktData = new ArrayBuffer(hdrLen + maxPacketSizeFrag);
+    let p8 = new Uint8Array(pktData);
 
-            ipHdr.fragOffset = offset >>> 3;
-            ipHdr.setContentLength(pieceLen);
-
-            if (ethIPHdr) {
-                ethIPHdr.toPacket(pktData, 0);
-                ipHdr.toPacket(pktData, ETH_LEN);
-            } else {
-                ipHdr.toPacket(pktData, 0);
-            }
-            for (let j = 0; j < pieceLen; j++) {
-                p8[j + hdrLen] = r8[j + offset];
-            }
-
-            config.ws!.send(pktData);
+    for (let i = 0; i <= pieceMax; i++) {
+        const offset = maxPacketSizeFrag * i;
+        let pieceLen = maxPacketSizeFrag;
+        if (i === pieceMax) {
+            ipHdr.mf = false;
+            pieceLen = replyPacket.byteLength % maxPacketSizeFrag;
+            pktData = new ArrayBuffer(hdrLen + pieceLen);
+            p8 = new Uint8Array(pktData);
         }
+
+        ipHdr.fragOffset = offset >>> 3;
+        ipHdr.setContentLength(pieceLen);
+
+        if (ethIPHdr) {
+            ethIPHdr.toPacket(pktData, 0);
+            ipHdr.toPacket(pktData, ETH_LEN);
+        } else {
+            ipHdr.toPacket(pktData, 0);
+        }
+        for (let j = 0; j < pieceLen; j++) {
+            p8[j + hdrLen] = r8[j + offset];
+        }
+
+        config.ws!.send(pktData);
     }
 }
