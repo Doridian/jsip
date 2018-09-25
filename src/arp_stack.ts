@@ -4,11 +4,13 @@ import { EthHdr, ETH_TYPE, ETH_LEN, MACAddr, MAC_BROADCAST } from './ethernet';
 import { ARPPkt, ARP_REQUEST, ARP_REPLY, ARP_LEN } from './arp';
 import { IPAddr } from './ip';
 
+type ARPCallback = (ethHdr?: MACAddr) => void;
+
 const arpCache: { [key: string]: MACAddr } = {};
-const arpQueue: { [key: string]: [(ethHdr: MACAddr|null) => void] } = {};
+const arpQueue: { [key: string]: ARPCallback[] } = {};
 const arpTimeouts: { [key: string]: number } = {};
 
-export function makeEthIPHdr(destIp: IPAddr, cb: (ethHdr: EthHdr|null) => void) {
+export function makeEthIPHdr(destIp: IPAddr, cb: (ethHdr?: EthHdr) => void) {
 	if (config.ourSubnet && !config.ourSubnet.contains(destIp)) {
 		destIp = config.gatewayIp!;
 	}
@@ -30,9 +32,9 @@ export function makeEthIPHdr(destIp: IPAddr, cb: (ethHdr: EthHdr|null) => void) 
 		return;
 	}
 
-	const _cb = (addr: MACAddr|null) => {
+	const _cb = (addr?: MACAddr) => {
 		if (!addr) {
-			cb(null);
+			cb();
 			return;
 		}
 		ethHdr.daddr = addr;
@@ -48,7 +50,7 @@ export function makeEthIPHdr(destIp: IPAddr, cb: (ethHdr: EthHdr|null) => void) 
 	arpTimeouts[destIpStr] = setTimeout(() => {
 		delete arpTimeouts[destIpStr];
 		if (arpQueue[destIpStr]) {
-			arpQueue[destIpStr].forEach(cb => cb(null));
+			arpQueue[destIpStr].forEach(cb => cb());
 			delete arpQueue[destIpStr];
 		}
 	}, 10000);
@@ -59,10 +61,10 @@ export function makeEthIPHdr(destIp: IPAddr, cb: (ethHdr: EthHdr|null) => void) 
 	arpReq.spa = config.ourIp;
 	arpReq.tha = MAC_BROADCAST;
 	arpReq.tpa = destIp;
-	sendARPPkt(arpReq, undefined);
+	sendARPPkt(arpReq);
 }
 
-function sendARPPkt(arpPkt: ARPPkt, fromAddr: MACAddr|undefined) {
+function sendARPPkt(arpPkt: ARPPkt, fromAddr?: MACAddr) {
 	const pkt = new ArrayBuffer(ETH_LEN + ARP_LEN);
 
 	const ethHdr = new EthHdr();
