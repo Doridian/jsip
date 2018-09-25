@@ -8,7 +8,7 @@ export function sendPacket(ipHdr: IPHdr|undefined, payload: IPacket) {
     if (!ipHdr) {
         return;
     }
-    
+
     if (!config.sendEth) {
 		_sendPacket(ipHdr, payload);
 		return;
