@@ -1,5 +1,5 @@
-import { IHdr, computeChecksum, computeChecksumPseudo } from "./util";
-import { mtu } from "./config";
+import { IHdr, computeChecksum, computeChecksumPseudo, IPacket } from "./util";
+import { config } from "./config";
 import { IPHdr } from "./ip";
 import { BitArray } from "./bitfield";
 
@@ -15,7 +15,7 @@ export const TCP_RST = 0x04;
 export const TCP_SYN = 0x02;
 export const TCP_FIN = 0x01;
 
-export class TCPPkt extends IHdr {
+export class TCPPkt extends IHdr implements IPacket {
 	public sport = 0;
 	public dport = 0;
 	public checksum = 0;
@@ -33,7 +33,7 @@ export class TCPPkt extends IHdr {
 		const o8 = this.options;
 		o8[0] = 2;
 		o8[1] = 4;
-		const mss = mtu - 40;
+		const mss = config.mtu - 40;
 		o8[2] = (mss >>> 8) & 0xFF;
 		o8[3] = mss & 0xFF;
 	}

@@ -86,3 +86,8 @@ export class IHdr {
 	fill() {
 	}
 }
+
+export interface IPacket {
+	toPacket(array: ArrayBuffer, offset: number, ipHdr: IPHdr|undefined): number;
+	getFullLength(): number;
+}

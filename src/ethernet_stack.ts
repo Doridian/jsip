@@ -1,5 +1,5 @@
 import { EthHdr } from './ethernet';
-import { ourMac } from './config';
+import { config } from './config';
 
 type EthHandler = (buffer: ArrayBuffer, offset: number, ethHdr: EthHdr) => void;
 
@@ -15,7 +15,7 @@ export function handleEthernet(buffer: ArrayBuffer) {
 
 	const isBroadcast = ethHdr.daddr!.isBroadcast();
 
-	if (!ethHdr.daddr!.equals(ourMac) && !isBroadcast) {
+	if (!ethHdr.daddr!.equals(config.ourMac) && !isBroadcast) {
 		console.log(`Discarding packet not meant for us, but for ${ethHdr.daddr!.toString()}`);
 		return;
 	}

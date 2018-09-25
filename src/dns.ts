@@ -5,6 +5,7 @@ import { IPHdr, IPAddr } from "./ip";
 import { config } from "./config";
 import { udpListen } from "./udp_stack";
 import { TCPConnectHandler, TCPDisconnectHandler, TCPListener, tcpConnect } from "./tcp_stack";
+import { sendPacket } from "./wssend";
 
 type DNSResult = any;
 type DNSParseState = { pos: number, data: Uint8Array, packet: ArrayBuffer, offset: number };

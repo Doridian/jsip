@@ -60,7 +60,10 @@ export class MACAddr {
 		return mac;
 	}
 
-	equals(mac: MACAddr) {
+	equals(mac: MACAddr|undefined) {
+		if (!mac) {
+			return false;
+		}
 		return mac.a === this.a && mac.b === this.b && mac.c === this.c && mac.d === this.d && mac.e === this.e && mac.f === this.f;
 	}
 

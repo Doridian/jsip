@@ -1,10 +1,11 @@
 import { IHdr } from "./util";
-import { config } from "./config";
+import { config, configOut } from "./config";
 import { ARP_HTYPE, ARP_HLEN } from "./arp";
 import { IPAddr, IPHdr, IP_NONE, IP_BROADCAST, IPNet } from "./ip";
 import { MACAddr } from "./ethernet";
 import { UDPPkt, PROTO_UDP } from "./udp";
 import { udpListen } from "./udp_stack";
+import { sendPacket } from "./wssend";
 
 const DHCP_MAGIC = new Uint8Array([0x63, 0x82, 0x53, 0x63]);
 
@@ -300,7 +301,7 @@ udpListen(68, (data: Uint8Array|undefined, _ipHdr: IPHdr) => {
 	}
 });
 
-function dhcpNegotiate(secs = 0) {
+export function dhcpNegotiate(secs = 0) {
 	dhcpInInitialConfig = true;
 	if (dhcpRenewTimer !== undefined) {
 		clearTimeout(dhcpRenewTimer);

@@ -87,9 +87,9 @@ export class IPAddr {
 }
 
 export class IPNet {
-	private ip: IPAddr|null;
+	public ip: IPAddr|undefined;
 	private bitmask = 0;
-	private mask: IPAddr|null;
+	private mask: IPAddr|undefined;
 	private baseIpInt = 0;
 
 	static fromString(ipStr: string) {

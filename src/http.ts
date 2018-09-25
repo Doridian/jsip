@@ -1,13 +1,26 @@
-'use strict';
+import { buffersToBuffer, bufferToString, stringToBuffer } from "./util";
+import { dnsTcpConnect } from "./dns";
 
-function _isHeaderEnd(ele, idx, arr) {
+type HTTPHeaderMap = { [key: string]: string };
+
+type HTTPResult = {
+	statusCode: number;
+	statusText: string;
+	headers: HTTPHeaderMap;
+	body: ArrayBuffer;
+	url: string;
+};
+
+type HTTPCallback = (err: Error|undefined, res: HTTPResult|undefined) => void;
+
+function _isHeaderEnd(ele: number, idx: number, arr: Uint8Array) {
 	if (arr.byteLength < idx + 4) {
 		return false;
 	}
 	return ele === 13 && arr[idx + 1] === 10 && arr[idx + 2] === 13 && arr[idx + 3] === 10;
 }
 
-function httpParse(datas) {
+function httpParse(datas: ArrayBuffer[]): HTTPResult {
 	const data = buffersToBuffer(datas);
 	const data8 = new Uint8Array(data);
 
@@ -15,18 +28,18 @@ function httpParse(datas) {
 
 	let headersStr, body;
 	if (headerEnd < 0) {
-		headersStr = bufferToString(data);
+		headersStr = bufferToString(data, 0);
 		body = new ArrayBuffer(0);
 	} else {
-		headersStr = bufferToString(new Uint8Array(data, 0, headerEnd));
+		headersStr = bufferToString(new Uint8Array(data, 0, headerEnd), 0);
 		body = new Uint8Array(data, headerEnd + 4);
 	}
 
-	const headers = {};
+	const headers: HTTPHeaderMap = {};
 
 	const headerSplit = headersStr.split('\r\n');
 	const statusLine = headerSplit.shift();
-	headerSplit.forEach((headerStr) => {
+	headerSplit.forEach((headerStr: string) => {
 		const colonPos = headerStr.indexOf(':');
 		if (colonPos < 0) {
 			return;
@@ -50,38 +63,37 @@ function httpParse(datas) {
 		statusText,
 		headers,
 		body,
+		url: "",
 	};
 }
 
-function httpGet(url, cb) {
-	if (typeof url === 'string') {
-		url = new URL(url);
-	}
+export function httpGet(urlStr: string, cb: HTTPCallback) {
+	const url = new URL(urlStr);
 
-	const datas = [];
-	dnsTcpConnect(url.hostname, url.port ? parseInt(url.port, 10) : 80, (data, tcpConn) => {
+	const datas: ArrayBuffer[] = [];
+	dnsTcpConnect(url.hostname, url.port ? parseInt(url.port, 10) : 80, (data, _tcpConn) => {
 		// Data
 		datas.push(data);
 	}, (res, conn) => {
 		if (res === false) {
 			try {
-				cb(new Error('Could not connect'));
+				cb(new Error('Could not connect'), undefined);
 			} catch(e) {
 				console.error(e.stack || e);
 			}
 			return;	
 		}
 
-		conn.send(stringToBuffer(`GET ${url.pathname}${url.search} HTTP/1.1\r\nHost: ${url.host}\r\nUser-Agent: jsip\r\nConnection: close\r\n\r\n`));
+		conn!.send(new Uint8Array(stringToBuffer(`GET ${url.pathname}${url.search} HTTP/1.1\r\nHost: ${url.host}\r\nUser-Agent: jsip\r\nConnection: close\r\n\r\n`)));
 	}, () => {
 		// Disconnect
 		let res, err;
 		try {
 			res = httpParse(datas);
 			res.url = url.href;
-			err = null;
+			err = undefined;
 		} catch(e) {
-			res = null;
+			res = undefined;
 			err = e;
 		}
 

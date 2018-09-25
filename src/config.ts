@@ -13,6 +13,7 @@ export const config: {
     ethBcastHdr: EthHdr|undefined;
     dnsServerIps: IPAddr[];
     ipDoneCB: (() => void)|undefined;
+    ws: WebSocket|undefined;
 } = {
     ourIp: undefined,
     serverIp: undefined,
@@ -25,4 +26,12 @@ export const config: {
     ethBcastHdr: undefined,
     dnsServerIps: [],
     ipDoneCB: undefined,
+    ws: undefined,
 };
+
+export function configOut() {
+	console.log(`Our Subnet: ${config.ourSubnet}`);
+	console.log(`Our IP: ${config.ourIp}`);
+	console.log(`Server IP: ${config.serverIp}`);
+	console.log(`Gateway IP: ${config.gatewayIp}`);
+}

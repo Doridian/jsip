@@ -73,7 +73,7 @@ function sendARPPkt(arpPkt: ARPPkt, fromAddr: MACAddr|undefined) {
 	ethHdr.toPacket(pkt, 0);
 	arpPkt.toPacket(pkt, ETH_LEN);
 
-	ws.send(pkt);
+	config.ws!.send(pkt);
 }
 
 function handleARP(buffer: ArrayBuffer, offset: number, ethHdr: EthHdr) {

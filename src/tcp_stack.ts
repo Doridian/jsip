@@ -2,6 +2,7 @@ import { config } from "./config";
 import { IPHdr, IPAddr } from "./ip";
 import { TCP_PSH, TCP_ACK, TCP_SYN, TCP_RST, TCP_FIN, PROTO_TCP, TCPPkt } from "./tcp";
 import { registerIpHandler } from "./ip_stack";
+import { sendPacket } from "./wssend";
 
 export type TCPListener = (data: ArrayBuffer, tcpConn: TCPConn) => void;
 
@@ -256,7 +257,9 @@ export class TCPConn {
 		}
 
 		if (this.rlastseqno !== undefined && tcpPkt.seqno <= this.rlastseqno) {
-			sendPacket(this.lastack_ip, this.lastack_tcp);
+			if (this.lastack_tcp) {
+				sendPacket(this.lastack_ip, this.lastack_tcp);
+			}
 			return;
 		}
 

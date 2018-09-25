@@ -1,9 +1,9 @@
-import { IHdr, computeChecksumPseudo, computeChecksum } from "./util";
+import { IHdr, computeChecksumPseudo, computeChecksum, IPacket } from "./util";
 import { IPHdr } from "./ip";
 
 export const PROTO_UDP = 17;
 
-export class UDPPkt extends IHdr {
+export class UDPPkt extends IHdr implements IPacket {
 	public sport = 0;
 	public dport = 0;
 	private checksum = 0;

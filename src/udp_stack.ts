@@ -1,6 +1,7 @@
 import { IPHdr } from "./ip";
 import { registerIpHandler } from "./ip_stack";
 import { UDPPkt, PROTO_UDP } from "./udp";
+import { sendPacket } from "./wssend";
 
 type UDPReplyFunc = (data: Uint8Array) => void;
 type UDPListener = (data: Uint8Array|undefined, ipHdr: IPHdr, reply: UDPReplyFunc) => void;

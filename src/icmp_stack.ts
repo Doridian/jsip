@@ -1,6 +1,7 @@
 import { ICMPPkt } from "./icmp";
 import { IPHdr } from "./ip";
 import { registerIpHandler } from "./ip_stack";
+import { sendPacket } from "./wssend";
 
 type ICMPHandler = (icmpPkt: ICMPPkt, ipHdr: IPHdr) => void;
 
