@@ -1,6 +1,6 @@
 import { config } from "./config";
 import { IPHdr, IPAddr, IPPROTO } from "./ip";
-import { TCP_PSH, TCP_ACK, TCP_SYN, TCP_RST, TCP_FIN, TCPPkt } from "./tcp";
+import { TCP_FLAGS, TCPPkt } from "./tcp";
 import { registerIpHandler } from "./ip_stack";
 import { sendPacket } from "./wssend";
 
@@ -37,7 +37,7 @@ const TCP_STATE_ESTABLISHED = 9;
 
 const TCP_ONLY_SEND_ON_PSH = false;
 
-const TCP_FLAG_INCSEQ = ~(TCP_PSH | TCP_ACK);
+const TCP_FLAG_INCSEQ = ~(TCP_FLAGS.PSH | TCP_FLAGS.ACK);
 
 export type TCPONAckHandler = (type: number) => void;
 export type TCPConnectHandler = (res: boolean, conn: TCPConn|undefined) => void;
@@ -100,7 +100,7 @@ export class TCPConn {
 		let incSeq = false;
 		if (this.lseqno === undefined) {
 			this.lseqno = Math.floor(Math.random() * (1 << 30));
-			tcp.setFlag(TCP_SYN);
+			tcp.setFlag(TCP_FLAGS.SYN);
 			incSeq = true;
 			tcp.fillMSS();
 		}
@@ -110,7 +110,7 @@ export class TCPConn {
 		}
 		if (this.rseqno !== undefined) {
 			tcp.ackno = this.rseqno;
-			tcp.setFlag(TCP_ACK);
+			tcp.setFlag(TCP_FLAGS.ACK);
 			//this.rlastack = true;
 		}
 		return tcp;
@@ -132,7 +132,7 @@ export class TCPConn {
 		const ip = this._makeIp(true);
 		const tcp = this._makeTcp();
 		tcp.flags = 0;
-		tcp.setFlag(TCP_RST);
+		tcp.setFlag(TCP_FLAGS.RST);
 		sendPacket(ip, tcp);
 		this.delete();
 	}
@@ -161,7 +161,7 @@ export class TCPConn {
 
 		const ip = this._makeIp(true);
 		const tcp = this._makeTcp();
-		tcp.setFlag(TCP_FIN);
+		tcp.setFlag(TCP_FLAGS.FIN);
 		this.sendPacket(ip, tcp);
 		this.incLSeq(1);
 
@@ -244,7 +244,7 @@ export class TCPConn {
 		const tcp = this._makeTcp();
 		tcp.data = data;
 		if (psh) {
-			tcp.setFlag(TCP_PSH);
+			tcp.setFlag(TCP_FLAGS.PSH);
 		}
 		this.sendPacket(ip, tcp);
 		this.incLSeq(data ? data.byteLength : 0);
@@ -266,7 +266,7 @@ export class TCPConn {
 		let lseqno = this.lseqno;
 		let rseqno = this.rseqno;
 
-		if (tcpPkt.hasFlag(TCP_SYN)) {
+		if (tcpPkt.hasFlag(TCP_FLAGS.SYN)) {
 			//this.rlastack = false;
 			if (this.state === TCP_STATE_SYN_SENT || this.state === TCP_STATE_SYN_RECEIVED) {
 				this.rseqno = tcpPkt.seqno;
@@ -297,7 +297,7 @@ export class TCPConn {
 				throw new Error('Invalid sequence number');
 			}
 
-			if (tcpPkt.hasFlag(TCP_RST)) {
+			if (tcpPkt.hasFlag(TCP_FLAGS.RST)) {
 				//this.rlastack = false;
 				this.delete();
 				return;
@@ -316,7 +316,7 @@ export class TCPConn {
 				if (TCP_ONLY_SEND_ON_PSH) {
 					this.rbufferlen += tcpPkt.data.byteLength;
 					this.rbuffers.push(tcpPkt.data);
-					if (tcpPkt.hasFlag(TCP_PSH)) {
+					if (tcpPkt.hasFlag(TCP_FLAGS.PSH)) {
 						const all = new ArrayBuffer(this.rbufferlen);
 						const a8 = new Uint8Array(all);
 						let pos = 0;
@@ -346,7 +346,7 @@ export class TCPConn {
 			}
 		}
 
-		if (tcpPkt.hasFlag(TCP_ACK)) {
+		if (tcpPkt.hasFlag(TCP_FLAGS.ACK)) {
 			if (tcpPkt.ackno === lseqno) {
 				const onack = this.onack[tcpPkt.ackno];
 				if (onack) {
@@ -369,7 +369,7 @@ export class TCPConn {
 			}
 		}
 
-		if (tcpPkt.hasFlag(TCP_FIN)) {
+		if (tcpPkt.hasFlag(TCP_FLAGS.FIN)) {
 			//this.rlastack = false;
 			const ip = this._makeIp(true);
 			const tcp = this._makeTcp();
@@ -377,7 +377,7 @@ export class TCPConn {
 				case TCP_STATE_FIN_WAIT_1:
 				case TCP_STATE_FIN_WAIT_2:
 					sendPacket(ip, tcp); // ACK it
-					if (!tcpPkt.hasFlag(TCP_ACK)) {
+					if (!tcpPkt.hasFlag(TCP_FLAGS.ACK)) {
 						this.state = TCP_STATE_CLOSING;
 					} else {
 						this.delete();
@@ -391,7 +391,7 @@ export class TCPConn {
 					break;
 				default:
 					this.state = TCP_STATE_LAST_ACK;
-					tcp.setFlag(TCP_FIN);
+					tcp.setFlag(TCP_FLAGS.FIN);
 					sendPacket(ip, tcp);
 					this.incLSeq(1);
 					break;
@@ -439,7 +439,7 @@ function tcpGotPacket(data: ArrayBuffer, offset: number, len: number, ipHdr: IPH
 		return tcpConns[id].gotPacket(ipHdr, tcpPkt);
 	}
 
-	if (tcpPkt.hasFlag(TCP_SYN) && !tcpPkt.hasFlag(TCP_ACK) && tcpListeners[tcpPkt.dport]) {
+	if (tcpPkt.hasFlag(TCP_FLAGS.SYN) && !tcpPkt.hasFlag(TCP_FLAGS.ACK) && tcpListeners[tcpPkt.dport]) {
 		const conn = new TCPConn(tcpListeners[tcpPkt.dport]);
 		return conn.accept(ipHdr, tcpPkt);
 	}

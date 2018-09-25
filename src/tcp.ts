@@ -3,15 +3,17 @@ import { config } from "./config";
 import { IPHdr, IPPROTO } from "./ip";
 import { BitArray } from "./bitfield";
 
-export const TCP_NS = 0x100;
-export const TCP_CWR = 0x80;
-export const TCP_ECE = 0x40;
-export const TCP_URG = 0x20;
-export const TCP_ACK = 0x10;
-export const TCP_PSH = 0x08;
-export const TCP_RST = 0x04;
-export const TCP_SYN = 0x02;
-export const TCP_FIN = 0x01;
+export const enum TCP_FLAGS {
+	NS = 0x100,
+	CWR = 0x80,
+	ECE = 0x40,
+	URG = 0x20,
+	ACK = 0x10,
+	PSH = 0x08,
+	RST = 0x04,
+	SYN = 0x02,
+	FIN = 0x01,
+};
 
 export class TCPPkt implements IPacket {
 	public sport = 0;
@@ -86,15 +88,15 @@ export class TCPPkt implements IPacket {
 		return tcp;
 	}
 
-	setFlag(flag: number) {
+	setFlag(flag: TCP_FLAGS) {
 		this.flags |= flag;
 	}
 
-	unsetFlag(flag: number) {
+	unsetFlag(flag: TCP_FLAGS) {
 		this.flags &= ~flag;
 	}
 
-	hasFlag(flag: number) {
+	hasFlag(flag: TCP_FLAGS) {
 		return (this.flags & flag) === flag
 	}
 
