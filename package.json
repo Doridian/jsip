@@ -1,0 +1,25 @@
+{
+  "name": "jsip",
+  "version": "1.0.0",
+  "description": "",
+  "main": "main.js",
+  "directories": {
+    "lib": "lib"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Doridian/jsip.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Doridian/jsip/issues"
+  },
+  "homepage": "https://github.com/Doridian/jsip#readme",
+  "dependencies": {
+    "typescript": "^3.0.3"
+  }
+}

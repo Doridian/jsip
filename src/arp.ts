@@ -1,16 +1,27 @@
-'use strict';
+import { MACAddr } from "./ethernet";
+import { ourMac } from "./config";
 
-const ARP_HTYPE = 1;
-const ARP_PTYPE = 0x800;
-const ARP_HLEN = 6;
-const ARP_PLEN = 4;
+export const ARP_HTYPE = 1;
+export const ARP_PTYPE = 0x800;
+export const ARP_HLEN = 6;
+export const ARP_PLEN = 4;
 
-const ARP_REQUEST = 1;
-const ARP_REPLY = 2;
+export const ARP_REQUEST = 1;
+export const ARP_REPLY = 2;
 
-const ARP_LEN = (2 * ARP_HLEN) + (2 * ARP_PLEN) + 8;
+export const ARP_LEN = (2 * ARP_HLEN) + (2 * ARP_PLEN) + 8;
 
-class ARPPkt extends IHdr {
+export class ARPPkt extends IHdr {
+	public htype = 0;
+	public ptype = 0;
+	public hlen = 0;
+	public plen = 0;
+	public operation = 0;
+	public sha: MACAddr|null = null;
+	public spa: IPAddr|null = null;
+	public tha: MACAddr|null = null;
+	public tpa: IPAddr|null = null;
+
 	fill() {
 		this.htype = ARP_HTYPE;
 		this.ptype = ARP_PTYPE;
@@ -40,7 +51,7 @@ class ARPPkt extends IHdr {
 		return replyARP;
 	}
 
-	static fromPacket(packet, offset) {
+	static fromPacket(packet: ArrayBuffer, offset: number) {
 		const arp = new ARPPkt(false);
 		const data = new Uint8Array(packet, offset);
 		arp.htype = data[1] + (data[0] << 8);
@@ -55,7 +66,7 @@ class ARPPkt extends IHdr {
 		return arp;
 	}
 
-	toPacket(array, offset) {
+	toPacket(array: ArrayBuffer, offset: number) {
 		const packet = new Uint8Array(array, offset, ARP_LEN);
 
 		packet[0] = (this.htype >>> 8) & 0xFF;
@@ -67,10 +78,10 @@ class ARPPkt extends IHdr {
 		packet[6] = (this.operation >>> 8) & 0xFF;
 		packet[7] = this.operation & 0xFF;
 
-		this.sha.toBytes(packet, 8);
-		this.spa.toBytes(packet, 14);
-		this.tha.toBytes(packet, 18);
-		this.tpa.toBytes(packet, 24);
+		this.sha!.toBytes(packet, 8);
+		this.spa!.toBytes(packet, 14);
+		this.tha!.toBytes(packet, 18);
+		this.tpa!.toBytes(packet, 24);
 
 		return ARP_LEN;
 	}

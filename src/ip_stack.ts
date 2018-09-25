@@ -1,8 +1,13 @@
-'use strict';
+import { registerEthHandler } from './ethernet_stack';
+import { ETH_IP } from './ethernet';
+import { IPHdr } from './ip'; 
+import { ourIp } from './config';
 
-const ipHandlers = {};
+type IPHandler = (data: ArrayBuffer, offset: number, len: number, ipHdr: IPHdr) => void;
 
-function handlePacket(ipHdr, data, offset) {
+const ipHandlers: { [key: number]: IPHandler } = {};
+
+function handlePacket(ipHdr: IPHdr, data: ArrayBuffer, offset: number) {
 	const len = data.byteLength - offset;
 
 	const handler = ipHandlers[ipHdr.protocol];
@@ -11,20 +16,32 @@ function handlePacket(ipHdr, data, offset) {
 	}
 }
 
-function registerIpHandler(iptype, handler) {
+export function registerIpHandler(iptype: number, handler: IPHandler) {
 	ipHandlers[iptype] = handler;
 }
 
-const fragmentCache = {};
+type IPFragment = {
+	time: number;
+	last: number|undefined;
+	validUntil: number|undefined;
+	[key: number]: {
+		ipHdr: IPHdr;
+		buffer: ArrayBuffer;
+		offset: number;
+		len: number;
+	};
+};
 
-function handleIP(buffer, offset = 0) {
+const fragmentCache: { [key: number]: IPFragment } = {};
+
+export function handleIP(buffer: ArrayBuffer, offset = 0) {
 	const ipHdr = IPHdr.fromPacket(buffer, offset);
 	if (!ipHdr) {
 		return;
 	}
 
-	if (ourIp && ipHdr.daddr.isUnicast() && !ipHdr.daddr.equals(ourIp)) {
-		console.log(`Discarding packet not meant for us, but for ${ipHdr.daddr.toString()}`);
+	if (ourIp && ipHdr.daddr!.isUnicast() && !ipHdr.daddr!.equals(ourIp)) {
+		console.log(`Discarding packet not meant for us, but for ${ipHdr.daddr!.toString()}`);
 		return;
 	}
 
@@ -35,11 +52,13 @@ function handleIP(buffer, offset = 0) {
 		return handlePacket(ipHdr, buffer, offset);
 	}
 
-	const pktId = ipHdr.id + (ipHdr.saddr.toInt() << 16);
+	const pktId = ipHdr.id + (ipHdr.saddr!.toInt() << 16);
 	let curFrag = fragmentCache[pktId];
 	if (!curFrag) {
 		curFrag = {
 			time: Date.now(),
+			last: undefined,
+			validUntil: undefined,
 		};
 		fragmentCache[pktId] = curFrag;
 	}
@@ -91,7 +110,7 @@ function handleIP(buffer, offset = 0) {
 				curPiecePos += curPiece.len;
 				curPiece = curFrag[curPiecePos];
 			}
-			return handlePacket(ipHdr, fullData, 0, fullData.byteLength);
+			return handlePacket(ipHdr, fullData, 0);
 		}
 	}
 }
@@ -105,5 +124,7 @@ function timeoutFragments() {
 		}
 	}
 }
+
+setInterval(timeoutFragments, 1000);
 
 registerEthHandler(ETH_IP, handleIP);

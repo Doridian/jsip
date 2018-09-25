@@ -1,7 +1,14 @@
-'use strict';
+import { IHdr, computeChecksum } from './util';
+import { BitArray } from './bitfield';
+import { ourIp } from './config';
 
-class IPAddr {
-	static fromString(ipStr) {
+export class IPAddr {
+	private a = 0;
+	private b = 0;
+	private c = 0;
+	private d = 0;
+
+	static fromString(ipStr: string) {
 		const ip = new IPAddr();
 		const ipS = ipStr.split('.');
 		ip.a = parseInt(ipS[0], 10);
@@ -11,7 +18,7 @@ class IPAddr {
 		return ip;
 	}
 
-	static fromByteArray(ipBytes, offset = 0) {
+	static fromByteArray(ipBytes: Uint8Array, offset = 0) {
 		const ip = new IPAddr();
 		ip.a = ipBytes[offset];
 		ip.b = ipBytes[offset + 1];
@@ -20,7 +27,7 @@ class IPAddr {
 		return ip;
 	}
 
-	static fromBytes(a, b, c, d) {
+	static fromBytes(a: number, b: number, c: number, d: number) {
 		const ip = new IPAddr();
 		ip.a = a;
 		ip.b = b;
@@ -29,7 +36,7 @@ class IPAddr {
 		return ip;
 	}
 
-	static fromInt32(ipInt) {
+	static fromInt32(ipInt: number) {
 		const ip = new IPAddr();
 		ip.d = ipInt & 0xFF;
 		ip.c = (ipInt >>> 8) & 0xFF;
@@ -38,14 +45,14 @@ class IPAddr {
 		return ip;
 	}
 
-	equals(ip) {
+	equals(ip: IPAddr) {
 		if (!ip) {
 			return false;
 		}
 		return ip.a === this.a && ip.b === this.b && ip.c === this.c && ip.d === this.d;
 	}
 
-	toBytes(array, offset) {
+	toBytes(array: Uint8Array, offset: number) {
 		array[offset] = this.a;
 		array[offset + 1] = this.b;
 		array[offset + 2] = this.c;
@@ -79,61 +86,68 @@ class IPAddr {
 	}
 }
 
-class IPNet {
-	static fromString(ipStr) {
+export class IPNet {
+	private ip: IPAddr|null;
+	private bitmask = 0;
+	private mask: IPAddr|null;
+	private baseIpInt = 0;
+
+	static fromString(ipStr: string) {
 		const ipS = ipStr.split('/');
 		const ip = IPAddr.fromString(ipS[0]);
 		const subnetLen = parseInt(ipS[1], 10);
 		return new IPNet(ip, ~((1 << (32 - subnetLen)) - 1));
 	}
 
-	constructor(ip, bitmask) {
+	constructor(ip: IPAddr, bitmask: number) {
 		this.ip = ip;
 		this.bitmask = bitmask;
 		this.mask = IPAddr.fromInt32(bitmask);
 		this.baseIpInt = ip.toInt() & bitmask;
 	}
 
-	equals(ipNet) {
+	equals(ipNet: IPNet) {
 		if (!ipNet) {
 			return false;
 		}
-		return this.bitmask === ipNet.bitmask && this.ip.equals(ipNet.ip);
+		return this.bitmask === ipNet.bitmask && this.ip!.equals(ipNet.ip!);
 	}
 
 	toString() {
 		return `${this.ip}/${this.mask}`;
 	}
 
-	contains(ip) {
+	contains(ip: IPAddr) {
 		return (ip.toInt() & this.bitmask) === this.baseIpInt;
 	}
 
-	getAddress(num) {
+	getAddress(num: number) {
 		return IPAddr.fromInt32(this.baseIpInt + num);
 	}
 }
 
-class IPHdr extends IHdr {
+export class IPHdr extends IHdr {
+	private version = 4;
+	public ihl = 5;
+	public dscp = 0;
+	public ecn = 0;
+	public len = 0;
+	public id = 0;
+	public df = false;
+	public mf = false;
+	public frag_offset = 0;
+	private ttl = 64;
+	public protocol = 0;
+	private checksum = 0;
+	public saddr: IPAddr|null = null;
+	public daddr: IPAddr|null = null;
+	public options: ArrayBuffer|null = null;
+
 	fill() {
-		this.version = 4;
-		this.ihl = 5;
-		this.dscp = 0;
-		this.ecn = 0;
-		this.len = 0;
-		this.id = 0;
-		this.df = false;
-		this.mf = false;
-		this.frag_offset = 0;
-		this.ttl = 64;
-		this.protocol = 0;
-		this.checksum = 0;
-		this.saddr = null;
-		this.daddr = null;
-		this.options = new ArrayBuffer(0);
+
 	}
 
-	static fromPacket(packet, offset) {
+	static fromPacket(packet: ArrayBuffer, offset: number) {
 		const ipv4 = new IPHdr(false);
 		const bit = new BitArray(packet, offset);
 		ipv4.version = bit.read(4);
@@ -168,7 +182,7 @@ class IPHdr extends IHdr {
 		return ipv4;
 	}
 
-	setContentLength(len) {
+	setContentLength(len: number) {
 		this.len = this.getContentOffset() + len;
 	}
 
@@ -187,7 +201,7 @@ class IPHdr extends IHdr {
 	makeReply() {
 		const replyIp = new IPHdr();
 		replyIp.protocol = this.protocol;
-		if (this.daddr.isUnicast()) {
+		if (this.daddr!.isUnicast()) {
 			replyIp.saddr = this.daddr;
 		} else {
 			replyIp.saddr = ourIp;
@@ -196,8 +210,8 @@ class IPHdr extends IHdr {
 		return replyIp;
 	}
 
-	toPacket(array, offset) {
-		const packet = new Uint8Array(array, offset, this.options.byteLength + 20);
+	toPacket(array: ArrayBuffer, offset: number) {
+		const packet = new Uint8Array(array, offset, (this.options ? this.options.byteLength : 0) + 20);
 		this.ihl = packet.length >>> 2;
 		packet[0] = ((this.version & 0xF) << 4) + (this.ihl & 0xF);
 		packet[1] = ((this.dscp & 0xFC) << 2) + (this.ecn & 0x3);
@@ -212,9 +226,9 @@ class IPHdr extends IHdr {
 		packet[9] = this.protocol & 0xFF;
 		packet[10] = 0; // Checksum A
 		packet[11] = 0; // Checksum B
-		this.saddr.toBytes(packet, 12);
-		this.daddr.toBytes(packet, 16);
-		if (this.options.byteLength > 0) {
+		this.saddr!.toBytes(packet, 12);
+		this.daddr!.toBytes(packet, 16);
+		if (this.options && this.options.byteLength > 0) {
 			const o8 = new Uint8Array(this.options);
 			for (let i = 0; i < o8.length; i++) {
 				packet[i + 12] = o8[i];
@@ -227,8 +241,8 @@ class IPHdr extends IHdr {
 	}
 }
 
-const IP_BROADCAST = IPAddr.fromString('255.255.255.255');
-const IP_NONE = IPAddr.fromString('0.0.0.0');
+export const IP_BROADCAST = IPAddr.fromString('255.255.255.255');
+export const IP_NONE = IPAddr.fromString('0.0.0.0');
 
 const IPNETS_MULTICAST = [
 	IPNet.fromString('224.0.0.0/14'),

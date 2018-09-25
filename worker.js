@@ -2,28 +2,6 @@
 
 let ourIp, serverIp, ourSubnet, gatewayIp, ourMac, mtu, mss, ws, sendEth, ethBcastHdr, dnsServerIps;
 
-try {
-	importScripts(
-		'lib/util.js',
-		'lib/bitfield.js',
-		'lib/ethernet.js',
-		'lib/ethernet_stack.js',
-		'lib/ip.js',
-		'lib/ip_stack.js',
-		'lib/arp.js',
-		'lib/arp_stack.js',
-		'lib/icmp.js',
-		'lib/icmp_stack.js',
-		'lib/udp.js',
-		'lib/udp_stack.js',
-		'lib/tcp.js',
-		'lib/tcp_stack.js',
-		'lib/dhcp.js',
-		'lib/dns.js',
-		'lib/http.js',
-	);
-} catch(e) { }
-
 let ipDoneCB = null;
 
 function sendPacket(ipHdr, payload) {

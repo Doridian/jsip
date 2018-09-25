@@ -1,10 +1,12 @@
-'use strict';
+import { ourSubnet, gatewayIp, ourMac, ourIp } from './config';
+import { EthHdr, ETH_IP, ETH_ARP, ETH_LEN, MACAddr, MAC_BROADCAST } from './ethernet';
+import { ARPPkt, ARP_REQUEST, ARP_REPLY, ARP_LEN } from './arp';
 
-const arpCache = {};
-const arpQueue = {};
-const arpTimeouts = {};
+const arpCache: { [key: string]: MACAddr } = {};
+const arpQueue: { [key: string]: [(ethHdr: MACAddr|null) => void] } = {};
+const arpTimeouts: { [key: string]: number } = {};
 
-function makeEthIPHdr(destIp, cb) {
+export function makeEthIPHdr(destIp: IPAddr, cb: (ethHdr: EthHdr|null) => void) {
 	if (ourSubnet && !ourSubnet.contains(destIp)) {
 		destIp = gatewayIp;
 	}
@@ -26,7 +28,11 @@ function makeEthIPHdr(destIp, cb) {
 		return;
 	}
 
-	const _cb = (addr) => {
+	const _cb = (addr: MACAddr|null) => {
+		if (!addr) {
+			cb(null);
+			return;
+		}
 		ethHdr.daddr = addr;
 		cb(ethHdr);
 	};
@@ -51,10 +57,10 @@ function makeEthIPHdr(destIp, cb) {
 	arpReq.spa = ourIp;
 	arpReq.tha = MAC_BROADCAST;
 	arpReq.tpa = destIp;
-	sendARPPkt(arpReq);
+	sendARPPkt(arpReq, null);
 }
 
-function sendARPPkt(arpPkt, fromAddr) {
+function sendARPPkt(arpPkt: ARPPkt, fromAddr: MACAddr|null) {
 	const pkt = new ArrayBuffer(ETH_LEN + ARP_LEN);
 
 	const ethHdr = new EthHdr(false);
@@ -68,18 +74,18 @@ function sendARPPkt(arpPkt, fromAddr) {
 	ws.send(pkt);
 }
 
-function handleARP(buffer, offset, ethHdr) {
+function handleARP(buffer: ArrayBuffer, offset: number, ethHdr: EthHdr) {
 	const arpPkt = ARPPkt.fromPacket(buffer, offset);
 	switch (arpPkt.operation) {
 		case ARP_REQUEST:
-			if (arpPkt.tpa.equals(ourIp)) {
-				const arpReply = arpPkt.makeReply();
+			if (arpPkt.tpa && arpPkt.tpa.equals(ourIp)) {
+				const arpReply = arpPkt.makeReply()!;
 				sendARPPkt(arpReply, ethHdr.saddr);
 			}
 			break;
 		case ARP_REPLY:
-			const ip = arpPkt.spa;
-			const mac = arpPkt.sha;
+			const ip = arpPkt.spa!.toString();
+			const mac = arpPkt.sha!;
 			arpCache[ip] = mac;
 			if (arpQueue[ip]) {
 				arpQueue[ip].forEach(cb => cb(mac));

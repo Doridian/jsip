@@ -1,12 +1,13 @@
-'use strict';
+export class BitArray {
+	private data: Uint8Array;
+	public pos: number;
 
-class BitArray {
-	constructor(data, offset) {
+	constructor(data: ArrayBuffer, offset: number) {
 		this.data = new Uint8Array(data, offset);
 		this.pos = 0;
 	}
 
-	get(pos, len) {
+	get(pos: number, len: number) {
 		let byteIndex = pos >>> 3;
 		if (len === 8 && (pos % 8) === 0) {
 			return this.data[byteIndex];
@@ -21,11 +22,11 @@ class BitArray {
 		) & mask;		
 	}
 
-	skip(len) {
+	skip(len: number) {
 		this.pos += len;
 	}
 
-	read(len) {
+	read(len: number) {
 		const ret = this.get(this.pos, len);
 		this.pos += len;
 		return ret;
