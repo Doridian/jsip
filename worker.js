@@ -105,27 +105,27 @@ function _sendPacket(ipHdr, payload, ethIPHdr) {
 	} else if (ipHdr.df) {
 		throw new Error('Needing to send packet too big for MTU/MSS, but DF set');
 	} else {
-		const pieceMax = Math.ceil(fullLength / _mss) - 1;
+		const __mss = (_mss >>> 3) << 3;
+
+		const pieceMax = Math.ceil(fullLength / __mss) - 1;
 		ipHdr.mf = true;
 
 		const replyPacket = new ArrayBuffer(fullLength);
 		payload.toPacket(replyPacket, 0, ipHdr);
 		const r8 = new Uint8Array(replyPacket);
 
-		let pktData = new ArrayBuffer(hdrLen + _mss);
+		let pktData = new ArrayBuffer(hdrLen + __mss);
 		let p8 = new Uint8Array(pktData);
 
 		for (let i = 0; i <= pieceMax; i++) {
-			const offset = _mss * i;
-			let pieceLen = _mss;
+			const offset = __mss * i;
+			let pieceLen = __mss;
 			if (i === pieceMax) {
 				ipHdr.mf = false;
-				pieceLen = replyPacket.byteLength % _mss;
+				pieceLen = replyPacket.byteLength % __mss;
 				pktData = new ArrayBuffer(hdrLen + pieceLen);
 				p8 = new Uint8Array(pktData);
 			}
-
-			console.log(offset, pieceLen, fullLength);
 
 			ipHdr.frag_offset = offset >>> 3;
 			ipHdr.setContentLength(pieceLen);
@@ -331,7 +331,7 @@ function handleIP(buffer) {
 				curPiecePos += curPiece.len;
 				curPiece = curFrag[curPiecePos];
 			}
-			return handlePacket(ipHdr, fullData);
+			return handlePacket(ipHdr, fullData, 0, fullData.byteLength);
 		}
 	}
 }
