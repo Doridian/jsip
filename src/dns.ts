@@ -55,7 +55,7 @@ export class DNSAnswer {
 	public type = DNS_TYPE.A;
 	public class = DNS_CLASS.IN;
 	public ttl = 0;
-	public data: Uint8Array|undefined = undefined;
+	public data?: Uint8Array;
 	public datapos = 0;
 
 	getTTL() {
@@ -351,11 +351,7 @@ function domainCB(domain: string, type: number, result: DNSResult) {
 	}
 }
 
-udpListen(53, (data: Uint8Array|undefined, _ipHdr: IPHdr) => {
-	if (!data) {
-		return;
-	}
-
+udpListen(53, (data: Uint8Array, _ipHdr: IPHdr) => {
 	const packet = data.buffer;
 	const offset = data.byteOffset;
 

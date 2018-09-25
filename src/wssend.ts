@@ -4,7 +4,7 @@ import { EthHdr, ETH_LEN } from "./ethernet";
 import { config } from "./config";
 import { makeEthIPHdr } from "./arp_stack";
 
-export function sendPacket(ipHdr: IPHdr|undefined, payload: IPacket) {
+export function sendPacket(ipHdr: IPHdr, payload: IPacket) {
     if (!ipHdr) {
         return;
     }
@@ -21,7 +21,7 @@ export function sendPacket(ipHdr: IPHdr|undefined, payload: IPacket) {
 	});
 }
 
-function _sendPacket(ipHdr: IPHdr, payload: IPacket, ethIPHdr: EthHdr|undefined = undefined) {
+function _sendPacket(ipHdr: IPHdr, payload: IPacket, ethIPHdr?: EthHdr) {
 	const fullLength = payload.getFullLength(); 
 	const _cOffset = ipHdr.getContentOffset();
 	const hdrLen = (ethIPHdr ? ETH_LEN : 0) + _cOffset;

@@ -19,8 +19,8 @@ export class TCPPkt implements IPacket {
 	public sport = 0;
 	public dport = 0;
 	public checksum = 0;
-	public data: Uint8Array|undefined;
-	public options: Uint8Array|undefined;
+	public data?: Uint8Array;
+	public options?: Uint8Array;
 	public seqno = 0;
 	public ackno = 0;
 	public urgptr = 0;
@@ -116,7 +116,7 @@ export class TCPPkt implements IPacket {
 		return computeChecksum(packet, csum);
 	}
 
-	toPacket(array: ArrayBuffer, offset:number, ipHdr: IPHdr|undefined = undefined) {
+	toPacket(array: ArrayBuffer, offset:number, ipHdr?: IPHdr) {
 		const packet = new Uint8Array(array, offset, this.getFullLength());
 		const data_offset = (this.options ? this.options.byteLength : 0) + 20;
 		packet[0] = (this.sport >>> 8) & 0xFF;

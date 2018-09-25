@@ -11,7 +11,7 @@ type HTTPResult = {
 	url: string;
 };
 
-type HTTPCallback = (err: Error|undefined, res: HTTPResult|undefined) => void;
+type HTTPCallback = (err?: Error, res?: HTTPResult) => void;
 
 function _isHeaderEnd(ele: number, idx: number, arr: Uint8Array) {
 	if (arr.byteLength < idx + 4) {

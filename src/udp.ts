@@ -5,7 +5,7 @@ export class UDPPkt implements IPacket {
 	public sport = 0;
 	public dport = 0;
 	private checksum = 0;
-	public data: Uint8Array|undefined = undefined;
+	public data?: Uint8Array;
 
 	static fromPacket(packet: ArrayBuffer, offset: number, len: number, ipHdr: IPHdr) {
 		const udp = new UDPPkt();
@@ -46,7 +46,7 @@ export class UDPPkt implements IPacket {
 		return csum;
 	}
 
-	toPacket(array: ArrayBuffer, offset: number, ipHdr: IPHdr|undefined = undefined) {
+	toPacket(array: ArrayBuffer, offset: number, ipHdr?: IPHdr) {
 		const packet = new Uint8Array(array, offset, this.getFullLength());
 		packet[0] = (this.sport >>> 8) & 0xFF;
 		packet[1] = this.sport & 0xFF;

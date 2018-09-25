@@ -58,7 +58,7 @@ export class MACAddr {
 		return mac;
 	}
 
-	equals(mac: MACAddr|undefined) {
+	equals(mac?: MACAddr) {
 		if (!mac) {
 			return false;
 		}
@@ -100,8 +100,8 @@ export const ETH_LEN = 14;
 
 export class EthHdr {
 	public ethtype = ETH_TYPE.NONE;
-	public saddr: MACAddr|undefined = undefined;
-	public daddr: MACAddr|undefined = undefined;
+	public saddr?: MACAddr;
+	public daddr?: MACAddr;
 
 	makeReply() {
 		const replyEth = new EthHdr();

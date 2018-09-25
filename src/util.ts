@@ -15,7 +15,7 @@ export function stringIntoBuffer(str: string, buf: Uint8Array, offset: number) {
 	}
 }
 
-export function bufferToString(buf: ArrayBuffer, offset: number, len: number|undefined = undefined) {
+export function bufferToString(buf: ArrayBuffer, offset: number, len?: number) {
 	return arrayToString(new Uint8Array(buf, offset, len));
 }
 
@@ -80,6 +80,6 @@ export function boolToBit(bool: boolean, bit: number) {
 }
 
 export interface IPacket {
-	toPacket(array: ArrayBuffer, offset: number, ipHdr: IPHdr|undefined): number;
+	toPacket(array: ArrayBuffer, offset: number, ipHdr?: IPHdr): number;
 	getFullLength(): number;
 }

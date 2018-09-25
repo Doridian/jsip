@@ -5,7 +5,7 @@ export class ICMPPkt {
 	public code = 0;
 	private checksum = 0;
 	public rest = 0;
-	public data: Uint8Array|undefined = undefined;
+	public data?: Uint8Array;
 
 	static fromPacket(packet: ArrayBuffer, offset: number, len: number) {
 		const icmp = new ICMPPkt();

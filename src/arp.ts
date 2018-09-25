@@ -18,10 +18,10 @@ export class ARPPkt {
 	public hlen = ARP_HLEN;
 	public plen = ARP_PLEN;
 	public operation = 0;
-	public sha: MACAddr|undefined = undefined;
-	public spa: IPAddr|undefined = undefined;
-	public tha: MACAddr|undefined = undefined;
-	public tpa: IPAddr|undefined = undefined;
+	public sha?: MACAddr;
+	public spa?: IPAddr;
+	public tha?: MACAddr;
+	public tpa?: IPAddr;
 
 	makeReply() {
 		if (this.operation !== ARP_REQUEST) {

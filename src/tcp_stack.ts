@@ -44,7 +44,7 @@ const TCP_ONLY_SEND_ON_PSH = false;
 const TCP_FLAG_INCSEQ = ~(TCP_FLAGS.PSH | TCP_FLAGS.ACK);
 
 export type TCPONAckHandler = (type: TCP_CBTYPE) => void;
-export type TCPConnectHandler = (res: boolean, conn: TCPConn|undefined) => void;
+export type TCPConnectHandler = (res: boolean, conn?: TCPConn) => void;
 export type TCPDisconnectHandler = (conn: TCPConn) => void;
 
 type WBufferEntry = {
@@ -56,13 +56,13 @@ type WBufferEntry = {
 
 export class TCPConn {
 	private state = TCP_STATE.CLOSED;
-	private daddr: IPAddr|undefined = undefined;
+	private daddr?: IPAddr;
 	private sport = 0;
 	private dport = 0;
-	private lseqno: number|undefined = undefined;
-	private rseqno: number|undefined = undefined;
+	private lseqno?: number;
+	private rseqno?: number;
 	private wnd = 65535;
-	//private lastack: number|undefined = undefined;
+	//private lastack?: number;
 	private wbuffers: WBufferEntry[] = [];
 	private rbuffers: Uint8Array[] = [];
 	private rbufferlen = 0;
@@ -70,20 +70,20 @@ export class TCPConn {
 	private wlastack = false;
 	private wlastsend = 0;
 	private wretrycount = 0;
-	private rlastseqno: number|undefined = undefined;
+	private rlastseqno?: number;
 	private onack: { [key: number]: [TCPONAckHandler] } = {};
 	private mss = config.mss;
-	private	connect_cb: TCPConnectHandler|undefined = undefined;
-	private handler: TCPListener|undefined;
-	private _id: string|undefined = undefined;
-	public disconnect_cb: TCPDisconnectHandler|undefined = undefined;
+	private	connect_cb?: TCPConnectHandler;
+	private handler?: TCPListener;
+	private _id?: string;
+	public disconnect_cb?: TCPDisconnectHandler;
 
-	private _lastIp: IPHdr|undefined = undefined;
-	private _lastTcp: TCPPkt|undefined = undefined;
-	private lastack_ip: IPHdr|undefined = undefined;
-	private lastack_tcp: TCPPkt|undefined = undefined;
+	private _lastIp?: IPHdr;
+	private _lastTcp?: TCPPkt;
+	private lastack_ip?: IPHdr;
+	private lastack_tcp?: TCPPkt;
 
-	constructor(handler: TCPListener|undefined) {
+	constructor(handler?: TCPListener) {
 		this.handler = handler;
 	}
 
@@ -141,7 +141,7 @@ export class TCPConn {
 		this.delete();
 	}
 
-	addOnAck(cb: TCPONAckHandler|undefined) {
+	addOnAck(cb?: TCPONAckHandler) {
 		if (!cb) {
 			return;
 		}
@@ -157,7 +157,7 @@ export class TCPConn {
 		onack.push(cb);
 	}
 
-	close(cb: TCPONAckHandler|undefined = undefined) {
+	close(cb?: TCPONAckHandler) {
 		if (!this.wlastack || this.state !== TCP_STATE.ESTABLISHED) {
 			this.wbuffers.push({ close: true, cb });
 			return;
@@ -194,12 +194,14 @@ export class TCPConn {
 				this.kill();
 				return;
 			}
-			sendPacket(this._lastIp, this._lastTcp);
+			if (this._lastIp) {
+				sendPacket(this._lastIp, this._lastTcp);
+			}
 			this.wretrycount++;
 		}
 	}
 
-	send(data: Uint8Array, cb: TCPONAckHandler|undefined = undefined) {
+	send(data: Uint8Array, cb?: TCPONAckHandler) {
 		if (!data || !data.byteLength) {
 			return;
 		}
@@ -243,7 +245,7 @@ export class TCPConn {
 		}
 	}
 
-	_send(data: Uint8Array|undefined, psh: boolean, cb: TCPONAckHandler|undefined) {
+	_send(data?: Uint8Array, psh?: boolean, cb?: TCPONAckHandler) {
 		const ip = this._makeIp();
 		const tcp = this._makeTcp();
 		tcp.data = data;
@@ -261,7 +263,7 @@ export class TCPConn {
 		}
 
 		if (this.rlastseqno !== undefined && tcpPkt.seqno <= this.rlastseqno) {
-			if (this.lastack_tcp) {
+			if (this.lastack_tcp && this.lastack_ip) {
 				sendPacket(this.lastack_ip, this.lastack_tcp);
 			}
 			return;
@@ -413,7 +415,7 @@ export class TCPConn {
 		this.gotPacket(ipHdr, tcpPkt);
 	}
 
-	connect(dport: number, daddr: IPAddr, cb: TCPConnectHandler, dccb: TCPDisconnectHandler|undefined) {
+	connect(dport: number, daddr: IPAddr, cb: TCPConnectHandler, dccb?: TCPDisconnectHandler) {
 		this.state = TCP_STATE.SYN_SENT;
 		this.daddr = daddr;
 		this.dport = dport;
@@ -475,7 +477,7 @@ export function tcpCloseListener(port: number) {
 	return true;
 }
 
-export function tcpConnect(ip: IPAddr, port: number, func: TCPListener, cb: TCPConnectHandler, dccb: TCPDisconnectHandler|undefined = undefined) {
+export function tcpConnect(ip: IPAddr, port: number, func: TCPListener, cb: TCPConnectHandler, dccb?: TCPDisconnectHandler) {
 	if (typeof port !== 'number' || port < 1 || port > 65535) {
 		return false;
 	}

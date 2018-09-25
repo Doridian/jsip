@@ -22,8 +22,8 @@ export function registerIpHandler(iptype: number, handler: IPHandler) {
 
 type IPFragment = {
 	time: number;
-	last: number|undefined;
-	validUntil: number|undefined;
+	last?: number;
+	validUntil?: number;
 	[key: number]: {
 		ipHdr: IPHdr;
 		buffer: ArrayBuffer;

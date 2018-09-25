@@ -52,7 +52,7 @@ export class IPAddr {
 		return ip;
 	}
 
-	equals(ip: IPAddr|undefined) {
+	equals(ip?: IPAddr) {
 		if (!ip) {
 			return false;
 		}
@@ -94,9 +94,9 @@ export class IPAddr {
 }
 
 export class IPNet {
-	public ip: IPAddr|undefined;
+	public ip?: IPAddr;
 	private bitmask = 0;
-	private mask: IPAddr|undefined;
+	private mask?: IPAddr;
 	private baseIpInt = 0;
 
 	static fromString(ipStr: string) {
@@ -124,7 +124,7 @@ export class IPNet {
 		return `${this.ip}/${this.mask}`;
 	}
 
-	contains(ip: IPAddr|undefined) {
+	contains(ip?: IPAddr) {
 		if (!ip) {
 			return false;
 		}
@@ -149,9 +149,9 @@ export class IPHdr {
 	private ttl = 64;
 	public protocol = IPPROTO.NONE;
 	private checksum = 0;
-	public saddr: IPAddr|undefined = undefined;
-	public daddr: IPAddr|undefined = undefined;
-	public options: ArrayBuffer|undefined = undefined;
+	public saddr?: IPAddr;
+	public daddr?: IPAddr;
+	public options?: ArrayBuffer;
 
 	static fromPacket(packet: ArrayBuffer, offset: number) {
 		const ipv4 = new IPHdr();

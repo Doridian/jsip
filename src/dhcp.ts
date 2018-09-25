@@ -42,10 +42,10 @@ class DHCPPkt {
 	public xid = ourDHCPXID;
 	public secs = ourDHCPSecs;
 	public flags = 0;
-	public ciaddr: IPAddr|undefined = undefined;
-	public yiaddr: IPAddr|undefined = undefined;
-	public siaddr: IPAddr|undefined = undefined;
-	public giaddr: IPAddr|undefined = undefined;
+	public ciaddr?: IPAddr;
+	public yiaddr?: IPAddr;
+	public siaddr?: IPAddr;
+	public giaddr?: IPAddr;
 	public chaddr = config.ourMac;
 	public options: { [key: string]: Uint8Array } = {};
 
@@ -214,11 +214,7 @@ function makeDHCPIP(unicast: boolean = false) {
 	return ip;
 }
 
-udpListen(68, (data: Uint8Array|undefined, _ipHdr: IPHdr) => {
-	if (!data) {
-		return;
-	}
-
+udpListen(68, (data: Uint8Array) => {
 	const packet = data.buffer;
 	const offset = data.byteOffset;
 

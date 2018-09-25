@@ -4,7 +4,7 @@ import { UDPPkt } from "./udp";
 import { sendPacket } from "./wssend";
 
 type UDPReplyFunc = (data: Uint8Array) => void;
-type UDPListener = (data: Uint8Array|undefined, ipHdr: IPHdr, reply: UDPReplyFunc) => void;
+type UDPListener = (data: Uint8Array, ipHdr: IPHdr, reply: UDPReplyFunc) => void;
 
 const udpListeners: { [key: number]: UDPListener } = {
 	7: (data, _ipHdr, reply) => { // ECHO
@@ -19,7 +19,7 @@ function udpGotPacket(data: ArrayBuffer, offset: number, len: number, ipHdr: IPH
 	const udpPkt = UDPPkt.fromPacket(data, offset, len, ipHdr);
 
 	const listener = udpListeners[udpPkt.dport];
-	if (listener) {
+	if (listener && udpPkt.data) {
 		return listener(udpPkt.data, ipHdr, data => {
 			const ip = ipHdr.makeReply();
 			const udp = new UDPPkt();
