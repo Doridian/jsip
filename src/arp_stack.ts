@@ -1,6 +1,6 @@
 import { config } from './config';
 import { registerEthHandler } from './ethernet_stack';
-import { EthHdr, ETH_IP, ETH_ARP, ETH_LEN, MACAddr, MAC_BROADCAST } from './ethernet';
+import { EthHdr, ETH_TYPE, ETH_LEN, MACAddr, MAC_BROADCAST } from './ethernet';
 import { ARPPkt, ARP_REQUEST, ARP_REPLY, ARP_LEN } from './arp';
 import { IPAddr } from './ip';
 
@@ -16,7 +16,7 @@ export function makeEthIPHdr(destIp: IPAddr, cb: (ethHdr: EthHdr|null) => void) 
 	const destIpStr = destIp.toString();
 
 	const ethHdr = new EthHdr();
-	ethHdr.ethtype = ETH_IP;
+	ethHdr.ethtype = ETH_TYPE.IP;
 	ethHdr.saddr = config.ourMac!;
 	if (arpCache[destIpStr]) {
 		ethHdr.daddr = arpCache[destIpStr];
@@ -68,7 +68,7 @@ function sendARPPkt(arpPkt: ARPPkt, fromAddr: MACAddr|undefined) {
 	const ethHdr = new EthHdr();
 	ethHdr.daddr = fromAddr || MAC_BROADCAST;
 	ethHdr.saddr = config.ourMac;
-	ethHdr.ethtype = ETH_ARP;
+	ethHdr.ethtype = ETH_TYPE.ARP;
 
 	ethHdr.toPacket(pkt, 0);
 	arpPkt.toPacket(pkt, ETH_LEN);
@@ -101,4 +101,4 @@ function handleARP(buffer: ArrayBuffer, offset: number, ethHdr: EthHdr) {
 	}
 }
 
-registerEthHandler(ETH_ARP, handleARP);
+registerEthHandler(ETH_TYPE.ARP, handleARP);

@@ -1,5 +1,5 @@
 import { registerEthHandler } from './ethernet_stack';
-import { ETH_IP } from './ethernet';
+import { ETH_TYPE } from './ethernet';
 import { IPHdr } from './ip'; 
 import { config } from './config';
 
@@ -127,4 +127,4 @@ function timeoutFragments() {
 
 setInterval(timeoutFragments, 1000);
 
-registerEthHandler(ETH_IP, handleIP);
+registerEthHandler(ETH_TYPE.IP, handleIP);

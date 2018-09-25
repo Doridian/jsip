@@ -1,4 +1,4 @@
-import { EthHdr } from './ethernet';
+import { EthHdr, ETH_TYPE } from './ethernet';
 import { config } from './config';
 
 type EthHandler = (buffer: ArrayBuffer, offset: number, ethHdr: EthHdr) => void;
@@ -28,6 +28,6 @@ export function handleEthernet(buffer: ArrayBuffer) {
 	}
 }
 
-export function registerEthHandler(ethtype: number, handler: EthHandler) {
+export function registerEthHandler(ethtype: ETH_TYPE, handler: EthHandler) {
 	ethHandlers[ethtype] = handler;
 }

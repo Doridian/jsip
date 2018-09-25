@@ -89,14 +89,17 @@ export class MACAddr {
 
 export const MAC_BROADCAST = MACAddr.fromBytes(255, 255, 255, 255, 255 , 255);
 
-export const ETH_IP  = 0x0800;
-export const ETH_IP6 = 0x86DD;
-export const ETH_ARP = 0x0806;
+export const enum ETH_TYPE {
+	NONE = 0x0000,
+	IP = 0x0800,
+	IP6 = 0x86DD,
+	ARP = 0x0806,
+};
 
 export const ETH_LEN = 14;
 
 export class EthHdr {
-	public ethtype = 0;
+	public ethtype = ETH_TYPE.NONE;
 	public saddr: MACAddr|undefined = undefined;
 	public daddr: MACAddr|undefined = undefined;
 

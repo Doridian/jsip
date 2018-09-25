@@ -1,6 +1,6 @@
 import { config, configOut } from "./config";
 import { IPNet } from "./ip";
-import { MACAddr, EthHdr, ETH_IP, MAC_BROADCAST } from "./ethernet";
+import { MACAddr, EthHdr, ETH_TYPE, MAC_BROADCAST } from "./ethernet";
 import { randomByte } from "./util";
 import { dhcpNegotiate } from "./dhcp";
 import { handleEthernet } from "./ethernet_stack";
@@ -46,7 +46,7 @@ function handleInit(data: string, cb: VoidCB) {
 		config.ourMac = MACAddr.fromBytes(0x0A, randomByte(), randomByte(), randomByte(), randomByte(), randomByte());
 		console.log(`Our MAC: ${config.ourMac}`);
 		config.ethBcastHdr = new EthHdr();
-		config.ethBcastHdr.ethtype = ETH_IP;
+		config.ethBcastHdr.ethtype = ETH_TYPE.IP;
 		config.ethBcastHdr.saddr = config.ourMac;
 		config.ethBcastHdr.daddr = MAC_BROADCAST;
 	}
