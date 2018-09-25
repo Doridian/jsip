@@ -27,9 +27,9 @@ const enum DHCP_MODE {
 	NACK = 6,
 };
 
-let ourDHCPXID: number|undefined = 0;
+let ourDHCPXID: number|undefined;
 let ourDHCPSecs = 0;
-let dhcpRenewTimer: number|undefined = undefined;
+let dhcpRenewTimer: number|undefined;
 let dhcpInInitialConfig = false;
 
 const DHCP_OFFSET_MAGIC = 236;
