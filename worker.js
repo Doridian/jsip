@@ -7,8 +7,11 @@ try {
 		'lib/util.js',
 		'lib/bitfield.js',
 		'lib/ethernet.js',
+		'lib/ethernet_stack.js',
 		'lib/ip.js',
+		'lib/ip_stack.js',
 		'lib/arp.js',
+		'lib/arp_stack.js',
 		'lib/icmp.js',
 		'lib/udp.js',
 		'lib/tcp.js',
@@ -20,56 +23,7 @@ try {
 	);
 } catch(e) { }
 
-const arpCache = {
-	[IP_BROADCAST.toString()]: MAC_BROADCAST,
-};
-const arpQueue = {};
-const arpTimeouts = {};
 let ipDoneCB = null;
-
-function makeEthIPHdr(destIp, cb) {
-	if (ourSubnet && !ourSubnet.contains(destIp)) {
-		destIp = gatewayIp;
-	}
-
-	const destIpStr = destIp.toString();
-
-	const ethHdr = new EthHdr(false);
-	ethHdr.ethtype = ETH_IP;
-	ethHdr.saddr = ourMac;
-	if (arpCache[destIpStr]) {
-		ethHdr.daddr = arpCache[destIpStr];
-		cb(ethHdr);
-		return;
-	}
-
-	const _cb = (addr) => {
-		ethHdr.daddr = addr;
-		cb(ethHdr);
-	};
-
-	if (arpQueue[destIpStr]) {
-		arpQueue[destIpStr].push(_cb);
-		return;
-	}
-
-	arpQueue[destIpStr] = [_cb];
-	arpTimeouts[destIpStr] = setTimeout(() => {
-		delete arpTimeouts[destIpStr];
-		if (arpQueue[destIpStr]) {
-			arpQueue[destIpStr].forEach(cb => cb(null));
-			delete arpQueue[destIpStr];
-		}
-	}, 10000);
-
-	const arpReq = new ARPPkt();
-	arpReq.operation = ARP_REQUEST;
-	arpReq.sha = ourMac;
-	arpReq.spa = ourIp;
-	arpReq.tha = MAC_BROADCAST;
-	arpReq.tpa = destIp;
-	sendARPPkt(arpReq);
-}
 
 function sendPacket(ipHdr, payload) {
 	if (!sendEth) {
@@ -142,202 +96,6 @@ function _sendPacket(ipHdr, payload, ethIPHdr) {
 			}
 
 			ws.send(pktData);
-		}
-	}
-}
-
-function handlePacket(ipHdr, data, offset) {
-	const len = data.byteLength - offset;
-
-	switch (ipHdr.protocol) {
-		case PROTO_ICMP:
-			const icmpPkt = ICMPPkt.fromPacket(data, offset, len);
-			switch (icmpPkt.type) {
-				case 8: // PING / Echo Request
-					const replyIp = ipHdr.makeReply();
-
-					const replyICMP = new ICMPPkt();
-					replyICMP.type = 0;
-					replyICMP.code = 0;
-					replyICMP.rest = icmpPkt.rest;
-					replyICMP.data = icmpPkt.data;
-
-					sendPacket(replyIp, replyICMP);
-					break;
-				default:
-					console.log(`Unhandled ICMP type ${icmpPkt.type}`);
-					break;
-			}
-			break;
-		case PROTO_TCP: // TCP
-			const tcpPkt = TCPPkt.fromPacket(data, offset, len, ipHdr);
-			tcpGotPacket(ipHdr, tcpPkt);
-			break;
-		case PROTO_UDP: // UDP
-			const udpPkt = UDPPkt.fromPacket(data, offset, len, ipHdr);
-			udpGotPacket(ipHdr, udpPkt);
-			break;
-		default:
-			console.log(`Unhandled IP protocol ${ipHdr.protocol}`);
-			break;
-	}
-}
-
-const fragmentCache = {};
-
-function sendARPPkt(arpPkt, fromAddr) {
-	const pkt = new ArrayBuffer(ETH_LEN + ARP_LEN);
-
-	const ethHdr = new EthHdr(false);
-	ethHdr.daddr = fromAddr || MAC_BROADCAST;
-	ethHdr.saddr = ourMac;
-	ethHdr.ethtype = ETH_ARP;
-
-	ethHdr.toPacket(pkt, 0);
-	arpPkt.toPacket(pkt, ETH_LEN);
-
-	ws.send(pkt);
-}
-
-function handleARP(ethHdr, buffer, offset) {
-	const arpPkt = ARPPkt.fromPacket(buffer, offset);
-	switch (arpPkt.operation) {
-		case ARP_REQUEST:
-			if (arpPkt.tpa.equals(ourIp)) {
-				const arpReply = arpPkt.makeReply();
-				sendARPPkt(arpReply, ethHdr.saddr);
-			}
-			break;
-		case ARP_REPLY:
-			const ip = arpPkt.spa;
-			const mac = arpPkt.sha;
-			arpCache[ip] = mac;
-			if (arpQueue[ip]) {
-				arpQueue[ip].forEach(cb => cb(mac));
-				delete arpQueue[ip];
-			}
-			if (arpTimeouts[ip]) {
-				clearTimeout(arpTimeouts[ip]);
-				delete arpTimeouts[ip];
-			}
-			break;
-	}
-}
-
-function handleIP(buffer) {
-	let offset = 0;
-	if (sendEth) {
-		const ethHdr = EthHdr.fromPacket(buffer);
-		if (!ethHdr) {
-			return;
-		}
-
-		const isBroadcast = ethHdr.daddr.isBroadcast();
-
-		if (!ethHdr.daddr.equals(ourMac) && !isBroadcast) {
-			console.log(`Discarding packet not meant for us, but for ${ethHdr.daddr.toString()}`);
-			return;
-		}
-
-		offset += ethHdr.getContentOffset();
-
-		switch (ethHdr.ethtype) {
-			case ETH_ARP:
-				handleARP(ethHdr, buffer, offset);
-				return;
-			case ETH_IP:
-				// Fall through to the normal handling
-				break;
-			default:
-				// We only care about ARP and IPv4
-				return;
-		}
-	}
-
-	const ipHdr = IPHdr.fromPacket(buffer, offset);
-	if (!ipHdr) {
-		return;
-	}
-
-	if (ourIp && ipHdr.daddr.isUnicast() && !ipHdr.daddr.equals(ourIp)) {
-		console.log(`Discarding packet not meant for us, but for ${ipHdr.daddr.toString()}`);
-		return;
-	}
-
-	const isFrag = ipHdr.mf || ipHdr.frag_offset > 0;
-	offset += ipHdr.getContentOffset();
-
-	if (!isFrag) {
-		return handlePacket(ipHdr, buffer, offset);
-	}
-
-	const pktId = ipHdr.id + (ipHdr.saddr.toInt() << 16);
-	let curFrag = fragmentCache[pktId];
-	if (!curFrag) {
-		curFrag = {
-			time: Date.now(),
-		};
-		fragmentCache[pktId] = curFrag;
-	}
-
-	const fragOffset = ipHdr.frag_offset << 3;
-	curFrag[fragOffset] = {
-		ipHdr,
-		buffer,
-		offset,
-		len: buffer.byteLength - offset,
-	};
-	if (!ipHdr.mf) {
-		curFrag.last = fragOffset;
-	}
-	if (ipHdr.frag_offset === 0) {
-		curFrag.validUntil = 0;
-	}
-
-	// Check if we got all fragments
-	if (curFrag.validUntil !== undefined && curFrag.last !== undefined) {
-		let curPiecePos = curFrag.validUntil;
-		let curPiece = curFrag[curPiecePos];
-		let gotAll = false;
-		while (true) {
-			curPiecePos += curPiece.len;
-			curPiece = curFrag[curPiecePos];
-			if (!curPiece) {
-				break;
-			}
-			if (!curPiece.ipHdr.mf) {
-				gotAll = true;
-				break;
-			}
-		}
-
-		if (gotAll) {
-			const fullData = new ArrayBuffer(curFrag[curFrag.last].len + curFrag.last);
-			const d8 = new Uint8Array(fullData);
-			let curPiecePos = 0;
-			let curPiece = curFrag[curPiecePos];
-			while (true) {
-				const p8 = new Uint8Array(curPiece.buffer, curPiece.offset);
-				for (let i = 0; i < p8.length; i++) {
-					d8[curPiecePos + i] = p8[i];
-				}
-				if (!curPiece.ipHdr.mf) {
-					break;
-				}
-				curPiecePos += curPiece.len;
-				curPiece = curFrag[curPiecePos];
-			}
-			return handlePacket(ipHdr, fullData, 0, fullData.byteLength);
-		}
-	}
-}
-
-function timeoutFragments() {
-	const cutoff = Date.now() - 30000;
-	for (let id in fragmentCache) {
-		const frag = fragmentCache[id];
-		if (frag.time < cutoff) {
-			delete fragmentCache[id];
 		}
 	}
 }
@@ -418,7 +176,11 @@ function _workerMain(url, cb) {
 	ws.onmessage = function(msg) {
 		const data = msg.data;
 		if (typeof data !== 'string') {
-			handleIP(data);
+			if (sendEth) {
+				handleEthernet(data);
+			} else {
+				handleIP(data);
+			}
 			return;
 		}
 
