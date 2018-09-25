@@ -1,114 +1,114 @@
 import { config, configOut } from "./config";
-import { IPNet } from "./ip";
-import { MACAddr, EthHdr, ETH_TYPE, MAC_BROADCAST } from "./ethernet";
-import { randomByte } from "./util";
 import { dhcpNegotiate } from "./dhcp";
+import { ETH_TYPE, EthHdr, MAC_BROADCAST, MACAddr } from "./ethernet";
 import { handleEthernet } from "./ethernet_stack";
-import { handleIP } from "./ip_stack";
 import { httpGet } from "./http";
+import { IPNet } from "./ip";
+import { handleIP } from "./ip_stack";
+import { randomByte } from "./util";
 
 type VoidCB = () => void;
 
 export function workerMain(cb: VoidCB) {
-	if (document.location.protocol === "file:") {
-		_workerMain("wss://doridian.net/ws", cb);
-		return;
-	}
+    if (document.location.protocol === "file:") {
+        _workerMain("wss://doridian.net/ws", cb);
+        return;
+    }
 
-	const proto = (document.location.protocol === "http:") ? "ws:" : "wss:";
-	_workerMain(`${proto}//${document.location.host}/ws`, cb);
+    const proto = (document.location.protocol === "http:") ? "ws:" : "wss:";
+    _workerMain(`${proto}//${document.location.host}/ws`, cb);
 }
 
 function handleInit(data: string, cb: VoidCB) {
-	let needDHCP = false;
-	// 1|init|TUN|192.168.3.1/24|1280
-	const spl = data.split("|");
+    let needDHCP = false;
+    // 1|init|TUN|192.168.3.1/24|1280
+    const spl = data.split("|");
 
-	switch (spl[2]) {
-		case "TAP":
-			config.sendEth = true;
-		case "TUN":
-			config.ourSubnet = IPNet.fromString(spl[3]);
-			config.serverIp = config.ourSubnet.getAddress(0);
-			break;
-		case "TAP_NOCONF":
-			config.sendEth = true;
-			config.ourSubnet = undefined;
-			config.serverIp = undefined;
-			needDHCP = true;
-			break;
-	}
+    switch (spl[2]) {
+        case "TAP":
+            config.sendEth = true;
+        case "TUN":
+            config.ourSubnet = IPNet.fromString(spl[3]);
+            config.serverIp = config.ourSubnet.getAddress(0);
+            break;
+        case "TAP_NOCONF":
+            config.sendEth = true;
+            config.ourSubnet = undefined;
+            config.serverIp = undefined;
+            needDHCP = true;
+            break;
+    }
 
-	config.mtu = parseInt(spl[4], 10);
+    config.mtu = parseInt(spl[4], 10);
 
-	console.log(`Mode: ${spl[2]}`);
+    console.log(`Mode: ${spl[2]}`);
 
-	console.log(`Link-MTU: ${config.mtu}`);
+    console.log(`Link-MTU: ${config.mtu}`);
 
-	config.mss = config.mtu - 40;
+    config.mss = config.mtu - 40;
 
-	if (config.sendEth) {
-		config.ourMac = MACAddr.fromBytes(0x0A, randomByte(), randomByte(), randomByte(), randomByte(), randomByte());
-		console.log(`Our MAC: ${config.ourMac}`);
-		config.ethBcastHdr = new EthHdr();
-		config.ethBcastHdr.ethtype = ETH_TYPE.IP;
-		config.ethBcastHdr.saddr = config.ourMac;
-		config.ethBcastHdr.daddr = MAC_BROADCAST;
-	}
+    if (config.sendEth) {
+        config.ourMac = MACAddr.fromBytes(0x0A, randomByte(), randomByte(), randomByte(), randomByte(), randomByte());
+        console.log(`Our MAC: ${config.ourMac}`);
+        config.ethBcastHdr = new EthHdr();
+        config.ethBcastHdr.ethtype = ETH_TYPE.IP;
+        config.ethBcastHdr.saddr = config.ourMac;
+        config.ethBcastHdr.daddr = MAC_BROADCAST;
+    }
 
-	if (config.ourSubnet) {
-		config.ourIp = config.ourSubnet.ip;
-	} else {
-		config.ourIp = undefined;
-	}
-	config.gatewayIp = config.serverIp;
-	config.dnsServerIps = [config.gatewayIp!];
-	configOut();
+    if (config.ourSubnet) {
+        config.ourIp = config.ourSubnet.ip;
+    } else {
+        config.ourIp = undefined;
+    }
+    config.gatewayIp = config.serverIp;
+    config.dnsServerIps = [config.gatewayIp!];
+    configOut();
 
-	if (needDHCP) {
-		console.log("Starting DHCP procedure...");
-		config.ipDoneCB = cb;
-		dhcpNegotiate();
-	} else if (cb) {
-		setTimeout(cb, 0);
-	}
+    if (needDHCP) {
+        console.log("Starting DHCP procedure...");
+        config.ipDoneCB = cb;
+        dhcpNegotiate();
+    } else if (cb) {
+        setTimeout(cb, 0);
+    }
 }
 
 function _workerMain(url: string, cb: VoidCB) {
-	console.log(`Connecting to WSVPN: ${url}`);
+    console.log(`Connecting to WSVPN: ${url}`);
 
-	config.ws = new WebSocket(url);
-	config.ws.binaryType = "arraybuffer";
+    config.ws = new WebSocket(url);
+    config.ws.binaryType = "arraybuffer";
 
-	config.ws.onmessage = function(msg) {
-		const data = msg.data;
-		if (typeof data !== "string") {
-			if (config.sendEth) {
-				handleEthernet(data);
-			} else {
-				handleIP(data);
-			}
-			return;
-		}
+    config.ws.onmessage = (msg) => {
+        const data = msg.data;
+        if (typeof data !== "string") {
+            if (config.sendEth) {
+                handleEthernet(data);
+            } else {
+                handleIP(data);
+            }
+            return;
+        }
 
-		handleInit(data, cb);
-	}
+        handleInit(data, cb);
+    };
 }
 
-onmessage = function (e) {
-	const cmd = e.data[0];
-	const _id = e.data[1];
-	switch (cmd) {
-		case "connect":
-			_workerMain(e.data[2], () => {
-				postMessage(["connect", _id, config.ourIp, config.serverIp, config.gatewayIp, config.ourSubnet, config.mtu], "");
-			});
-			break;
-		case "httpGet":
-			httpGet(e.data[2], (err, res) => {
-				postMessage(["httpGet", _id, err, res], "");
-			});
-			break;
-	}
+onmessage = (e) => {
+    const cmd = e.data[0];
+    const msgId = e.data[1];
+    switch (cmd) {
+        case "connect":
+            _workerMain(e.data[2], () => {
+                postMessage(["connect",
+                    msgId, config.ourIp, config.serverIp, config.gatewayIp, config.ourSubnet, config.mtu], "");
+            });
+            break;
+        case "httpGet":
+            httpGet(e.data[2], (err, res) => {
+                postMessage(["httpGet", msgId, err, res], "");
+            });
+            break;
+    }
 };
-

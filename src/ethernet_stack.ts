@@ -1,33 +1,33 @@
-import { EthHdr, ETH_TYPE } from "./ethernet";
 import { config } from "./config";
+import { ETH_TYPE, EthHdr } from "./ethernet";
 
 type EthHandler = (buffer: ArrayBuffer, offset: number, ethHdr: EthHdr) => void;
 
 const ethHandlers: { [key: number]: EthHandler } = {};
 
 export function handleEthernet(buffer: ArrayBuffer) {
-	let offset = 0;
+    let offset = 0;
 
-	const ethHdr = EthHdr.fromPacket(buffer, offset);
-	if (!ethHdr) {
-		return;
-	}
+    const ethHdr = EthHdr.fromPacket(buffer, offset);
+    if (!ethHdr) {
+        return;
+    }
 
-	const isBroadcast = ethHdr.daddr!.isBroadcast();
+    const isBroadcast = ethHdr.daddr!.isBroadcast();
 
-	if (!ethHdr.daddr!.equals(config.ourMac) && !isBroadcast) {
-		console.log(`Discarding packet not meant for us, but for ${ethHdr.daddr!.toString()}`);
-		return;
-	}
+    if (!ethHdr.daddr!.equals(config.ourMac) && !isBroadcast) {
+        console.log(`Discarding packet not meant for us, but for ${ethHdr.daddr!.toString()}`);
+        return;
+    }
 
-	offset += ethHdr.getContentOffset();
+    offset += ethHdr.getContentOffset();
 
-	const handler = ethHandlers[ethHdr.ethtype];
-	if (handler) {
-		handler(buffer, offset, ethHdr);
-	}
+    const handler = ethHandlers[ethHdr.ethtype];
+    if (handler) {
+        handler(buffer, offset, ethHdr);
+    }
 }
 
 export function registerEthHandler(ethtype: ETH_TYPE, handler: EthHandler) {
-	ethHandlers[ethtype] = handler;
+    ethHandlers[ethtype] = handler;
 }

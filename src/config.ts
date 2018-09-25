@@ -1,4 +1,4 @@
-import { MACAddr, EthHdr } from "./ethernet";
+import { EthHdr, MACAddr } from "./ethernet";
 import { IPAddr, IPNet } from "./ip";
 
 export const config: {
@@ -7,23 +7,23 @@ export const config: {
     gatewayIp?: IPAddr;
     ourSubnet?: IPNet;
     ourMac?: MACAddr;
-    mtu: number;
     mss: number;
+    mtu: number;
     sendEth: boolean;
     ethBcastHdr?: EthHdr;
     dnsServerIps: IPAddr[];
     ipDoneCB?: (() => void);
     ws?: WebSocket;
 } = {
-    mtu: -1,
-    mss: -1,
-    sendEth: false,
     dnsServerIps: [],
+    mss: -1,
+    mtu: -1,
+    sendEth: false,
 };
 
 export function configOut() {
-	console.log(`Our Subnet: ${config.ourSubnet}`);
-	console.log(`Our IP: ${config.ourIp}`);
-	console.log(`Server IP: ${config.serverIp}`);
-	console.log(`Gateway IP: ${config.gatewayIp}`);
+    console.log(`Our Subnet: ${config.ourSubnet}`);
+    console.log(`Our IP: ${config.ourIp}`);
+    console.log(`Server IP: ${config.serverIp}`);
+    console.log(`Gateway IP: ${config.gatewayIp}`);
 }
