@@ -1,7 +1,5 @@
 import { computeChecksumPseudo, computeChecksum, IPacket } from "./util";
-import { IPHdr } from "./ip";
-
-export const PROTO_UDP = 17;
+import { IPHdr, PROTO_UDP } from "./ip";
 
 export class UDPPkt implements IPacket {
 	public sport = 0;

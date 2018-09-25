@@ -129,6 +129,10 @@ export class IPNet {
 	}
 }
 
+export const PROTO_ICMP = 1;
+export const PROTO_TCP = 6;
+export const PROTO_UDP = 17;
+
 export class IPHdr {
 	private version = 4;
 	public ihl = 5;

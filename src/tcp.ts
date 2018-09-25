@@ -1,9 +1,7 @@
 import { computeChecksum, computeChecksumPseudo, IPacket } from "./util";
 import { config } from "./config";
-import { IPHdr } from "./ip";
+import { IPHdr, PROTO_TCP } from "./ip";
 import { BitArray } from "./bitfield";
-
-export const PROTO_TCP = 6;
 
 export const TCP_NS = 0x100;
 export const TCP_CWR = 0x80;

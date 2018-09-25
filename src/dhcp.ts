@@ -1,8 +1,8 @@
 import { config, configOut } from "./config";
 import { ARP_HTYPE, ARP_HLEN } from "./arp";
-import { IPAddr, IPHdr, IP_NONE, IP_BROADCAST, IPNet } from "./ip";
+import { IPAddr, IPHdr, IP_NONE, IP_BROADCAST, IPNet, PROTO_UDP } from "./ip";
 import { MACAddr } from "./ethernet";
-import { UDPPkt, PROTO_UDP } from "./udp";
+import { UDPPkt } from "./udp";
 import { udpListen } from "./udp_stack";
 import { sendPacket } from "./wssend";
 

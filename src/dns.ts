@@ -1,7 +1,7 @@
 import { BitArray } from "./bitfield";
-import { PROTO_UDP, UDPPkt } from "./udp";
+import { UDPPkt } from "./udp";
 import { boolToBit, bufferToString, stringIntoBuffer } from "./util";
-import { IPHdr, IPAddr } from "./ip";
+import { IPHdr, IPAddr, PROTO_UDP } from "./ip";
 import { config } from "./config";
 import { udpListen } from "./udp_stack";
 import { TCPConnectHandler, TCPDisconnectHandler, TCPListener, tcpConnect } from "./tcp_stack";

@@ -1,7 +1,5 @@
 import { computeChecksum } from "./util";
 
-export const PROTO_ICMP = 1;
-
 export class ICMPPkt {
 	public type = 0;
 	public code = 0;

@@ -1,6 +1,6 @@
 import { config } from "./config";
-import { IPHdr, IPAddr } from "./ip";
-import { TCP_PSH, TCP_ACK, TCP_SYN, TCP_RST, TCP_FIN, PROTO_TCP, TCPPkt } from "./tcp";
+import { IPHdr, IPAddr, PROTO_TCP } from "./ip";
+import { TCP_PSH, TCP_ACK, TCP_SYN, TCP_RST, TCP_FIN, TCPPkt } from "./tcp";
 import { registerIpHandler } from "./ip_stack";
 import { sendPacket } from "./wssend";
 
