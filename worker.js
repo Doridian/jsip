@@ -232,7 +232,7 @@ function handleIP(buffer) {
 			return;
 		}
 
-		const isBroadcast = ethHdr.daddr.equals(MAC_BROADCAST);
+		const isBroadcast = ethHdr.daddr.isBroadcast();
 
 		if (!ethHdr.daddr.equals(ourMac) && !isBroadcast) {
 			console.log(`Discarding packet not meant for us, but for ${ethHdr.daddr.toString()}`);
@@ -259,11 +259,7 @@ function handleIP(buffer) {
 		return;
 	}
 
-	if (ipHdr.daddr.equals(IP_BROADCAST)) {
-		ipHdr.daddr = ourIp;
-	}
-
-	if (ourIp && !ipHdr.daddr.equals(ourIp)) {
+	if (ourIp && !ipHdr.daddr.isUnicast() && !ipHdr.daddr.equals(ourIp)) {
 		console.log(`Discarding packet not meant for us, but for ${ipHdr.daddr.toString()}`);
 		return;
 	}
