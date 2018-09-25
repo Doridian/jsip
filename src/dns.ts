@@ -7,7 +7,7 @@ import { udpListen } from "./udp_stack";
 import { TCPConnectHandler, TCPDisconnectHandler, TCPListener, tcpConnect } from "./tcp_stack";
 import { sendPacket } from "./wssend";
 
-type DNSResult = any;
+type DNSResult = IPAddr|string|undefined;
 type DNSParseState = { pos: number, data: Uint8Array, packet: ArrayBuffer, offset: number };
 type DNSCallback = (result: DNSResult) => void;
 
@@ -129,7 +129,7 @@ function parseDNSLabel(s: DNSParseState) {
 	}
 
 	if (!dataGood) {
-		return null;
+		return undefined;
 	}
 
 	return res.join('.');
@@ -440,11 +440,11 @@ export function dnsResolveOrIp(domain: string, cb: DNSCallback) {
 }
 
 export function dnsTcpConnect(domainOrIp: string, port: number, func: TCPListener, cb: TCPConnectHandler, dccb: TCPDisconnectHandler) {
-	dnsResolveOrIp(domainOrIp, (ip: IPAddr) => {
+	dnsResolveOrIp(domainOrIp, (ip) => {
 		if (!ip) {
 			cb(false, undefined);
 			return;
 		}
-		tcpConnect(ip, port, func, cb, dccb);
+		tcpConnect(ip as IPAddr, port, func, cb, dccb);
 	});
 }
