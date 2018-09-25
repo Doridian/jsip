@@ -24,6 +24,7 @@ const arpCache = {
 	[IP_BROADCAST.toString()]: MAC_BROADCAST,
 };
 const arpQueue = {};
+const arpTimeouts = {};
 let ipDoneCB = null;
 
 function makeEthIPHdr(destIp, cb) {
@@ -50,9 +51,16 @@ function makeEthIPHdr(destIp, cb) {
 	if (arpQueue[destIpStr]) {
 		arpQueue[destIpStr].push(_cb);
 		return;
-	} else {
-		arpQueue[destIpStr] = [_cb];
 	}
+
+	arpQueue[destIpStr] = [_cb];
+	arpTimeouts[destIpStr] = setTimeout(() => {
+		delete arpTimeouts[destIpStr];
+		if (arpQueue[destIpStr]) {
+			arpQueue[destIpStr].forEach(cb => cb(null));
+			delete arpQueue[destIpStr];
+		}
+	}, 10000);
 
 	const arpReq = new ARPPkt();
 	arpReq.operation = ARP_REQUEST;
@@ -206,6 +214,10 @@ function handleARP(ethHdr, buffer, offset) {
 			if (arpQueue[ip]) {
 				arpQueue[ip].forEach(cb => cb(mac));
 				delete arpQueue[ip];
+			}
+			if (arpTimeouts[ip]) {
+				clearTimeout(arpTimeouts[ip]);
+				delete arpTimeouts[ip];
 			}
 			break;
 	}
