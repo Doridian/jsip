@@ -1,6 +1,6 @@
 import { computeChecksum, computeChecksumPseudo, IPacket } from "./util";
 import { config } from "./config";
-import { IPHdr, PROTO_TCP } from "./ip";
+import { IPHdr, IPPROTO } from "./ip";
 import { BitArray } from "./bitfield";
 
 export const TCP_NS = 0x100;
@@ -110,7 +110,7 @@ export class TCPPkt implements IPacket {
 	}
 
 	_computeChecksum(ipHdr: IPHdr, packet: Uint8Array) {
-		let csum = computeChecksumPseudo(ipHdr, PROTO_TCP, packet.byteLength);
+		let csum = computeChecksumPseudo(ipHdr, IPPROTO.TCP, packet.byteLength);
 		return computeChecksum(packet, csum);
 	}
 

@@ -1,5 +1,5 @@
 import { config } from "./config";
-import { IPHdr, IPAddr, PROTO_TCP } from "./ip";
+import { IPHdr, IPAddr, IPPROTO } from "./ip";
 import { TCP_PSH, TCP_ACK, TCP_SYN, TCP_RST, TCP_FIN, TCPPkt } from "./tcp";
 import { registerIpHandler } from "./ip_stack";
 import { sendPacket } from "./wssend";
@@ -85,7 +85,7 @@ export class TCPConn {
 
 	_makeIp(df = false) {
 		const ip = new IPHdr();
-		ip.protocol = PROTO_TCP;
+		ip.protocol = IPPROTO.TCP;
 		ip.saddr = config.ourIp;
 		ip.daddr = this.daddr;
 		ip.df = df;
@@ -488,4 +488,4 @@ setInterval(1000, () => {
 	}
 });
 
-registerIpHandler(PROTO_TCP, tcpGotPacket);
+registerIpHandler(IPPROTO.TCP, tcpGotPacket);

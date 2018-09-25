@@ -1,7 +1,7 @@
 import { BitArray } from "./bitfield";
 import { UDPPkt } from "./udp";
 import { boolToBit, bufferToString, stringIntoBuffer } from "./util";
-import { IPHdr, IPAddr, PROTO_UDP } from "./ip";
+import { IPHdr, IPAddr, IPPROTO } from "./ip";
 import { config } from "./config";
 import { udpListen } from "./udp_stack";
 import { TCPConnectHandler, TCPDisconnectHandler, TCPListener, tcpConnect } from "./tcp_stack";
@@ -317,7 +317,7 @@ function makeDNSUDP(dns: DNSPkt) {
 
 function makeDNSIP() {
 	const ip = new IPHdr();
-	ip.protocol = PROTO_UDP;
+	ip.protocol = IPPROTO.UDP;
 	ip.saddr = config.ourIp;
 	ip.daddr = config.dnsServerIps[0];
 	ip.df = false;

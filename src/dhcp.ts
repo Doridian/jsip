@@ -1,6 +1,6 @@
 import { config, configOut } from "./config";
 import { ARP_HTYPE, ARP_HLEN } from "./arp";
-import { IPAddr, IPHdr, IP_NONE, IP_BROADCAST, IPNet, PROTO_UDP } from "./ip";
+import { IPAddr, IPHdr, IP_NONE, IP_BROADCAST, IPNet, IPPROTO } from "./ip";
 import { MACAddr } from "./ethernet";
 import { UDPPkt } from "./udp";
 import { udpListen } from "./udp_stack";
@@ -198,7 +198,7 @@ function makeDHCPUDP(dhcp: DHCPPkt) {
 
 function makeDHCPIP(unicast: boolean = false) {
 	const ip = new IPHdr();
-	ip.protocol = PROTO_UDP;
+	ip.protocol = IPPROTO.UDP;
 	if (unicast) {
 		ip.saddr = config.ourIp;
 		ip.daddr = config.serverIp;

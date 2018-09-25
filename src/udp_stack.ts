@@ -1,4 +1,4 @@
-import { IPHdr, PROTO_UDP } from "./ip";
+import { IPHdr, IPPROTO } from "./ip";
 import { registerIpHandler } from "./ip_stack";
 import { UDPPkt } from "./udp";
 import { sendPacket } from "./wssend";
@@ -66,4 +66,4 @@ export function udpCloseListener(port: number) {
 	return true;
 }
 
-registerIpHandler(PROTO_UDP, udpGotPacket);
+registerIpHandler(IPPROTO.UDP, udpGotPacket);

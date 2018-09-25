@@ -1,5 +1,5 @@
 import { computeChecksumPseudo, computeChecksum, IPacket } from "./util";
-import { IPHdr, PROTO_UDP } from "./ip";
+import { IPHdr, IPPROTO } from "./ip";
 
 export class UDPPkt implements IPacket {
 	public sport = 0;
@@ -38,7 +38,7 @@ export class UDPPkt implements IPacket {
 	}
 
 	_computeChecksum(ipHdr: IPHdr, packet: Uint8Array) {
-		let csum = computeChecksumPseudo(ipHdr, PROTO_UDP, packet.byteLength);
+		let csum = computeChecksumPseudo(ipHdr, IPPROTO.UDP, packet.byteLength);
 		csum = computeChecksum(packet, csum);
 		if (csum === 0) {
 			return 0xFFFF;

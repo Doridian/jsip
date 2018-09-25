@@ -2,6 +2,13 @@ import { computeChecksum } from './util';
 import { BitArray } from './bitfield';
 import { config } from './config';
 
+export const enum IPPROTO {
+	NONE = 0,
+	ICMP = 1,
+	TCP = 6,
+	UDP = 17,
+};
+
 export class IPAddr {
 	private a = 0;
 	private b = 0;
@@ -129,10 +136,6 @@ export class IPNet {
 	}
 }
 
-export const PROTO_ICMP = 1;
-export const PROTO_TCP = 6;
-export const PROTO_UDP = 17;
-
 export class IPHdr {
 	private version = 4;
 	public ihl = 5;
@@ -144,7 +147,7 @@ export class IPHdr {
 	public mf = false;
 	public frag_offset = 0;
 	private ttl = 64;
-	public protocol = 0;
+	public protocol = IPPROTO.NONE;
 	private checksum = 0;
 	public saddr: IPAddr|undefined = undefined;
 	public daddr: IPAddr|undefined = undefined;
