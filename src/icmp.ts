@@ -1,7 +1,6 @@
 import { computeChecksum } from "./util";
 
 export class ICMPPkt {
-
     public static fromPacket(packet: ArrayBuffer, offset: number, len: number) {
         const icmp = new ICMPPkt();
         const data = new Uint8Array(packet, offset, len);
@@ -9,16 +8,15 @@ export class ICMPPkt {
         icmp.code = data[1];
         icmp.checksum = data[3] + (data[2] << 8);
         icmp.rest = data[7] + (data[6] << 8) + (data[5] << 16) + (data[4] << 24);
-        if (len > 8) {
-            icmp.data = new Uint8Array(packet, offset + 8);
-        } else {
-            icmp.data = undefined;
-        }
+
+        icmp.data = (len > 8) ? new Uint8Array(packet, offset + 8) : undefined;
+
         if (computeChecksum(data) !== 0) {
             throw new Error("Invalid ICMP checksum");
         }
         return icmp;
     }
+
     public type = 0;
     public code = 0;
     public rest = 0;

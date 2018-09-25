@@ -10,7 +10,6 @@ export const enum IPPROTO {
 }
 
 export class IPAddr {
-
     public static fromString(ipStr: string) {
         const ip = new IPAddr();
         const ipS = ipStr.split(".");
@@ -47,6 +46,7 @@ export class IPAddr {
         ip.a = (ipInt >>> 24) & 0xFF;
         return ip;
     }
+
     private a = 0;
     private b = 0;
     private c = 0;
@@ -94,13 +94,13 @@ export class IPAddr {
 }
 
 export class IPNet {
-
     public static fromString(ipStr: string) {
         const ipS = ipStr.split("/");
         const ip = IPAddr.fromString(ipS[0]);
         const subnetLen = parseInt(ipS[1], 10);
         return new IPNet(ip, ~((1 << (32 - subnetLen)) - 1));
     }
+
     public ip?: IPAddr;
     private bitmask = 0;
     private mask?: IPAddr;
@@ -137,7 +137,6 @@ export class IPNet {
 }
 
 export class IPHdr {
-
     public static fromPacket(packet: ArrayBuffer, offset: number) {
         const ipv4 = new IPHdr();
         const bit = new BitArray(packet, offset);
@@ -173,6 +172,7 @@ export class IPHdr {
         }
         return ipv4;
     }
+
     public ihl = 5;
     public dscp = 0;
     public ecn = 0;
@@ -208,11 +208,8 @@ export class IPHdr {
     public makeReply() {
         const replyIp = new IPHdr();
         replyIp.protocol = this.protocol;
-        if (this.daddr!.isUnicast()) {
-            replyIp.saddr = this.daddr;
-        } else {
-            replyIp.saddr = config.ourIp;
-        }
+
+        replyIp.saddr = (this.daddr && this.daddr.isUnicast()) ? this.daddr : config.ourIp;
         replyIp.daddr = this.saddr;
         return replyIp;
     }

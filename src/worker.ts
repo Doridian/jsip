@@ -56,11 +56,7 @@ function handleInit(data: string, cb: VoidCB) {
         config.ethBcastHdr.daddr = MAC_BROADCAST;
     }
 
-    if (config.ourSubnet) {
-        config.ourIp = config.ourSubnet.ip;
-    } else {
-        config.ourIp = undefined;
-    }
+    config.ourIp = config.ourSubnet ? config.ourSubnet.ip : undefined;
     config.gatewayIp = config.serverIp;
     config.dnsServerIps = [config.gatewayIp!];
     configOut();

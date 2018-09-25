@@ -479,7 +479,7 @@ export function tcpCloseListener(port: number) {
 
 export function tcpConnect(
     ip: IPAddr, port: number, func: TCPListener, cb: TCPConnectHandler, dccb?: TCPDisconnectHandler) {
-    if (typeof port !== "number" || port < 1 || port > 65535) {
+    if (port < 1 || port > 65535) {
         return false;
     }
 

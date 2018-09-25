@@ -2,7 +2,6 @@ import { IPHdr, IPPROTO } from "./ip";
 import { computeChecksum, computeChecksumPseudo, IPacket } from "./util";
 
 export class UDPPkt implements IPacket {
-
     public static fromPacket(packet: ArrayBuffer, offset: number, len: number, ipHdr: IPHdr) {
         const udp = new UDPPkt();
         const data = new Uint8Array(packet, offset, len);
@@ -25,6 +24,7 @@ export class UDPPkt implements IPacket {
         }
         return udp;
     }
+
     public sport = 0;
     public dport = 0;
     public data?: Uint8Array;

@@ -95,8 +95,8 @@ export function httpGet(urlStr: string, cb: HTTPCallback) {
         conn!.send(new Uint8Array(stringToBuffer(str)));
     }, () => {
         // Disconnect
-        let res: IHTTPResult|undefined;
-        let err: Error|undefined;
+        let res: IHTTPResult | undefined;
+        let err: Error | undefined;
         try {
             res = httpParse(datas);
             res.url = url.href;

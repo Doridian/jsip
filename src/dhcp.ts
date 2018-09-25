@@ -27,15 +27,14 @@ const enum DHCP_MODE {
     NACK = 6,
 }
 
-let ourDHCPXID: number|undefined;
+let ourDHCPXID: number | undefined;
 let ourDHCPSecs = 0;
-let dhcpRenewTimer: number|undefined;
+let dhcpRenewTimer: number | undefined;
 let dhcpInInitialConfig = false;
 
 const DHCP_OFFSET_MAGIC = 236;
 
 class DHCPPkt {
-
     public static fromPacket(packet: ArrayBuffer, offset: number) {
         const data = new Uint8Array(packet, offset);
 
@@ -84,6 +83,7 @@ class DHCPPkt {
 
         return dhcp;
     }
+
     public op = 1;
     public htype = ARP_HTYPE;
     public hlen = ARP_HLEN;
@@ -241,11 +241,9 @@ udpListen(68, (data: Uint8Array) => {
             sendPacket(makeDHCPIP(), makeDHCPRequest(dhcp));
             break;
         case DHCP_MODE.ACK:
-            if (dhcp.options[DHCP_OPTION.IP]) {
-                config.ourIp = IPAddr.fromByteArray(dhcp.options[DHCP_OPTION.IP], 0);
-            } else {
-                config.ourIp = dhcp.yiaddr;
-            }
+            config.ourIp = dhcp.options[DHCP_OPTION.IP] ?
+                IPAddr.fromByteArray(dhcp.options[DHCP_OPTION.IP], 0) :
+                dhcp.yiaddr;
 
             if (dhcp.options[DHCP_OPTION.SUBNET]) {
                 const subnet = dhcp.options[DHCP_OPTION.SUBNET];
@@ -257,24 +255,17 @@ udpListen(68, (data: Uint8Array) => {
                 config.ourSubnet = IPNet.fromString(`${config.ourIp}/32`);
             }
 
-            if (dhcp.options[DHCP_OPTION.SERVER]) {
-                config.serverIp = IPAddr.fromByteArray(dhcp.options[DHCP_OPTION.SERVER], 0);
-            } else {
-                config.serverIp = dhcp.siaddr;
-            }
+            config.serverIp = dhcp.options[DHCP_OPTION.SERVER] ?
+                IPAddr.fromByteArray(dhcp.options[DHCP_OPTION.SERVER], 0) :
+                dhcp.siaddr;
 
-            if (dhcp.options[DHCP_OPTION.ROUTER]) {
-                config.gatewayIp = IPAddr.fromByteArray(dhcp.options[DHCP_OPTION.ROUTER], 0);
-            } else {
-                config.gatewayIp = config.serverIp;
-            }
+            config.gatewayIp = dhcp.options[DHCP_OPTION.ROUTER] ?
+                IPAddr.fromByteArray(dhcp.options[DHCP_OPTION.ROUTER], 0) :
+                config.serverIp;
 
-            if (dhcp.options[DHCP_OPTION.DNS]) {
-                // TODO: Multiple
-                config.dnsServerIps = [IPAddr.fromByteArray(dhcp.options[DHCP_OPTION.DNS], 0)];
-            } else {
-                config.dnsServerIps = [config.gatewayIp!];
-            }
+            config.dnsServerIps = dhcp.options[DHCP_OPTION.DNS] ?
+                [IPAddr.fromByteArray(dhcp.options[DHCP_OPTION.DNS], 0)] :
+                [config.gatewayIp!];
 
             let ttl;
             if (dhcp.options[DHCP_OPTION.LEASETIME]) {

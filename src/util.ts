@@ -31,7 +31,7 @@ export function buffersToString(bufs: ArrayBuffer[]) {
     return ret;
 }
 
-export function buffersToBuffer(bufs: ArrayBuffer[]|Uint8Array[]) {
+export function buffersToBuffer(bufs: ArrayBuffer[] | Uint8Array[]) {
     let curPos = 0;
     for (const buf of bufs) {
         curPos += buf.byteLength;

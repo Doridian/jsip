@@ -7,7 +7,7 @@ import { udpListen } from "./udp_stack";
 import { boolToBit, bufferToString, stringIntoBuffer } from "./util";
 import { sendPacket } from "./wssend";
 
-type DNSResult = IPAddr|string|undefined;
+type DNSResult = IPAddr | string | undefined;
 interface IDNSParseState { pos: number; data: Uint8Array; packet: ArrayBuffer; offset: number; }
 type DNSCallback = (result: DNSResult) => void;
 
@@ -182,7 +182,6 @@ function parseAnswerSection(count: number, state: IDNSParseState) {
 }
 
 export class DNSPkt {
-
     public static fromPacket(packet: ArrayBuffer, offset: number) {
         const data = new Uint8Array(packet, offset);
         const bit = new BitArray(packet, offset + 2);
@@ -224,6 +223,7 @@ export class DNSPkt {
 
         return dns;
     }
+
     public id = 0;
     public qr = false;
     public opcode = 0;

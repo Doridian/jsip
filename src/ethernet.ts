@@ -6,7 +6,6 @@ function _macPaddedOut(num: number) {
 }
 
 export class MACAddr {
-
     public static fromString(macStr: string) {
         const mac = new MACAddr();
         const macS = macStr.split(":");
@@ -51,6 +50,7 @@ export class MACAddr {
         mac.a = (macInt >>> 40) & 0xFF;
         return mac;
     }
+
     private a = 0;
     private b = 0;
     private c = 0;
@@ -105,7 +105,6 @@ export const enum ETH_TYPE {
 export const ETH_LEN = 14;
 
 export class EthHdr {
-
     public static fromPacket(packet: ArrayBuffer, offset: number) {
         const eth = new EthHdr();
         const data = new Uint8Array(packet, offset);
@@ -114,6 +113,7 @@ export class EthHdr {
         eth.ethtype = data[13] + (data[12] << 8);
         return eth;
     }
+
     public ethtype = ETH_TYPE.NONE;
     public saddr?: MACAddr;
     public daddr?: MACAddr;

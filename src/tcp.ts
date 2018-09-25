@@ -16,7 +16,6 @@ export const enum TCP_FLAGS {
 }
 
 export class TCPPkt implements IPacket {
-
     public static fromPacket(packet: ArrayBuffer, offset: number, len: number, ipHdr: IPHdr) {
         const tcp = new TCPPkt();
         const data = new Uint8Array(packet, offset, len);
@@ -38,7 +37,7 @@ export class TCPPkt implements IPacket {
             tcp.data =  new Uint8Array(packet, dataOffset + offset);
 
             const o8 = new Uint8Array(tcp.options);
-            for (let i = 0; i < o8.length; ) {
+            for (let i = 0; i < o8.length;) {
                 let optLen = o8[i + 1];
                 if (optLen <= 0) {
                     break;
@@ -66,6 +65,7 @@ export class TCPPkt implements IPacket {
         }
         return tcp;
     }
+
     public sport = 0;
     public dport = 0;
     public checksum = 0;
