@@ -361,13 +361,16 @@ udpListen(53, (data: Uint8Array|undefined, _ipHdr: IPHdr) => {
 		return;
 	}
 
-	const dns = DNSPkt.fromPacket(data, 0);
+	const packet = data.buffer;
+	const offset = data.byteOffset;
+
+	const dns = DNSPkt.fromPacket(packet, offset);
 	if (!dns || !dns.qr) {
 		return;
 	}
 
 	const _parseDNSLabel = (pos: number) => {
-		return parseDNSLabel({ offset: 0, packet: data, data: new Uint8Array(data), pos });
+		return parseDNSLabel({ offset: 0, packet, data, pos });
 	};
 
 	// This could clash if asked for ANY, but ANY is deprecated

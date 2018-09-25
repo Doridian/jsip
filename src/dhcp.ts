@@ -83,8 +83,7 @@ class DHCPPkt extends IHdr {
 			}
 
 			const optLen = data[i + 1];
-			const optVal = new Uint8Array(packet, offset + i + 2, optLen);
-			dhcp.options[optId] = optVal;
+			dhcp.options[optId] = new Uint8Array(packet, offset + i + 2, optLen);
 			i += optLen + 2;
 		}
 
@@ -190,7 +189,7 @@ function makeDHCPRenewRequest() {
 	pkt.options[DHCP_OPTION_MODE] = new Uint8Array([DHCP_REQUEST]);
 	pkt.options[DHCP_OPTION_IP] = config.ourIp!.toByteArray();
 	pkt.options[DHCP_OPTION_SERVER] = config.serverIp!.toByteArray();
-	return makeDHCPUDP(pkt);	
+	return makeDHCPUDP(pkt);
 }
 
 function makeDHCPUDP(dhcp: DHCPPkt) {
@@ -220,7 +219,10 @@ udpListen(68, (data: Uint8Array|undefined, _ipHdr: IPHdr) => {
 		return;
 	}
 
-	const dhcp = DHCPPkt.fromPacket(data, 0);
+	const packet = data.buffer;
+	const offset = data.byteOffset;
+
+	const dhcp = DHCPPkt.fromPacket(packet, offset);
 	if (!dhcp || dhcp.op !== 2) {
 		return;
 	}
