@@ -8,20 +8,24 @@ import { sendPacket } from "./wssend";
 
 const DHCP_MAGIC = new Uint8Array([0x63, 0x82, 0x53, 0x63]);
 
-const DHCP_OPTION_MODE = 53;
-const DHCP_OPTION_SERVER = 54;
-const DHCP_OPTION_IP = 50;
-const DHCP_OPTION_OPTIONS = 55;
-const DHCP_OPTION_SUBNET = 1;
-const DHCP_OPTION_ROUTER = 3;
-const DHCP_OPTION_DNS = 6;
-const DHCP_OPTION_LEASETIME = 51;
+const enum DHCP_OPTION {
+	MODE = 53,
+	SERVER = 54,
+	IP = 50,
+	OPTIONS = 55,
+	SUBNET = 1,
+	ROUTER = 3,
+	DNS = 6,
+	LEASETIME = 51,
+};
 
-const DHCP_DISCOVER = 1;
-const DHCP_OFFER = 2;
-const DHCP_REQUEST = 3;
-const DHCP_ACK = 5;
-const DHCP_NACK = 6;
+const enum DHCP_MODE {
+	DISCOVER = 1,
+	OFFER = 2,
+	REQUEST = 3,
+	ACK = 5,
+	NACK = 6,
+};
 
 let ourDHCPXID: number|undefined = 0;
 let ourDHCPSecs = 0;
@@ -160,31 +164,31 @@ class DHCPPkt {
 
 function makeDHCPDiscover() {
 	const pkt = new DHCPPkt();
-	pkt.options[DHCP_OPTION_MODE] = new Uint8Array([DHCP_DISCOVER]);
-	pkt.options[DHCP_OPTION_OPTIONS] = new Uint8Array([
-		DHCP_OPTION_ROUTER,
-		DHCP_OPTION_SUBNET,
-		DHCP_OPTION_DNS,
-		DHCP_OPTION_LEASETIME,
-		DHCP_OPTION_SERVER,
-		DHCP_OPTION_IP,
+	pkt.options[DHCP_OPTION.MODE] = new Uint8Array([DHCP_MODE.DISCOVER]);
+	pkt.options[DHCP_OPTION.OPTIONS] = new Uint8Array([
+		DHCP_OPTION.ROUTER,
+		DHCP_OPTION.SUBNET,
+		DHCP_OPTION.DNS,
+		DHCP_OPTION.LEASETIME,
+		DHCP_OPTION.SERVER,
+		DHCP_OPTION.IP,
 	]);
 	return makeDHCPUDP(pkt);
 }
 
 function makeDHCPRequest(offer: DHCPPkt) {
 	const pkt = new DHCPPkt();
-	pkt.options[DHCP_OPTION_MODE] = new Uint8Array([DHCP_REQUEST]);
-	pkt.options[DHCP_OPTION_IP] = offer.yiaddr!.toByteArray();
-	pkt.options[DHCP_OPTION_SERVER] = offer.siaddr!.toByteArray();
+	pkt.options[DHCP_OPTION.MODE] = new Uint8Array([DHCP_MODE.REQUEST]);
+	pkt.options[DHCP_OPTION.IP] = offer.yiaddr!.toByteArray();
+	pkt.options[DHCP_OPTION.SERVER] = offer.siaddr!.toByteArray();
 	return makeDHCPUDP(pkt);
 }
 
 function makeDHCPRenewRequest() {
 	const pkt = new DHCPPkt();
-	pkt.options[DHCP_OPTION_MODE] = new Uint8Array([DHCP_REQUEST]);
-	pkt.options[DHCP_OPTION_IP] = config.ourIp!.toByteArray();
-	pkt.options[DHCP_OPTION_SERVER] = config.serverIp!.toByteArray();
+	pkt.options[DHCP_OPTION.MODE] = new Uint8Array([DHCP_MODE.REQUEST]);
+	pkt.options[DHCP_OPTION.IP] = config.ourIp!.toByteArray();
+	pkt.options[DHCP_OPTION.SERVER] = config.serverIp!.toByteArray();
 	return makeDHCPUDP(pkt);
 }
 
@@ -232,47 +236,47 @@ udpListen(68, (data: Uint8Array|undefined, _ipHdr: IPHdr) => {
 		dhcpRenewTimer = undefined;
 	}
 
-	switch (dhcp.options[DHCP_OPTION_MODE][0]) {
-		case DHCP_OFFER:
+	switch (dhcp.options[DHCP_OPTION.MODE][0]) {
+		case DHCP_MODE.OFFER:
 			console.log('Got DHCP offer, sending DHCP request...');
 			sendPacket(makeDHCPIP(), makeDHCPRequest(dhcp));
 			break;
-		case DHCP_ACK:
-			if (dhcp.options[DHCP_OPTION_IP]) {
-				config.ourIp = IPAddr.fromByteArray(dhcp.options[DHCP_OPTION_IP], 0);
+		case DHCP_MODE.ACK:
+			if (dhcp.options[DHCP_OPTION.IP]) {
+				config.ourIp = IPAddr.fromByteArray(dhcp.options[DHCP_OPTION.IP], 0);
 			} else {
 				config.ourIp = dhcp.yiaddr;
 			}
 
-			if (dhcp.options[DHCP_OPTION_SUBNET]) {
-				const subnet = dhcp.options[DHCP_OPTION_SUBNET];
+			if (dhcp.options[DHCP_OPTION.SUBNET]) {
+				const subnet = dhcp.options[DHCP_OPTION.SUBNET];
 				config.ourSubnet = new IPNet(config.ourIp!, subnet[3] + (subnet[2] << 8) + (subnet[1] << 16) + (subnet[0] << 24));
 			} else {
 				config.ourSubnet = IPNet.fromString(`${config.ourIp}/32`);
 			}
 
-			if (dhcp.options[DHCP_OPTION_SERVER]) {
-				config.serverIp = IPAddr.fromByteArray(dhcp.options[DHCP_OPTION_SERVER], 0);
+			if (dhcp.options[DHCP_OPTION.SERVER]) {
+				config.serverIp = IPAddr.fromByteArray(dhcp.options[DHCP_OPTION.SERVER], 0);
 			} else {
 				config.serverIp = dhcp.siaddr;
 			}
 
-			if (dhcp.options[DHCP_OPTION_ROUTER]) {
-				config.gatewayIp = IPAddr.fromByteArray(dhcp.options[DHCP_OPTION_ROUTER], 0);	
+			if (dhcp.options[DHCP_OPTION.ROUTER]) {
+				config.gatewayIp = IPAddr.fromByteArray(dhcp.options[DHCP_OPTION.ROUTER], 0);	
 			} else {
 				config.gatewayIp = config.serverIp;
 			}
 
-			if (dhcp.options[DHCP_OPTION_DNS]) {
+			if (dhcp.options[DHCP_OPTION.DNS]) {
 				// TODO: Multiple
-				config.dnsServerIps = [IPAddr.fromByteArray(dhcp.options[DHCP_OPTION_DNS], 0)];
+				config.dnsServerIps = [IPAddr.fromByteArray(dhcp.options[DHCP_OPTION.DNS], 0)];
 			} else {
 				config.dnsServerIps = [config.gatewayIp!];
 			}
 
 			let ttl;
-			if (dhcp.options[DHCP_OPTION_LEASETIME]) {
-				const _ttl = dhcp.options[DHCP_OPTION_LEASETIME];
+			if (dhcp.options[DHCP_OPTION.LEASETIME]) {
+				const _ttl = dhcp.options[DHCP_OPTION.LEASETIME];
 				ttl = (_ttl[3] + (_ttl[2] << 8) + (_ttl[1] << 16) + (_ttl[0] << 24)) >>> 0;
 			} else {
 				ttl = 300;
@@ -293,7 +297,7 @@ udpListen(68, (data: Uint8Array|undefined, _ipHdr: IPHdr) => {
 				config.ipDoneCB = undefined;
 			}
 			break;
-		case DHCP_NACK:
+		case DHCP_MODE.NACK:
 			setTimeout(dhcpNegotiate, 0);
 			break;
 	}
