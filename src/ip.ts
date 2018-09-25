@@ -178,8 +178,9 @@ export class IPHdr extends IHdr {
 		} else {
 			ipv4.options = new ArrayBuffer(0);
 		}
-		if (computeChecksum(packet, offset, oLen) !== 0) {
-			console.error(`Invalid IPv4 checksum: ${computeChecksum(packet, offset, oLen)} !== 0`, ipv4);
+		const checksum = computeChecksum(new Uint8Array(packet, offset, oLen));
+		if (checksum !== 0) {
+			console.error(`Invalid IPv4 checksum: ${checksum} !== 0`, ipv4);
 			return null;
 		}
 		return ipv4;
@@ -237,7 +238,7 @@ export class IPHdr extends IHdr {
 				packet[i + 12] = o8[i];
 			}
 		}
-		this.checksum = computeChecksum(packet, 0, packet.length);
+		this.checksum = computeChecksum(packet);
 		packet[10] = this.checksum & 0xFF;
 		packet[11] = (this.checksum >>> 8) & 0xFF;
 		return packet.length;

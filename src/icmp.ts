@@ -25,7 +25,7 @@ export class ICMPPkt extends IHdr {
 		} else {
 			icmp.data = undefined;
 		}
-		if (computeChecksum(packet, offset, len) !== 0) {
+		if (computeChecksum(data) !== 0) {
 			throw new Error('Invalid ICMP checksum');
 		}
 		return icmp;
@@ -46,7 +46,7 @@ export class ICMPPkt extends IHdr {
 				packet[8 + i] = this.data[i];
 			}
 		}
-		this.checksum = computeChecksum(array, offset, packet.length);
+		this.checksum = computeChecksum(packet);
 		packet[2] = this.checksum & 0xFF;
 		packet[3] = (this.checksum >>> 8) & 0xFF;
 		return packet.length;

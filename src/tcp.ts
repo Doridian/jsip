@@ -82,7 +82,7 @@ export class TCPPkt extends IHdr implements IPacket {
 			tcp.data = new Uint8Array(packet, 20 + offset);
 		}
 
-		if (ipHdr && tcp._computeChecksum(ipHdr, packet, offset) !== 0) {
+		if (ipHdr && tcp._computeChecksum(ipHdr, data) !== 0) {
 			throw new Error('Invalid TCP checksum');
 		}
 		return tcp;
@@ -111,10 +111,9 @@ export class TCPPkt extends IHdr implements IPacket {
 		return len;
 	}
 
-	_computeChecksum(ipHdr: IPHdr, packet: ArrayBuffer, offset: number) {
-		const fullLen = this.getFullLength();
-		let csum = computeChecksumPseudo(ipHdr, PROTO_TCP, fullLen);
-		return computeChecksum(packet, offset, fullLen, csum);
+	_computeChecksum(ipHdr: IPHdr, packet: Uint8Array) {
+		let csum = computeChecksumPseudo(ipHdr, PROTO_TCP, packet.byteLength);
+		return computeChecksum(packet, csum);
 	}
 
 	toPacket(array: ArrayBuffer, offset:number, ipHdr: IPHdr|undefined = undefined) {
@@ -153,7 +152,7 @@ export class TCPPkt extends IHdr implements IPacket {
 			}
 		}
 		if (ipHdr) {
-			this.checksum = this._computeChecksum(ipHdr, packet, 0);
+			this.checksum = this._computeChecksum(ipHdr, packet);
 			packet[16] = this.checksum & 0xFF;
 			packet[17] = (this.checksum >>> 8) & 0xFF;
 		} else {

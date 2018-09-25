@@ -7,7 +7,7 @@ type HTTPResult = {
 	statusCode: number;
 	statusText: string;
 	headers: HTTPHeaderMap;
-	body: ArrayBuffer;
+	body: Uint8Array;
 	url: string;
 };
 
@@ -29,9 +29,9 @@ function httpParse(datas: Uint8Array[]): HTTPResult {
 	let headersStr, body;
 	if (headerEnd < 0) {
 		headersStr = bufferToString(data, 0);
-		body = new ArrayBuffer(0);
+		body = new Uint8Array(0);
 	} else {
-		headersStr = bufferToString(new Uint8Array(data, 0, headerEnd), 0);
+		headersStr = bufferToString(data, 0, headerEnd);
 		body = new Uint8Array(data, headerEnd + 4);
 	}
 

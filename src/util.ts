@@ -16,7 +16,11 @@ export function stringIntoBuffer(str: string, buf: Uint8Array, offset: number) {
 }
 
 export function bufferToString(buf: ArrayBuffer, offset: number, len: number|undefined = undefined) {
-	return String.fromCharCode.apply(null, new Uint8Array(buf, offset, len));
+	return arrayToString(new Uint8Array(buf, offset, len));
+}
+
+export function arrayToString(buf: Uint8Array) {
+	return String.fromCharCode.apply(null, buf);
 }
 
 export function buffersToString(bufs: ArrayBuffer[]) {
@@ -43,8 +47,7 @@ export function buffersToBuffer(bufs: ArrayBuffer[]|Uint8Array[]) {
 	return out;
 }
 
-export function computeChecksumIntermediate(array: ArrayBuffer, offset: number, len: number, csum = 0) {
-	const bytes = new Uint8Array(array, offset, len);
+export function computeChecksumIntermediate(bytes: Uint8Array, csum = 0) {
 	for (let i = 0; i < bytes.length; i += 2) {
 		csum += bytes[i] + ((bytes[i + 1] || 0) << 8);
 	}
@@ -59,11 +62,11 @@ export function computeChecksumPseudo(ipHdr: IPHdr, proto: number, fullLen: numb
 	pseudoIP8[9] = proto;
 	pseudoIP8[10] = (fullLen >>> 8) & 0xFF;
 	pseudoIP8[11] = fullLen & 0xFF;
-	return computeChecksumIntermediate(pseudoIP8.buffer, 0, 12);
+	return computeChecksumIntermediate(pseudoIP8);
 }
 
-export function computeChecksum(array: ArrayBuffer, offset: number, len: number, csum = 0) {
-	csum = computeChecksumIntermediate(array, offset, len, csum);
+export function computeChecksum(array: Uint8Array, csum = 0) {
+	csum = computeChecksumIntermediate(array, csum);
 	csum = (csum >>> 16) + (csum & 0xFFFF);
 	return ~csum & 0xFFFF;
 }
