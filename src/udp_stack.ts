@@ -41,7 +41,7 @@ export function udpListenRandom(func: UDPListener) {
 }
 
 export function udpListen(port: number, func: UDPListener) {
-    if (typeof port !== "number" || port < 1 || port > 65535) {
+    if (port < 1 || port > 65535) {
         return false;
     }
 
@@ -54,7 +54,7 @@ export function udpListen(port: number, func: UDPListener) {
 }
 
 export function udpCloseListener(port: number) {
-    if (typeof port !== "number" || port < 1 || port > 65535) {
+    if (port < 1 || port > 65535) {
         return false;
     }
 

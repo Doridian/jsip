@@ -452,7 +452,7 @@ function tcpGotPacket(data: ArrayBuffer, offset: number, len: number, ipHdr: IPH
 }
 
 export function tcpListen(port: number, func: TCPListener) {
-    if (typeof port !== "number" || port < 1 || port > 65535) {
+    if (port < 1 || port > 65535) {
         return false;
     }
 
@@ -465,7 +465,7 @@ export function tcpListen(port: number, func: TCPListener) {
 }
 
 export function tcpCloseListener(port: number) {
-    if (typeof port !== "number" || port < 1 || port > 65535) {
+    if (port < 1 || port > 65535) {
         return false;
     }
 
