@@ -1,4 +1,5 @@
-import { MACAddr, EthHdr } from './ethernet';
+import { MACAddr, EthHdr } from "./ethernet";
+import { IPAddr, IPNet } from "./ip";
 
 export let ourIp: IPAddr;
 export let serverIp: IPAddr;

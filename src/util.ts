@@ -1,4 +1,4 @@
-import { IPHdr } from './ip';
+import { IPHdr } from "./ip";
 
 export function stringToBuffer(str: string) {
 	const buf = new ArrayBuffer(str.length);

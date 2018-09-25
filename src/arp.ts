@@ -1,5 +1,7 @@
 import { MACAddr } from "./ethernet";
+import { IPAddr }  from "./ip";
 import { ourMac } from "./config";
+import { IHdr } from "./util";
 
 export const ARP_HTYPE = 1;
 export const ARP_PTYPE = 0x800;
@@ -12,10 +14,10 @@ export const ARP_REPLY = 2;
 export const ARP_LEN = (2 * ARP_HLEN) + (2 * ARP_PLEN) + 8;
 
 export class ARPPkt extends IHdr {
-	public htype = 0;
-	public ptype = 0;
-	public hlen = 0;
-	public plen = 0;
+	public htype = ARP_HTYPE;
+	public ptype = ARP_PTYPE;
+	public hlen = ARP_HLEN;
+	public plen = ARP_PLEN;
 	public operation = 0;
 	public sha: MACAddr|null = null;
 	public spa: IPAddr|null = null;
@@ -23,15 +25,7 @@ export class ARPPkt extends IHdr {
 	public tpa: IPAddr|null = null;
 
 	fill() {
-		this.htype = ARP_HTYPE;
-		this.ptype = ARP_PTYPE;
-		this.hlen = ARP_HLEN;
-		this.plen = ARP_PLEN;
-		this.operation = 0;
-		this.sha = null;
-		this.spa = null;
-		this.tha = null;
-		this.tpa = null;
+
 	}
 
 	makeReply() {

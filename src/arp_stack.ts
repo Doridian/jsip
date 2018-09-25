@@ -1,6 +1,8 @@
 import { ourSubnet, gatewayIp, ourMac, ourIp } from './config';
+import { registerEthHandler } from './ethernet_stack';
 import { EthHdr, ETH_IP, ETH_ARP, ETH_LEN, MACAddr, MAC_BROADCAST } from './ethernet';
 import { ARPPkt, ARP_REQUEST, ARP_REPLY, ARP_LEN } from './arp';
+import { IPAddr } from './ip';
 
 const arpCache: { [key: string]: MACAddr } = {};
 const arpQueue: { [key: string]: [(ethHdr: MACAddr|null) => void] } = {};
