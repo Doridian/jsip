@@ -10,8 +10,13 @@ import { httpGet } from "./http";
 type VoidCB = () => void;
 
 export function workerMain(cb: VoidCB) {
+	if (document.location.protocol === 'file:') {
+		_workerMain('wss://doridian.net/ws', cb);
+		return;
+	}
+
 	const proto = (document.location.protocol === 'http:') ? 'ws:' : 'wss:';
-	_workerMain(`${proto}//doridian.net/ws`, cb);
+	_workerMain(`${proto}//${document.location.host}/ws`, cb);
 }
 
 function handleInit(data: string, cb: VoidCB) {
