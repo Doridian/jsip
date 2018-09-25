@@ -86,8 +86,9 @@ function sendPacket(ipHdr, payload) {
 
 function _sendPacket(ipHdr, payload, ethIPHdr) {
 	const fullLength = payload.getFullLength(); 
-	const hdrLen = (ethIPHdr ? ETH_LEN : 0) + ipHdr.getContentOffset();
-	const _mss = mtu - hdrLen;
+	const _cOffset = ipHdr.getContentOffset();
+	const hdrLen = (ethIPHdr ? ETH_LEN : 0) + _cOffset;
+	const _mss = mtu - _cOffset;
 
 	if (fullLength <= _mss) {
 		ipHdr.setContentLength(fullLength);
@@ -269,7 +270,6 @@ function handleIP(buffer) {
 
 	const isFrag = ipHdr.mf || ipHdr.frag_offset > 0;
 	offset += ipHdr.getContentOffset();
-	//const pktData = buffer.slice(ipHdr.getContentOffset());
 
 	if (!isFrag) {
 		return handlePacket(ipHdr, buffer, offset);
@@ -383,14 +383,10 @@ function handleInit(data, cb) {
 	console.log(`Mode: ${spl[2]}`);
 
 	console.log(`Link-MTU: ${mtu}`);
-	mtu -= 4;
-	console.log(`TUN-MTU: ${mtu}`);
 
 	mss = mtu - 40;
 
 	if (sendEth) {
-		mss -= ETH_LEN;
-
 		ourMac = MACAddr.fromBytes(0x0A, randomByte(), randomByte(), randomByte(), randomByte(), randomByte());
 		console.log(`Our MAC: ${ourMac}`);
 		ethBcastHdr = new EthHdr();
