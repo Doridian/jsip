@@ -4,7 +4,7 @@ import { TCP_PSH, TCP_ACK, TCP_SYN, TCP_RST, TCP_FIN, PROTO_TCP, TCPPkt } from "
 import { registerIpHandler } from "./ip_stack";
 import { sendPacket } from "./wssend";
 
-export type TCPListener = (data: ArrayBuffer, tcpConn: TCPConn) => void;
+export type TCPListener = (data: Uint8Array, tcpConn: TCPConn) => void;
 
 const tcpConns: { [key: string]: TCPConn } = {};
 const tcpListeners: { [key: number]: TCPListener } = {
@@ -329,7 +329,7 @@ export class TCPConn {
 						}
 						this.rbuffers = [];
 						if (this.handler) {
-							this.handler(all, this);
+							this.handler(new Uint8Array(all), this);
 						}
 					}
 				} else if (this.handler) {

@@ -27,7 +27,7 @@ export function buffersToString(bufs: ArrayBuffer[]) {
 	return ret;
 }
 
-export function buffersToBuffer(bufs: ArrayBuffer[]) {
+export function buffersToBuffer(bufs: ArrayBuffer[]|Uint8Array[]) {
 	let curPos = 0;
 	for (let i = 0; i < bufs.length; i++) {
 		curPos += bufs[i].byteLength;

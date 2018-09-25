@@ -20,7 +20,7 @@ function _isHeaderEnd(ele: number, idx: number, arr: Uint8Array) {
 	return ele === 13 && arr[idx + 1] === 10 && arr[idx + 2] === 13 && arr[idx + 3] === 10;
 }
 
-function httpParse(datas: ArrayBuffer[]): HTTPResult {
+function httpParse(datas: Uint8Array[]): HTTPResult {
 	const data = buffersToBuffer(datas);
 	const data8 = new Uint8Array(data);
 
@@ -70,7 +70,7 @@ function httpParse(datas: ArrayBuffer[]): HTTPResult {
 export function httpGet(urlStr: string, cb: HTTPCallback) {
 	const url = new URL(urlStr);
 
-	const datas: ArrayBuffer[] = [];
+	const datas: Uint8Array[] = [];
 	dnsTcpConnect(url.hostname, url.port ? parseInt(url.port, 10) : 80, (data, _tcpConn) => {
 		// Data
 		datas.push(data);
