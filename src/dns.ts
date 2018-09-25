@@ -1,24 +1,38 @@
-'use strict';
+import { BitArray } from "./bitfield";
+import { PROTO_UDP, UDPPkt } from "./udp";
+import { boolToBit, bufferToString, IHdr, stringIntoBuffer } from "./util";
+import { IPHdr, IPAddr } from "./ip";
+import { config } from "./config";
+import { udpListen } from "./udp_stack";
+import { TCPConnectHandler, TCPDisconnectHandler, TCPListener, tcpConnect } from "./tcp_stack";
 
-const dnsCache = {};
-const dnsQueue = {};
-const dnsQueueTimeout = {};
+type DNSResult = any;
+type DNSParseState = { pos: number, data: Uint8Array, packet: ArrayBuffer, offset: number };
+type DNSCallback = (result: DNSResult) => void;
 
-const DNS_TYPE_A = 0x0001;
-const DNS_TYPE_CNAME = 0x0005;
-const DNS_TYPE_MX = 0x000F;
-const DNS_TYPE_NS = 0x0002;
+const dnsCache: { [key: string]: DNSResult } = {};
+const dnsQueue: { [key: string]: DNSCallback[] } = {};
+const dnsQueueTimeout: { [key: string]: number } = {};
 
-const DNS_CLASS_IN = 0x0001;
+const DNS_SEG_PTR = 0b11000000;
+const DNS_SEG_MAX = 0b00111111;
 
-class DNSQuestion extends IHdr {
+export const DNS_TYPE_A = 0x0001;
+export const DNS_TYPE_CNAME = 0x0005;
+export const DNS_TYPE_MX = 0x000F;
+export const DNS_TYPE_NS = 0x0002;
+
+export const DNS_CLASS_IN = 0x0001;
+
+export class DNSQuestion extends IHdr {
+	public name: string = '';
+	public type = DNS_TYPE_A;
+	public class = DNS_CLASS_IN;
+
 	fill() {
-		this.name = '';
-		this.type = DNS_TYPE_A;
-		this.class = DNS_CLASS_IN;
 	}
 
-	write(packet, pos) {
+	write(packet: Uint8Array, pos: number) {
 		const nameLbL = makeDNSLabel(this.name);
 		for (let i = 0; i < nameLbL.byteLength; i++) {
 			packet[pos + i] = nameLbL[i];
@@ -34,20 +48,22 @@ class DNSQuestion extends IHdr {
 	}
 }
 
-class DNSAnswer extends IHdr {
+export class DNSAnswer extends IHdr {
+	public name: string = '';
+	public type = DNS_TYPE_A;
+	public class = DNS_CLASS_IN;
+	public ttl = 0;
+	public data: Uint8Array|undefined = undefined;
+	public datapos = 0;
+
 	fill() {
-		this.name = '';
-		this.type = DNS_TYPE_A;
-		this.class = DNS_CLASS_IN;
-		this.ttl = 0;
-		this.data = new Uint8Array(0);
 	}
 
 	getTTL() {
 		return this.ttl >>> 0;
 	}
 
-	write(packet, pos) {
+	write(packet: Uint8Array, pos: number) {
 		const nameLbL = makeDNSLabel(this.name);
 		for (let i = 0; i < nameLbL.byteLength; i++) {
 			packet[pos + i] = nameLbL[i];
@@ -64,21 +80,20 @@ class DNSAnswer extends IHdr {
 		packet[pos++] = (this.ttl >>> 8) & 0xFF;
 		packet[pos++] = this.ttl & 0xFF;
 
-		for (let i = 0; i  < this.data.byteLength; i++) {
-			packet[pos + i] = this.data[i];
+		if (this.data) {
+			for (let i = 0; i  < this.data.byteLength; i++) {
+				packet[pos + i] = this.data[i];
+			}
+			pos += this.data.byteLength;
 		}
-		pos += this.data.byteLength;
 
 		return pos;
 	}
 }
 
-const DNS_SEG_PTR = 0b11000000;
-const DNS_SEG_MAX = 0b00111111;
-
-function parseDNSLabel(s) {
+function parseDNSLabel(s: DNSParseState) {
 	const res = [];
-	const donePointers = {};
+	const donePointers: { [key: number]: boolean } = {};
 	let lastPos = undefined;
 	let dataGood = false;
 
@@ -121,7 +136,7 @@ function parseDNSLabel(s) {
 	return res.join('.');
 }
 
-function makeDNSLabel(str) {
+function makeDNSLabel(str: string) {
 	const spl = str.split('.');
 	const data = new Uint8Array(str.length + 2); // First len + 0x00 end
 	let pos = 0;
@@ -137,14 +152,14 @@ function makeDNSLabel(str) {
 	return data;
 }
 
-function parseAnswerSection(count, state) {
+function parseAnswerSection(count: number, state: DNSParseState) {
 	const data = state.data;
 	const answers = [];
 
 	for (let i = 0; i < count; i++) {
 		const a = new DNSAnswer(false);
 
-		a.name = parseDNSLabel(state);
+		a.name = parseDNSLabel(state)!;
 		if (!a.name) {
 			return answers;
 		}
@@ -165,23 +180,24 @@ function parseAnswerSection(count, state) {
 	return answers;
 }
 
-class DNSPkt extends IHdr {
+export class DNSPkt extends IHdr {
+	public id = 0;
+	public qr = false;
+	public opcode = 0;
+	public aa = false;
+	public tc = false;
+	public rd = true;
+	public ra = false;
+	public rcode = 0;
+	public questions: DNSQuestion[] = []; // QDCOUNT
+	public answers: DNSAnswer[] = []; // ANCOUNT
+	public authority: DNSAnswer[] = []; // NSCOUNT
+	public additional: DNSAnswer[] = []; // ARCOUNT
+
 	fill() {
-		this.id = 0;
-		this.qr = false;
-		this.opcode = 0;
-		this.aa = false;
-		this.tc = false;
-		this.rd = true;
-		this.ra = false;
-		this.rcode = 0;
-		this.questions = []; // QDCOUNT
-		this.answers = []; // ANCOUNT
-		this.authority = []; // NSCOUNT
-		this.additional = []; // ARCOUNT
 	}
 
-	static fromPacket(packet, offset) {
+	static fromPacket(packet: ArrayBuffer, offset: number) {
 		const data = new Uint8Array(packet, offset);
 		const bit = new BitArray(packet, offset + 2);
 
@@ -209,7 +225,7 @@ class DNSPkt extends IHdr {
 		const state = { pos: 12, data, packet, offset };
 		for (let i = 0; i < qdcount; i++) {
 			const q = new DNSQuestion(false);
-			q.name = parseDNSLabel(state);
+			q.name = parseDNSLabel(state)!;
 			q.type = data[state.pos + 1] + (data[state.pos] << 8);
 			q.class = data[state.pos + 3] + (data[state.pos + 2] << 8);
 			state.pos += 4;
@@ -229,28 +245,28 @@ class DNSPkt extends IHdr {
 			len += (q.name.length + 2) + 4;
 		});
 		this.answers.forEach(a => {
-			len += (a.name.length + 2) + 10 + a.data.byteLength;
+			len += (a.name.length + 2) + 10 + (a.data ? a.data.byteLength : 0);
 		});
 		this.authority.forEach(a => {
-			len += (a.name.length + 2) + 10 + a.data.byteLength;
+			len += (a.name.length + 2) + 10 + (a.data ? a.data.byteLength : 0);
 		});
 		this.additional.forEach(a => {
-			len += (a.name.length + 2) + 10 + a.data.byteLength;
+			len += (a.name.length + 2) + 10 + (a.data ? a.data.byteLength : 0);
 		});
 		return len;
 	}
 
-	toPacket(array, offset) {
+	toPacket(array: ArrayBuffer, offset: number) {
 		return this._toPacket(new Uint8Array(array, offset));
 	}
 
 	toBytes() {
 		const packet = new Uint8Array(this.getFullLength());
-		this._toPacket(packet, 0);
+		this._toPacket(packet);
 		return packet;
 	}
 
-	_toPacket(packet) {
+	_toPacket(packet: Uint8Array) {
 		packet[0] = (this.id >>> 8) & 0xFF;
 		packet[1] = this.id & 0xFF;
 		packet[2] = boolToBit(this.qr, 7) | (this.opcode << 3) | boolToBit(this.aa, 2) | boolToBit(this.tc, 1) | boolToBit(this.rd, 0);
@@ -289,7 +305,7 @@ class DNSPkt extends IHdr {
 	}
 }
 
-function makeDNSRequest(domain, type) {
+function makeDNSRequest(domain: string, type: number) {
 	const pkt = new DNSPkt();
 	const q = new DNSQuestion();
 	q.type = type;
@@ -299,7 +315,7 @@ function makeDNSRequest(domain, type) {
 	return makeDNSUDP(pkt);
 }
 
-function makeDNSUDP(dns) {
+function makeDNSUDP(dns: DNSPkt) {
 	const pkt = new UDPPkt(false);
 	pkt.data = dns.toBytes();
 	pkt.sport = 53;
@@ -310,17 +326,17 @@ function makeDNSUDP(dns) {
 function makeDNSIP() {
 	const ip = new IPHdr();
 	ip.protocol = PROTO_UDP;
-	ip.saddr = ourIp;
-	ip.daddr = dnsServerIps[0];
+	ip.saddr = config.ourIp;
+	ip.daddr = config.dnsServerIps[0];
 	ip.df = false;
 	return ip;
 }
 
-function _makeDNSCacheKey(domain, type) {
+function _makeDNSCacheKey(domain: string, type: number) {
 	return `${type},${domain}`;
 }
 
-function domainCB(domain, type, result) {
+function domainCB(domain: string, type: number, result: DNSResult) {
 	const _key = _makeDNSCacheKey(domain, type);
 	if (result) {
 		dnsCache[_key] = result;
@@ -339,18 +355,22 @@ function domainCB(domain, type, result) {
 	}
 }
 
-udpListen(53, (data, ipHdr) => {
+udpListen(53, (data: Uint8Array|undefined, _ipHdr: IPHdr) => {
+	if (!data) {
+		return;
+	}
+
 	const dns = DNSPkt.fromPacket(data, 0);
 	if (!dns || !dns.qr) {
 		return;
 	}
 
-	const _parseDNSLabel = (pos) => {
+	const _parseDNSLabel = (pos: number) => {
 		return parseDNSLabel({ offset: 0, packet: data, data: new Uint8Array(data), pos });
 	};
 
 	// This could clash if asked for ANY, but ANY is deprecated
-	const answerMap = {};
+	const answerMap: { [key: string]: DNSAnswer } = {};
 	dns.answers.forEach(a => {
 		if (a.class !== DNS_CLASS_IN) {
 			return;
@@ -367,7 +387,7 @@ udpListen(53, (data, ipHdr) => {
 		const domain = q.name;
 		let answer = answerMap[domain];
 		while (answer && answer.type === DNS_TYPE_CNAME && q.type !== DNS_TYPE_CNAME) {
-			let cnameTarget = _parseDNSLabel(answer.datapos);
+			const cnameTarget = _parseDNSLabel(answer.datapos)!;
 			answer = answerMap[cnameTarget];
 		}
 
@@ -383,14 +403,14 @@ udpListen(53, (data, ipHdr) => {
 				_answer = _parseDNSLabel(answer.datapos);
 				break;
 			case DNS_TYPE_A:
-				_answer = IPAddr.fromByteArray(answer.data);
+				_answer = IPAddr.fromByteArray(answer.data!);
 				break;
 		}
 		domainCB(domain, q.type, _answer);
 	});
 });
 
-function dnsResolve(domain, type, cb) {
+export function dnsResolve(domain: string, type: number, cb: DNSCallback) {
 	domain = domain.toLowerCase();
 	const _key = _makeDNSCacheKey(domain, type);
 
@@ -415,7 +435,7 @@ function dnsResolve(domain, type, cb) {
 
 const IP_REGEX = /^\d+\.\d+\.\d+\.\d+$/;
 
-function dnsResolveOrIp(domain, cb) {
+export function dnsResolveOrIp(domain: string, cb: DNSCallback) {
 	if (IP_REGEX.test(domain)) {
 		cb(IPAddr.fromString(domain));
 		return;
@@ -424,10 +444,10 @@ function dnsResolveOrIp(domain, cb) {
 	dnsResolve(domain, DNS_TYPE_A, cb);
 }
 
-function dnsTcpConnect(domainOrIp, port, func, cb, dccb) {
-	dnsResolveOrIp(domainOrIp, (ip) => {
+export function dnsTcpConnect(domainOrIp: string, port: number, func: TCPListener, cb: TCPConnectHandler, dccb: TCPDisconnectHandler) {
+	dnsResolveOrIp(domainOrIp, (ip: IPAddr) => {
 		if (!ip) {
-			cb(false);
+			cb(false, undefined);
 			return;
 		}
 		tcpConnect(ip, port, func, cb, dccb);

@@ -96,13 +96,10 @@ export const ETH_LEN = 14;
 
 export class EthHdr extends IHdr {
 	public ethtype = 0;
-	public saddr: MACAddr | null = null;
-	public daddr: MACAddr | null = null;
+	public saddr: MACAddr|undefined = undefined;
+	public daddr: MACAddr|undefined = undefined;
 
 	fill() {
-		this.ethtype = 0;
-		this.saddr = null;
-		this.daddr = null;
 	}
 
 	makeReply() {

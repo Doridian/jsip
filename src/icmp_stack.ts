@@ -1,8 +1,14 @@
-'use strict';
+import { ICMPPkt } from "./icmp";
+import { IPHdr } from "./ip";
+import { registerIpHandler } from "./ip_stack";
 
-const icmpHandlers = {};
+type ICMPHandler = (icmpPkt: ICMPPkt, ipHdr: IPHdr) => void;
 
-function icmpGotPacket(data, offset, len, ipHdr) {
+const icmpHandlers: { [key: number]: ICMPHandler } = {};
+
+export const PROTO_ICMP = 1;
+
+function icmpGotPacket(data: ArrayBuffer, offset: number, len: number, ipHdr: IPHdr) {
 	const icmpPkt = ICMPPkt.fromPacket(data, offset, len);
 
 	const handler = icmpHandlers[icmpPkt.type];
@@ -11,7 +17,7 @@ function icmpGotPacket(data, offset, len, ipHdr) {
 	}
 }
 
-function icmpHandleEchoRequest(icmpPkt, ipHdr) {
+function icmpHandleEchoRequest(icmpPkt: ICMPPkt, ipHdr: IPHdr) {
 	const replyIp = ipHdr.makeReply();
 
 	const replyICMP = new ICMPPkt();
@@ -23,7 +29,7 @@ function icmpHandleEchoRequest(icmpPkt, ipHdr) {
 	sendPacket(replyIp, replyICMP);
 }
 
-function registerICMPHandler(type, handler) {
+function registerICMPHandler(type: number, handler: ICMPHandler) {
 	icmpHandlers[type] = handler;
 }
 

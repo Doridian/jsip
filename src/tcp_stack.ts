@@ -1,12 +1,18 @@
-'use strict';
+import { config } from "./config";
+import { IPHdr, IPAddr } from "./ip";
+import { TCP_PSH, TCP_ACK, TCP_SYN, TCP_RST, TCP_FIN, PROTO_TCP, TCPPkt } from "./tcp";
+import { registerIpHandler } from "./ip_stack";
 
-const tcpConns = {};
-const tcpListeners = {
+export type TCPListener = (data: ArrayBuffer, tcpConn: TCPConn) => void;
+
+const tcpConns: { [key: string]: TCPConn } = {};
+const tcpListeners: { [key: number]: TCPListener } = {
 	7: (data, tcpConn) => { // ECHO
-		if (data.byteLength === 1 && (new Uint8Array(data))[0] === 10) {
+		const d = new Uint8Array(data);
+		if (data.byteLength === 1 && d[0] === 10) {
 			tcpConn.close();
 		} else {
-			tcpConn.send(data);
+			tcpConn.send(d);
 		}
 	},
 };
@@ -23,8 +29,8 @@ const TCP_STATE_SYN_RECEIVED = 2;
 const TCP_STATE_FIN_WAIT_1 = 3;
 const TCP_STATE_FIN_WAIT_2 = 4;
 const TCP_STATE_CLOSING = 5;
-const TCP_STATE_TIME_WAIT = 6;
-const TCP_STATE_CLOSE_WAIT = 7;
+//const TCP_STATE_TIME_WAIT = 6;
+//const TCP_STATE_CLOSE_WAIT = 7;
 const TCP_STATE_LAST_ACK = 8;
 const TCP_STATE_ESTABLISHED = 9;
 
@@ -32,34 +38,54 @@ const TCP_ONLY_SEND_ON_PSH = false;
 
 const TCP_FLAG_INCSEQ = ~(TCP_PSH | TCP_ACK);
 
-class TCPConn {
-	constructor(handler) {
+export type TCPONAckHandler = (type: number) => void;
+export type TCPConnectHandler = (res: boolean, conn: TCPConn|undefined) => void;
+export type TCPDisconnectHandler = (conn: TCPConn) => void;
+
+type WBufferEntry = {
+	close?: boolean;
+	data?: Uint8Array;
+	psh?: boolean;
+	cb?: TCPONAckHandler;
+};
+
+export class TCPConn {
+	private state = TCP_STATE_CLOSED;
+	private daddr: IPAddr|undefined = undefined;
+	private sport = 0;
+	private dport = 0;
+	private lseqno: number|undefined = undefined;
+	private rseqno: number|undefined = undefined;
+	private wnd = 65535;
+	//private lastack: number|undefined = undefined;
+	private wbuffers: WBufferEntry[] = [];
+	private rbuffers: Uint8Array[] = [];
+	private rbufferlen = 0;
+	//private rlastack = false;
+	private wlastack = false;
+	private wlastsend = 0;
+	private wretrycount = 0;
+	private rlastseqno: number|undefined = undefined;
+	private onack: { [key: number]: [TCPONAckHandler] } = {};
+	private mss = config.mss;
+	private	connect_cb: TCPConnectHandler|undefined = undefined;
+	private handler: TCPListener|undefined;
+	private _id: string|undefined = undefined;
+	public disconnect_cb: TCPDisconnectHandler|undefined = undefined;
+
+	private _lastIp: IPHdr|undefined = undefined;
+	private _lastTcp: TCPPkt|undefined = undefined;
+	private lastack_ip: IPHdr|undefined = undefined;
+	private lastack_tcp: TCPPkt|undefined = undefined;
+
+	constructor(handler: TCPListener|undefined) {
 		this.handler = handler;
-		this.state = TCP_STATE_CLOSED;
-		this.daddr = null;
-		this.sport = 0;
-		this.dport = 0;
-		this.lseqno = undefined;
-		this.rseqno = undefined;
-		this.wnd = 65535;
-		this.lastack = undefined;
-		this.wbuffers = [];
-		this.rbuffers = [];
-		this.rbufferlen = 0;
-		this.rlastack = false;
-		this.wlastack = false;
-		this.wlastsend = 0;
-		this.wretrycount = 0;
-		this.rlastseqno = undefined;
-		this.onack = {};
-		this.mss = mss;
-		this.connect_cb = undefined;
 	}
 
 	_makeIp(df = false) {
 		const ip = new IPHdr();
 		ip.protocol = PROTO_TCP;
-		ip.saddr = ourIp;
+		ip.saddr = config.ourIp;
 		ip.daddr = this.daddr;
 		ip.df = df;
 		return ip;
@@ -84,7 +110,7 @@ class TCPConn {
 		if (this.rseqno !== undefined) {
 			tcp.ackno = this.rseqno;
 			tcp.setFlag(TCP_ACK);
-			this.rlastack = true;
+			//this.rlastack = true;
 		}
 		return tcp;
 	}
@@ -98,20 +124,19 @@ class TCPConn {
 			this.disconnect_cb = undefined;
 		}
 		this._connectCB(false);
-		delete tcpConns[this._id];
+		delete tcpConns[this._id!];
 	}
 
 	kill() {
 		const ip = this._makeIp(true);
 		const tcp = this._makeTcp();
-		tcp.ack = 0;
 		tcp.flags = 0;
 		tcp.setFlag(TCP_RST);
 		sendPacket(ip, tcp);
 		this.delete();
 	}
 
-	addOnAck(cb) {
+	addOnAck(cb: TCPONAckHandler|undefined) {
 		if (!cb) {
 			return;
 		}
@@ -119,15 +144,15 @@ class TCPConn {
 		cb(TCP_CB_SENT);
 
 		const ack = this.lseqno;
-		const onack = this.onack[ack];
+		const onack = this.onack[ack!];
 		if (!onack) {
-			this.onack[ack] = [cb];
+			this.onack[ack!] = [cb];
 			return;
 		}
 		onack.push(cb);
 	}
 
-	close(cb) {
+	close(cb: TCPONAckHandler|undefined = undefined) {
 		if (!this.wlastack || this.state !== TCP_STATE_ESTABLISHED) {
 			this.wbuffers.push({ close: true, cb });
 			return;
@@ -142,7 +167,7 @@ class TCPConn {
 		this.addOnAck(cb);
 	}
 
-	sendPacket(ipHdr, tcpPkt) {
+	sendPacket(ipHdr: IPHdr, tcpPkt: TCPPkt) {
 		this._lastIp = ipHdr;
 		this._lastTcp = tcpPkt;
 		sendPacket(ipHdr, tcpPkt);
@@ -150,12 +175,12 @@ class TCPConn {
 		this.wlastsend = Date.now();
 	}
 
-	incRSeq(inc) {
-		this.rseqno = (this.rseqno + inc) & 0xFFFFFFFF;
+	incRSeq(inc: number) {
+		this.rseqno = (this.rseqno! + inc) & 0xFFFFFFFF;
 	}
 
-	incLSeq(inc) {
-		this.lseqno = (this.lseqno + inc) & 0xFFFFFFFF;
+	incLSeq(inc: number) {
+		this.lseqno = (this.lseqno! + inc) & 0xFFFFFFFF;
 	}
 
 	cycle() {
@@ -169,7 +194,7 @@ class TCPConn {
 		}
 	}
 
-	send(data, cb) {
+	send(data: Uint8Array, cb: TCPONAckHandler|undefined = undefined) {
 		if (!data || !data.byteLength) {
 			return;
 		}
@@ -206,14 +231,14 @@ class TCPConn {
 		this._send(data, psh, cb);
 	}
 
-	_connectCB(res) {
+	_connectCB(res: boolean) {
 		if (this.connect_cb) {
 			this.connect_cb(res, this);
 			this.connect_cb = undefined;
 		}
 	}
 
-	_send(data, psh, cb) {
+	_send(data: Uint8Array|undefined, psh: boolean, cb: TCPONAckHandler|undefined) {
 		const ip = this._makeIp();
 		const tcp = this._makeTcp();
 		tcp.data = data;
@@ -221,11 +246,11 @@ class TCPConn {
 			tcp.setFlag(TCP_PSH);
 		}
 		this.sendPacket(ip, tcp);
-		this.incLSeq(data.byteLength);
+		this.incLSeq(data ? data.byteLength : 0);
 		this.addOnAck(cb);
 	}
 
-	gotPacket(ipHdr, tcpPkt) {
+	gotPacket(_ipHdr: IPHdr, tcpPkt: TCPPkt) {
 		if (this.state === TCP_STATE_CLOSED) {
 			return this.kill();
 		}
@@ -239,7 +264,7 @@ class TCPConn {
 		let rseqno = this.rseqno;
 
 		if (tcpPkt.hasFlag(TCP_SYN)) {
-			this.rlastack = false;
+			//this.rlastack = false;
 			if (this.state === TCP_STATE_SYN_SENT || this.state === TCP_STATE_SYN_RECEIVED) {
 				this.rseqno = tcpPkt.seqno;
 
@@ -270,14 +295,14 @@ class TCPConn {
 			}
 
 			if (tcpPkt.hasFlag(TCP_RST)) {
-				this.rlastack = false;
+				//this.rlastack = false;
 				this.delete();
 				return;
 			}
 
-			if (tcpPkt.data.byteLength > 0) {
+			if (tcpPkt.data && tcpPkt.data.byteLength > 0) {
 				this.rlastseqno = rseqno;
-				this.rlastack = false;
+				//this.rlastack = false;
 				this.incRSeq(tcpPkt.data.byteLength);
 				const ip = this._makeIp(true);
 				const tcp = this._makeTcp();
@@ -300,9 +325,11 @@ class TCPConn {
 							pos += b8.length;
 						}
 						this.rbuffers = [];
-						this.handler(all, this);
+						if (this.handler) {
+							this.handler(all, this);
+						}
 					}
-				} else {
+				} else if (this.handler) {
 					this.handler(tcpPkt.data, this);
 				}
 			}
@@ -331,7 +358,7 @@ class TCPConn {
 				} else {
 					const next = this.wbuffers.shift();
 					if (next) {
-						this._send(next.data, next.psh, next.cb);
+						this._send(next.data, next.psh ? next.psh : false, next.cb);
 					}
 				}
 			} else {
@@ -340,7 +367,7 @@ class TCPConn {
 		}
 
 		if (tcpPkt.hasFlag(TCP_FIN)) {
-			this.rlastack = false;
+			//this.rlastack = false;
 			const ip = this._makeIp(true);
 			const tcp = this._makeTcp();
 			switch (this.state) {
@@ -369,7 +396,7 @@ class TCPConn {
 		}
 	}
 
-	accept(ipHdr, tcpPkt) {
+	accept(ipHdr: IPHdr, tcpPkt: TCPPkt) {
 		this.state =  TCP_STATE_SYN_RECEIVED;
 		this.daddr = ipHdr.saddr;
 		this.dport = tcpPkt.sport;
@@ -379,7 +406,7 @@ class TCPConn {
 		this.gotPacket(ipHdr, tcpPkt);
 	}
 
-	connect(dport, daddr, cb, dccb) {
+	connect(dport: number, daddr: IPAddr, cb: TCPConnectHandler, dccb: TCPDisconnectHandler|undefined) {
 		this.state = TCP_STATE_SYN_SENT;
 		this.daddr = daddr;
 		this.dport = dport;
@@ -401,7 +428,7 @@ class TCPConn {
 	}
 }
 
-function tcpGotPacket(data, offset, len, ipHdr) {
+function tcpGotPacket(data: ArrayBuffer, offset: number, len: number, ipHdr: IPHdr) {
 	const tcpPkt = TCPPkt.fromPacket(data, offset, len, ipHdr);
 
 	const id = `${ipHdr.saddr}|${tcpPkt.dport}|${tcpPkt.sport}`;
@@ -415,7 +442,7 @@ function tcpGotPacket(data, offset, len, ipHdr) {
 	}
 }
 
-function tcpListen(port, func) {
+export function tcpListen(port: number, func: TCPListener) {
 	if (typeof port !== 'number' || port < 1 || port > 65535) {
 		return false;
 	}
@@ -428,7 +455,7 @@ function tcpListen(port, func) {
 	return true;
 }
 
-function tcpCloseListener(port) {
+export function tcpCloseListener(port: number) {
 	if (typeof port !== 'number' || port < 1 || port > 65535) {
 		return false;
 	}
@@ -441,7 +468,7 @@ function tcpCloseListener(port) {
 	return true;
 }
 
-function tcpConnect(ip, port, func, cb, dccb) {
+export function tcpConnect(ip: IPAddr, port: number, func: TCPListener, cb: TCPConnectHandler, dccb: TCPDisconnectHandler|undefined = undefined) {
 	if (typeof port !== 'number' || port < 1 || port > 65535) {
 		return false;
 	}

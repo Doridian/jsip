@@ -1,31 +1,32 @@
-'use strict';
+import { IHdr, computeChecksum, computeChecksumPseudo } from "./util";
+import { mtu } from "./config";
+import { IPHdr } from "./ip";
+import { BitArray } from "./bitfield";
 
-const PROTO_TCP = 6;
+export const PROTO_TCP = 6;
 
-const TCP_NS = 0x100;
-const TCP_CWR = 0x80;
-const TCP_ECE = 0x40;
-const TCP_URG = 0x20;
-const TCP_ACK = 0x10;
-const TCP_PSH = 0x08;
-const TCP_RST = 0x04;
-const TCP_SYN = 0x02;
-const TCP_FIN = 0x01;
+export const TCP_NS = 0x100;
+export const TCP_CWR = 0x80;
+export const TCP_ECE = 0x40;
+export const TCP_URG = 0x20;
+export const TCP_ACK = 0x10;
+export const TCP_PSH = 0x08;
+export const TCP_RST = 0x04;
+export const TCP_SYN = 0x02;
+export const TCP_FIN = 0x01;
 
-class TCPPkt extends IHdr {
-	fill() {
-		this.sport = 0;
-		this.dport = 0;
-		this.checksum = 0;
-		this.data = new Uint8Array(0);
-		this.options = new Uint8Array(0);
-		this.seqno = 0;
-		this.ackno = 0;
-		this.urgptr = 0;
-		this.flags = 0;
-		this.window_size = 0;
-		this.mss = -1;
-	}
+export class TCPPkt extends IHdr {
+	public sport = 0;
+	public dport = 0;
+	public checksum = 0;
+	public data: Uint8Array|undefined;
+	public options: Uint8Array|undefined;
+	public seqno = 0;
+	public ackno = 0;
+	public urgptr = 0;
+	public flags = 0;
+	public window_size = 0;
+	public mss = -1;
 
 	fillMSS() {
 		this.options = new Uint8Array(4);
@@ -37,7 +38,7 @@ class TCPPkt extends IHdr {
 		o8[3] = mss & 0xFF;
 	}
 
-	static fromPacket(packet, offset, len, ipHdr) {
+	static fromPacket(packet: ArrayBuffer, offset: number, len: number, ipHdr: IPHdr) {
 		const tcp = new TCPPkt(false);
 		const data = new Uint8Array(packet, offset, len);
 		const bit = new BitArray(packet, offset + 12);
@@ -59,7 +60,6 @@ class TCPPkt extends IHdr {
 
 			const o8 = new Uint8Array(tcp.options);
 			for (let i = 0; i < o8.length; ) {
-				const opt = o8[i];
 				let _len = o8[i + 1];
 				if (_len <= 0) {
 					break;
@@ -88,31 +88,38 @@ class TCPPkt extends IHdr {
 		return tcp;
 	}
 
-	setFlag(flag) {
+	setFlag(flag: number) {
 		this.flags |= flag;
 	}
 
-	unsetFlag(flag) {
+	unsetFlag(flag: number) {
 		this.flags &= ~flag;
 	}
 
-	hasFlag(flag) {
+	hasFlag(flag: number) {
 		return (this.flags & flag) === flag
 	}
 
 	getFullLength() {
-		return this.data.byteLength + this.options.byteLength + 20;
+		let len = 20;
+		if (this.data) {
+			len += this.data.byteLength;
+		}
+		if (this.options) {
+			len += this.options.byteLength;
+		}
+		return len;
 	}
 
-	_computeChecksum(ipHdr, packet, offset) {
+	_computeChecksum(ipHdr: IPHdr, packet: ArrayBuffer, offset: number) {
 		const fullLen = this.getFullLength();
 		let csum = computeChecksumPseudo(ipHdr, PROTO_TCP, fullLen);
 		return computeChecksum(packet, offset, fullLen, csum);
 	}
 
-	toPacket(array, offset, ipHdr) {
+	toPacket(array: ArrayBuffer, offset:number, ipHdr: IPHdr|undefined = undefined) {
 		const packet = new Uint8Array(array, offset, this.getFullLength());
-		const data_offset = this.options.byteLength + 20;
+		const data_offset = (this.options ? this.options.byteLength : 0) + 20;
 		packet[0] = (this.sport >>> 8) & 0xFF;
 		packet[1] = this.sport & 0xFF;
 		packet[2] = (this.dport >>> 8) & 0xFF;
@@ -133,20 +140,20 @@ class TCPPkt extends IHdr {
 		packet[17] = 0; // Checksum B
 		packet[18] = (this.urgptr >>> 8) & 0xFF;
 		packet[19] = this.urgptr & 0xFF;
-		if (this.options.byteLength > 0) {
+		if (this.options && this.options.byteLength > 0) {
 			const o8 = new Uint8Array(this.options);
 			for (let i = 0; i < o8.length; i++) {
 				packet[20 + i] = o8[i];
 			}
 		}
-		if (this.data.byteLength > 0) {
+		if (this.data && this.data.byteLength > 0) {
 			const d8 = new Uint8Array(this.data);
 			for (let i = 0; i < d8.length; i++) {
 				packet[data_offset + i] = d8[i];
 			}
 		}
 		if (ipHdr) {
-			this.checksum = this._computeChecksum(ipHdr, packet);
+			this.checksum = this._computeChecksum(ipHdr, packet, 0);
 			packet[16] = this.checksum & 0xFF;
 			packet[17] = (this.checksum >>> 8) & 0xFF;
 		} else {

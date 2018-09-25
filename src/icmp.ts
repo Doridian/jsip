@@ -1,17 +1,19 @@
-'use strict';
+import { computeChecksum, IHdr } from "./util";
 
-const PROTO_ICMP = 1;
+export const PROTO_ICMP = 1;
 
-class ICMPPkt extends IHdr {
+export class ICMPPkt extends IHdr {
+	public type = 0;
+	public code = 0;
+	private checksum = 0;
+	public rest = 0;
+	public data: Uint8Array|undefined = undefined;
+
 	fill() {
-		this.type = 0;
-		this.code = 0;
-		this.checksum = 0;
-		this.rest = 0;
-		this.data = new ArrayBuffer(0);
+
 	}
 
-	static fromPacket(packet, offset, len) {
+	static fromPacket(packet: ArrayBuffer, offset: number, len: number) {
 		const icmp = new ICMPPkt(false);
 		const data = new Uint8Array(packet, offset, len);
 		icmp.type = data[0];
@@ -19,9 +21,9 @@ class ICMPPkt extends IHdr {
 		icmp.checksum = data[3] + (data[2] << 8);
 		icmp.rest = data[7] + (data[6] << 8) + (data[5] << 16) + (data[4] << 24);
 		if (len > 8) {
-			icmp.data = packet.slice(offset + 8);
+			icmp.data = new Uint8Array(packet, offset + 8);
 		} else {
-			icmp.data = new ArrayBuffer(0);
+			icmp.data = undefined;
 		}
 		if (computeChecksum(packet, offset, len) !== 0) {
 			throw new Error('Invalid ICMP checksum');
@@ -29,7 +31,7 @@ class ICMPPkt extends IHdr {
 		return icmp;
 	}
 
-	toPacket(array, offset) {
+	toPacket(array: ArrayBuffer, offset: number) {
 		const packet = new Uint8Array(array, offset, this.getFullLength());
 		packet[0] = this.type;
 		packet[1] = this.code;
@@ -39,10 +41,9 @@ class ICMPPkt extends IHdr {
 		packet[5] = (this.rest >>> 16) & 0xFF;
 		packet[6] = (this.rest >>> 8) & 0xFF;
 		packet[7] = (this.rest) & 0xFF;
-		if (this.data.byteLength > 0) {
-			const d8 = new Uint8Array(this.data);
-			for (let i = 0; i < d8.length; i++) {
-				packet[8 + i] = d8[i];
+		if (this.data && this.data.byteLength > 0) {
+			for (let i = 0; i < this.data.length; i++) {
+				packet[8 + i] = this.data[i];
 			}
 		}
 		this.checksum = computeChecksum(array, offset, packet.length);
@@ -52,6 +53,9 @@ class ICMPPkt extends IHdr {
 	}
 
 	getFullLength() {
+		if (!this.data) {
+			return 8;
+		}
 		return this.data.byteLength + 8;
 	}
 }

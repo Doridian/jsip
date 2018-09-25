@@ -1,12 +1,20 @@
-'use strict';
+import { IPHdr } from "./ip";
+import { registerIpHandler } from "./ip_stack";
+import { UDPPkt, PROTO_UDP } from "./udp";
 
-const udpListeners = {
-	7: (data, ipHdr, reply) => { // ECHO
+type UDPReplyFunc = (data: Uint8Array) => void;
+type UDPListener = (data: Uint8Array|undefined, ipHdr: IPHdr, reply: UDPReplyFunc) => void;
+
+const udpListeners: { [key: number]: UDPListener } = {
+	7: (data, _ipHdr, reply) => { // ECHO
+		if (!data) {
+			return;
+		}
 		reply(data);
 	},
 };
 
-function udpGotPacket(data, offset, len, ipHdr) {
+function udpGotPacket(data: ArrayBuffer, offset: number, len: number, ipHdr: IPHdr) {
 	const udpPkt = UDPPkt.fromPacket(data, offset, len, ipHdr);
 
 	const listener = udpListeners[udpPkt.dport];
@@ -22,7 +30,7 @@ function udpGotPacket(data, offset, len, ipHdr) {
 	}
 }
 
-function udpListenRandom(func) {
+export function udpListenRandom(func: UDPListener) {
 	let port = 0;
 	do {
 		port = 4097 + Math.floor(Math.random() * 61347);
@@ -31,7 +39,7 @@ function udpListenRandom(func) {
 	return udpListen(port, func);
 }
 
-function udpListen(port, func) {
+export function udpListen(port: number, func: UDPListener) {
 	if (typeof port !== 'number' || port < 1 || port > 65535) {
 		return false;
 	}
@@ -44,7 +52,7 @@ function udpListen(port, func) {
 	return true;
 }
 
-function udpCloseListener(port) {
+export function udpCloseListener(port: number) {
 	if (typeof port !== 'number' || port < 1 || port > 65535) {
 		return false;
 	}

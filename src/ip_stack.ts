@@ -1,7 +1,7 @@
 import { registerEthHandler } from './ethernet_stack';
 import { ETH_IP } from './ethernet';
 import { IPHdr } from './ip'; 
-import { ourIp } from './config';
+import { config } from './config';
 
 type IPHandler = (data: ArrayBuffer, offset: number, len: number, ipHdr: IPHdr) => void;
 
@@ -36,11 +36,11 @@ const fragmentCache: { [key: number]: IPFragment } = {};
 
 export function handleIP(buffer: ArrayBuffer, offset = 0) {
 	const ipHdr = IPHdr.fromPacket(buffer, offset);
-	if (!ipHdr) {
+	if (!ipHdr || !ipHdr.daddr) {
 		return;
 	}
 
-	if (ourIp && ipHdr.daddr!.isUnicast() && !ipHdr.daddr!.equals(ourIp)) {
+	if (config.ourIp && ipHdr.daddr.isUnicast() && !ipHdr.daddr.equals(config.ourIp)) {
 		console.log(`Discarding packet not meant for us, but for ${ipHdr.daddr!.toString()}`);
 		return;
 	}

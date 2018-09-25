@@ -1,6 +1,6 @@
 import { IHdr, computeChecksum } from './util';
 import { BitArray } from './bitfield';
-import { ourIp } from './config';
+import { config } from './config';
 
 export class IPAddr {
 	private a = 0;
@@ -45,7 +45,7 @@ export class IPAddr {
 		return ip;
 	}
 
-	equals(ip: IPAddr) {
+	equals(ip: IPAddr|undefined) {
 		if (!ip) {
 			return false;
 		}
@@ -117,7 +117,10 @@ export class IPNet {
 		return `${this.ip}/${this.mask}`;
 	}
 
-	contains(ip: IPAddr) {
+	contains(ip: IPAddr|undefined) {
+		if (!ip) {
+			return false;
+		}
 		return (ip.toInt() & this.bitmask) === this.baseIpInt;
 	}
 
@@ -139,9 +142,9 @@ export class IPHdr extends IHdr {
 	private ttl = 64;
 	public protocol = 0;
 	private checksum = 0;
-	public saddr: IPAddr|null = null;
-	public daddr: IPAddr|null = null;
-	public options: ArrayBuffer|null = null;
+	public saddr: IPAddr|undefined = undefined;
+	public daddr: IPAddr|undefined = undefined;
+	public options: ArrayBuffer|undefined = undefined;
 
 	fill() {
 
@@ -204,7 +207,7 @@ export class IPHdr extends IHdr {
 		if (this.daddr!.isUnicast()) {
 			replyIp.saddr = this.daddr;
 		} else {
-			replyIp.saddr = ourIp;
+			replyIp.saddr = config.ourIp;
 		}
 		replyIp.daddr = this.saddr;
 		return replyIp;
