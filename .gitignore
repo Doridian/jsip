@@ -1,1 +1,6 @@
 node_modules
+/jsip.js
+/jsip.js.map
+/base64js.min.js
+/main.js
+/index.html
