@@ -1,6 +1,6 @@
-import { computeChecksum } from './util';
-import { BitArray } from './bitfield';
-import { config } from './config';
+import { computeChecksum } from "./util";
+import { BitArray } from "./bitfield";
+import { config } from "./config";
 
 export const enum IPPROTO {
 	NONE = 0,
@@ -17,7 +17,7 @@ export class IPAddr {
 
 	static fromString(ipStr: string) {
 		const ip = new IPAddr();
-		const ipS = ipStr.split('.');
+		const ipS = ipStr.split(".");
 		ip.a = parseInt(ipS[0], 10);
 		ip.b = parseInt(ipS[1], 10);
 		ip.c = parseInt(ipS[2], 10);
@@ -100,7 +100,7 @@ export class IPNet {
 	private baseIpInt = 0;
 
 	static fromString(ipStr: string) {
-		const ipS = ipStr.split('/');
+		const ipS = ipStr.split("/");
 		const ip = IPAddr.fromString(ipS[0]);
 		const subnetLen = parseInt(ipS[1], 10);
 		return new IPNet(ip, ~((1 << (32 - subnetLen)) - 1));
@@ -248,14 +248,14 @@ export class IPHdr {
 	}
 }
 
-export const IP_BROADCAST = IPAddr.fromString('255.255.255.255');
-export const IP_NONE = IPAddr.fromString('0.0.0.0');
+export const IP_BROADCAST = IPAddr.fromString("255.255.255.255");
+export const IP_NONE = IPAddr.fromString("0.0.0.0");
 
 const IPNETS_MULTICAST = [
-	IPNet.fromString('224.0.0.0/14'),
-	IPNet.fromString('224.4.0.0/16'),
-	IPNet.fromString('232.0.0.0/8'),
-	IPNet.fromString('233.0.0.0/8'),
-	IPNet.fromString('234.0.0.0/8'),
-	IPNet.fromString('239.0.0.0/8'),
+	IPNet.fromString("224.0.0.0/14"),
+	IPNet.fromString("224.4.0.0/16"),
+	IPNet.fromString("232.0.0.0/8"),
+	IPNet.fromString("233.0.0.0/8"),
+	IPNet.fromString("234.0.0.0/8"),
+	IPNet.fromString("239.0.0.0/8"),
 ];

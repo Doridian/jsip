@@ -20,7 +20,7 @@ export class ICMPPkt {
 			icmp.data = undefined;
 		}
 		if (computeChecksum(data) !== 0) {
-			throw new Error('Invalid ICMP checksum');
+			throw new Error("Invalid ICMP checksum");
 		}
 		return icmp;
 	}

@@ -83,7 +83,7 @@ export class TCPPkt implements IPacket {
 		}
 
 		if (ipHdr && tcp._computeChecksum(ipHdr, data) !== 0) {
-			throw new Error('Invalid TCP checksum');
+			throw new Error("Invalid TCP checksum");
 		}
 		return tcp;
 	}

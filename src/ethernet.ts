@@ -15,7 +15,7 @@ export class MACAddr {
 
 	static fromString(macStr: String) {
 		const mac = new MACAddr();
-		const macS = macStr.split(':');
+		const macS = macStr.split(":");
 		mac.a = parseInt(macS[0], 16);
 		mac.b = parseInt(macS[1], 16);
 		mac.c = parseInt(macS[2], 16);

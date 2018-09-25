@@ -1,5 +1,5 @@
-import { EthHdr, ETH_TYPE } from './ethernet';
-import { config } from './config';
+import { EthHdr, ETH_TYPE } from "./ethernet";
+import { config } from "./config";
 
 type EthHandler = (buffer: ArrayBuffer, offset: number, ethHdr: EthHdr) => void;
 

@@ -292,15 +292,15 @@ export class TCPConn {
 				this.state = TCP_STATE.ESTABLISHED;
 				this._connectCB(true);
 			} else {
-				throw new Error('Unexpected SYN');
+				throw new Error("Unexpected SYN");
 			}
 		} else {
 			if (this.rseqno === undefined) {
-				throw new Error('Wanted SYN, but got none');
+				throw new Error("Wanted SYN, but got none");
 			}
 
 			if (tcpPkt.seqno !== this.rseqno) {
-				throw new Error('Invalid sequence number');
+				throw new Error("Invalid sequence number");
 			}
 
 			if (tcpPkt.hasFlag(TCP_FLAGS.RST)) {
@@ -371,7 +371,7 @@ export class TCPConn {
 					}
 				}
 			} else {
-				throw new Error('Wrong ACK');
+				throw new Error("Wrong ACK");
 			}
 		}
 
@@ -452,7 +452,7 @@ function tcpGotPacket(data: ArrayBuffer, offset: number, len: number, ipHdr: IPH
 }
 
 export function tcpListen(port: number, func: TCPListener) {
-	if (typeof port !== 'number' || port < 1 || port > 65535) {
+	if (typeof port !== "number" || port < 1 || port > 65535) {
 		return false;
 	}
 
@@ -465,7 +465,7 @@ export function tcpListen(port: number, func: TCPListener) {
 }
 
 export function tcpCloseListener(port: number) {
-	if (typeof port !== 'number' || port < 1 || port > 65535) {
+	if (typeof port !== "number" || port < 1 || port > 65535) {
 		return false;
 	}
 
@@ -478,7 +478,7 @@ export function tcpCloseListener(port: number) {
 }
 
 export function tcpConnect(ip: IPAddr, port: number, func: TCPListener, cb: TCPConnectHandler, dccb?: TCPDisconnectHandler) {
-	if (typeof port !== 'number' || port < 1 || port > 65535) {
+	if (typeof port !== "number" || port < 1 || port > 65535) {
 		return false;
 	}
 

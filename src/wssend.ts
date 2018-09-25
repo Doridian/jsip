@@ -41,7 +41,7 @@ function _sendPacket(ipHdr: IPHdr, payload: IPacket, ethIPHdr?: EthHdr) {
 
 		config.ws!.send(reply);
 	} else if (ipHdr.df) {
-		throw new Error('Needing to send packet too big for MTU/MSS, but DF set');
+		throw new Error("Needing to send packet too big for MTU/MSS, but DF set");
 	} else {
 		const __mss = (_mss >>> 3) << 3;
 

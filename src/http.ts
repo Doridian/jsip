@@ -37,23 +37,23 @@ function httpParse(datas: Uint8Array[]): HTTPResult {
 
 	const headers: HTTPHeaderMap = {};
 
-	const headerSplit = headersStr.split('\r\n');
+	const headerSplit = headersStr.split("\r\n");
 	const statusLine = headerSplit.shift();
 	headerSplit.forEach((headerStr: string) => {
-		const colonPos = headerStr.indexOf(':');
+		const colonPos = headerStr.indexOf(":");
 		if (colonPos < 0) {
 			return;
 		}
 		headers[headerStr.substr(0, colonPos).trim().toLowerCase()] = headerStr.substr(colonPos + 1).trim();
 	});
 
-	let statusI = statusLine.indexOf(' ');
+	let statusI = statusLine.indexOf(" ");
 	if (statusI < 0) {
-		throw new Error('Could not parse status line');
+		throw new Error("Could not parse status line");
 	}
-	let statusI2 = statusLine.indexOf(' ', statusI + 1);
+	let statusI2 = statusLine.indexOf(" ", statusI + 1);
 	if (statusI2 < 0) {
-		throw new Error('Could not parse status line');
+		throw new Error("Could not parse status line");
 	}
 	const statusCode = parseInt(statusLine.substring(statusI + 1, statusI2), 10);
 	const statusText = statusLine.substring(statusI2 + 1);
@@ -77,7 +77,7 @@ export function httpGet(urlStr: string, cb: HTTPCallback) {
 	}, (res, conn) => {
 		if (res === false) {
 			try {
-				cb(new Error('Could not connect'), undefined);
+				cb(new Error("Could not connect"), undefined);
 			} catch(e) {
 				console.error(e.stack || e);
 			}

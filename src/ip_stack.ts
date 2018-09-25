@@ -1,7 +1,7 @@
-import { registerEthHandler } from './ethernet_stack';
-import { ETH_TYPE } from './ethernet';
-import { IPHdr } from './ip'; 
-import { config } from './config';
+import { registerEthHandler } from "./ethernet_stack";
+import { ETH_TYPE } from "./ethernet";
+import { IPHdr } from "./ip"; 
+import { config } from "./config";
 
 type IPHandler = (data: ArrayBuffer, offset: number, len: number, ipHdr: IPHdr) => void;
 

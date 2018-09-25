@@ -30,7 +30,7 @@ export const enum DNS_CLASS {
 };
 
 export class DNSQuestion {
-	public name: string = '';
+	public name: string = "";
 	public type = DNS_TYPE.A;
 	public class = DNS_CLASS.IN;
 
@@ -51,7 +51,7 @@ export class DNSQuestion {
 }
 
 export class DNSAnswer {
-	public name: string = '';
+	public name: string = "";
 	public type = DNS_TYPE.A;
 	public class = DNS_CLASS.IN;
 	public ttl = 0;
@@ -108,7 +108,7 @@ function parseDNSLabel(s: DNSParseState) {
 			}
 			s.pos = ((segLen & DNS_SEG_MAX) << 8) | s.data[s.pos];
 			if (donePointers[s.pos]) {
-				console.error('Recursive pointers detected');
+				console.error("Recursive pointers detected");
 				break;
 			}
 			donePointers[s.pos] = true;
@@ -132,11 +132,11 @@ function parseDNSLabel(s: DNSParseState) {
 		return undefined;
 	}
 
-	return res.join('.');
+	return res.join(".");
 }
 
 function makeDNSLabel(str: string) {
-	const spl = str.split('.');
+	const spl = str.split(".");
 	const data = new Uint8Array(str.length + 2); // First len + 0x00 end
 	let pos = 0;
 	for (let i = 0; i < spl.length; i++) {

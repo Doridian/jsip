@@ -1,8 +1,8 @@
-import { config } from './config';
-import { registerEthHandler } from './ethernet_stack';
-import { EthHdr, ETH_TYPE, ETH_LEN, MACAddr, MAC_BROADCAST } from './ethernet';
-import { ARPPkt, ARP_REQUEST, ARP_REPLY, ARP_LEN } from './arp';
-import { IPAddr } from './ip';
+import { config } from "./config";
+import { registerEthHandler } from "./ethernet_stack";
+import { EthHdr, ETH_TYPE, ETH_LEN, MACAddr, MAC_BROADCAST } from "./ethernet";
+import { ARPPkt, ARP_REQUEST, ARP_REPLY, ARP_LEN } from "./arp";
+import { IPAddr } from "./ip";
 
 type ARPCallback = (ethHdr?: MACAddr) => void;
 

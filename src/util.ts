@@ -24,7 +24,7 @@ export function arrayToString(buf: Uint8Array) {
 }
 
 export function buffersToString(bufs: ArrayBuffer[]) {
-	let ret = '';
+	let ret = "";
 	for (let i = 0; i < bufs.length; i++) {
 		ret += bufferToString(bufs[i], 0);
 	}

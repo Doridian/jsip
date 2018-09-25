@@ -10,28 +10,28 @@ import { httpGet } from "./http";
 type VoidCB = () => void;
 
 export function workerMain(cb: VoidCB) {
-	if (document.location.protocol === 'file:') {
-		_workerMain('wss://doridian.net/ws', cb);
+	if (document.location.protocol === "file:") {
+		_workerMain("wss://doridian.net/ws", cb);
 		return;
 	}
 
-	const proto = (document.location.protocol === 'http:') ? 'ws:' : 'wss:';
+	const proto = (document.location.protocol === "http:") ? "ws:" : "wss:";
 	_workerMain(`${proto}//${document.location.host}/ws`, cb);
 }
 
 function handleInit(data: string, cb: VoidCB) {
 	let needDHCP = false;
 	// 1|init|TUN|192.168.3.1/24|1280
-	const spl = data.split('|');
+	const spl = data.split("|");
 
 	switch (spl[2]) {
-		case 'TAP':
+		case "TAP":
 			config.sendEth = true;
-		case 'TUN':
+		case "TUN":
 			config.ourSubnet = IPNet.fromString(spl[3]);
 			config.serverIp = config.ourSubnet.getAddress(0);
 			break;
-		case 'TAP_NOCONF':
+		case "TAP_NOCONF":
 			config.sendEth = true;
 			config.ourSubnet = undefined;
 			config.serverIp = undefined;
@@ -66,7 +66,7 @@ function handleInit(data: string, cb: VoidCB) {
 	configOut();
 
 	if (needDHCP) {
-		console.log('Starting DHCP procedure...');
+		console.log("Starting DHCP procedure...");
 		config.ipDoneCB = cb;
 		dhcpNegotiate();
 	} else if (cb) {
@@ -78,11 +78,11 @@ function _workerMain(url: string, cb: VoidCB) {
 	console.log(`Connecting to WSVPN: ${url}`);
 
 	config.ws = new WebSocket(url);
-	config.ws.binaryType = 'arraybuffer';
+	config.ws.binaryType = "arraybuffer";
 
 	config.ws.onmessage = function(msg) {
 		const data = msg.data;
-		if (typeof data !== 'string') {
+		if (typeof data !== "string") {
 			if (config.sendEth) {
 				handleEthernet(data);
 			} else {
@@ -99,14 +99,14 @@ onmessage = function (e) {
 	const cmd = e.data[0];
 	const _id = e.data[1];
 	switch (cmd) {
-		case 'connect':
+		case "connect":
 			_workerMain(e.data[2], () => {
-				postMessage(['connect', _id, config.ourIp, config.serverIp, config.gatewayIp, config.ourSubnet, config.mtu], "");
+				postMessage(["connect", _id, config.ourIp, config.serverIp, config.gatewayIp, config.ourSubnet, config.mtu], "");
 			});
 			break;
-		case 'httpGet':
+		case "httpGet":
 			httpGet(e.data[2], (err, res) => {
-				postMessage(['httpGet', _id, err, res], "");
+				postMessage(["httpGet", _id, err, res], "");
 			});
 			break;
 	}
