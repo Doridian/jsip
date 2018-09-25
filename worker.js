@@ -259,7 +259,7 @@ function handleIP(buffer) {
 		return;
 	}
 
-	if (ourIp && !ipHdr.daddr.isUnicast() && !ipHdr.daddr.equals(ourIp)) {
+	if (ourIp && ipHdr.daddr.isUnicast() && !ipHdr.daddr.equals(ourIp)) {
 		console.log(`Discarding packet not meant for us, but for ${ipHdr.daddr.toString()}`);
 		return;
 	}
