@@ -1,7 +1,6 @@
 import { MACAddr } from "./ethernet";
 import { IPAddr }  from "./ip";
 import { config } from "./config";
-import { IHdr } from "./util";
 
 export const ARP_HTYPE = 1;
 export const ARP_PTYPE = 0x800;
@@ -13,7 +12,7 @@ export const ARP_REPLY = 2;
 
 export const ARP_LEN = (2 * ARP_HLEN) + (2 * ARP_PLEN) + 8;
 
-export class ARPPkt extends IHdr {
+export class ARPPkt {
 	public htype = ARP_HTYPE;
 	public ptype = ARP_PTYPE;
 	public hlen = ARP_HLEN;
@@ -24,15 +23,11 @@ export class ARPPkt extends IHdr {
 	public tha: MACAddr|undefined = undefined;
 	public tpa: IPAddr|undefined = undefined;
 
-	fill() {
-
-	}
-
 	makeReply() {
 		if (this.operation !== ARP_REQUEST) {
 			return undefined;
 		}
-		const replyARP = new ARPPkt(false);
+		const replyARP = new ARPPkt();
 		replyARP.htype = this.htype;
 		replyARP.ptype = this.ptype;
 		replyARP.hlen = this.hlen;
@@ -46,7 +41,7 @@ export class ARPPkt extends IHdr {
 	}
 
 	static fromPacket(packet: ArrayBuffer, offset: number) {
-		const arp = new ARPPkt(false);
+		const arp = new ARPPkt();
 		const data = new Uint8Array(packet, offset);
 		arp.htype = data[1] + (data[0] << 8);
 		arp.ptype = data[3] + (data[2] << 8);

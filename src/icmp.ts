@@ -1,20 +1,16 @@
-import { computeChecksum, IHdr } from "./util";
+import { computeChecksum } from "./util";
 
 export const PROTO_ICMP = 1;
 
-export class ICMPPkt extends IHdr {
+export class ICMPPkt {
 	public type = 0;
 	public code = 0;
 	private checksum = 0;
 	public rest = 0;
 	public data: Uint8Array|undefined = undefined;
 
-	fill() {
-
-	}
-
 	static fromPacket(packet: ArrayBuffer, offset: number, len: number) {
-		const icmp = new ICMPPkt(false);
+		const icmp = new ICMPPkt();
 		const data = new Uint8Array(packet, offset, len);
 		icmp.type = data[0];
 		icmp.code = data[1];

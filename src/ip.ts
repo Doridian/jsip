@@ -1,4 +1,4 @@
-import { IHdr, computeChecksum } from './util';
+import { computeChecksum } from './util';
 import { BitArray } from './bitfield';
 import { config } from './config';
 
@@ -129,7 +129,7 @@ export class IPNet {
 	}
 }
 
-export class IPHdr extends IHdr {
+export class IPHdr {
 	private version = 4;
 	public ihl = 5;
 	public dscp = 0;
@@ -146,12 +146,8 @@ export class IPHdr extends IHdr {
 	public daddr: IPAddr|undefined = undefined;
 	public options: ArrayBuffer|undefined = undefined;
 
-	fill() {
-
-	}
-
 	static fromPacket(packet: ArrayBuffer, offset: number) {
-		const ipv4 = new IPHdr(false);
+		const ipv4 = new IPHdr();
 		const bit = new BitArray(packet, offset);
 		ipv4.version = bit.read(4);
 		if (ipv4.version !== 4) {

@@ -1,5 +1,3 @@
-import { IHdr } from './util';
-
 function _macPaddedOut(num: Number) {
 	if (num < 0x10) {
 		return `0${num.toString(16)}`;
@@ -97,13 +95,10 @@ export const ETH_ARP = 0x0806;
 
 export const ETH_LEN = 14;
 
-export class EthHdr extends IHdr {
+export class EthHdr {
 	public ethtype = 0;
 	public saddr: MACAddr|undefined = undefined;
 	public daddr: MACAddr|undefined = undefined;
-
-	fill() {
-	}
 
 	makeReply() {
 		const replyEth = new EthHdr();
@@ -114,7 +109,7 @@ export class EthHdr extends IHdr {
 	}
 
 	static fromPacket(packet: ArrayBuffer, offset: number) {
-		const eth = new EthHdr(false);
+		const eth = new EthHdr();
 		const data = new Uint8Array(packet, offset);
 		eth.daddr = MACAddr.fromByteArray(data, 0);
 		eth.saddr = MACAddr.fromByteArray(data, 6);

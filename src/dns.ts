@@ -1,6 +1,6 @@
 import { BitArray } from "./bitfield";
 import { PROTO_UDP, UDPPkt } from "./udp";
-import { boolToBit, bufferToString, IHdr, stringIntoBuffer } from "./util";
+import { boolToBit, bufferToString, stringIntoBuffer } from "./util";
 import { IPHdr, IPAddr } from "./ip";
 import { config } from "./config";
 import { udpListen } from "./udp_stack";
@@ -25,13 +25,10 @@ export const DNS_TYPE_NS = 0x0002;
 
 export const DNS_CLASS_IN = 0x0001;
 
-export class DNSQuestion extends IHdr {
+export class DNSQuestion {
 	public name: string = '';
 	public type = DNS_TYPE_A;
 	public class = DNS_CLASS_IN;
-
-	fill() {
-	}
 
 	write(packet: Uint8Array, pos: number) {
 		const nameLbL = makeDNSLabel(this.name);
@@ -49,16 +46,13 @@ export class DNSQuestion extends IHdr {
 	}
 }
 
-export class DNSAnswer extends IHdr {
+export class DNSAnswer {
 	public name: string = '';
 	public type = DNS_TYPE_A;
 	public class = DNS_CLASS_IN;
 	public ttl = 0;
 	public data: Uint8Array|undefined = undefined;
 	public datapos = 0;
-
-	fill() {
-	}
 
 	getTTL() {
 		return this.ttl >>> 0;
@@ -158,7 +152,7 @@ function parseAnswerSection(count: number, state: DNSParseState) {
 	const answers = [];
 
 	for (let i = 0; i < count; i++) {
-		const a = new DNSAnswer(false);
+		const a = new DNSAnswer();
 
 		a.name = parseDNSLabel(state)!;
 		if (!a.name) {
@@ -181,7 +175,7 @@ function parseAnswerSection(count: number, state: DNSParseState) {
 	return answers;
 }
 
-export class DNSPkt extends IHdr {
+export class DNSPkt {
 	public id = 0;
 	public qr = false;
 	public opcode = 0;
@@ -195,14 +189,11 @@ export class DNSPkt extends IHdr {
 	public authority: DNSAnswer[] = []; // NSCOUNT
 	public additional: DNSAnswer[] = []; // ARCOUNT
 
-	fill() {
-	}
-
 	static fromPacket(packet: ArrayBuffer, offset: number) {
 		const data = new Uint8Array(packet, offset);
 		const bit = new BitArray(packet, offset + 2);
 
-		const dns = new DNSPkt(false);
+		const dns = new DNSPkt();
 		dns.id = data[1] + (data[0] << 8);
 		
 		// [2]
@@ -225,7 +216,7 @@ export class DNSPkt extends IHdr {
 		dns.questions = [];
 		const state = { pos: 12, data, packet, offset };
 		for (let i = 0; i < qdcount; i++) {
-			const q = new DNSQuestion(false);
+			const q = new DNSQuestion();
 			q.name = parseDNSLabel(state)!;
 			q.type = data[state.pos + 1] + (data[state.pos] << 8);
 			q.class = data[state.pos + 3] + (data[state.pos + 2] << 8);
@@ -317,7 +308,7 @@ function makeDNSRequest(domain: string, type: number) {
 }
 
 function makeDNSUDP(dns: DNSPkt) {
-	const pkt = new UDPPkt(false);
+	const pkt = new UDPPkt();
 	pkt.data = dns.toBytes();
 	pkt.sport = 53;
 	pkt.dport = 53;

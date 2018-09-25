@@ -1,4 +1,4 @@
-import { IHdr, computeChecksum, computeChecksumPseudo, IPacket } from "./util";
+import { computeChecksum, computeChecksumPseudo, IPacket } from "./util";
 import { config } from "./config";
 import { IPHdr } from "./ip";
 import { BitArray } from "./bitfield";
@@ -15,7 +15,7 @@ export const TCP_RST = 0x04;
 export const TCP_SYN = 0x02;
 export const TCP_FIN = 0x01;
 
-export class TCPPkt extends IHdr implements IPacket {
+export class TCPPkt implements IPacket {
 	public sport = 0;
 	public dport = 0;
 	public checksum = 0;
@@ -39,7 +39,7 @@ export class TCPPkt extends IHdr implements IPacket {
 	}
 
 	static fromPacket(packet: ArrayBuffer, offset: number, len: number, ipHdr: IPHdr) {
-		const tcp = new TCPPkt(false);
+		const tcp = new TCPPkt();
 		const data = new Uint8Array(packet, offset, len);
 		const bit = new BitArray(packet, offset + 12);
 		tcp.sport = data[1] + (data[0] << 8);

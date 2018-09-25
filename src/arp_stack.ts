@@ -15,7 +15,7 @@ export function makeEthIPHdr(destIp: IPAddr, cb: (ethHdr: EthHdr|null) => void) 
 
 	const destIpStr = destIp.toString();
 
-	const ethHdr = new EthHdr(false);
+	const ethHdr = new EthHdr();
 	ethHdr.ethtype = ETH_IP;
 	ethHdr.saddr = config.ourMac!;
 	if (arpCache[destIpStr]) {
@@ -65,7 +65,7 @@ export function makeEthIPHdr(destIp: IPAddr, cb: (ethHdr: EthHdr|null) => void) 
 function sendARPPkt(arpPkt: ARPPkt, fromAddr: MACAddr|undefined) {
 	const pkt = new ArrayBuffer(ETH_LEN + ARP_LEN);
 
-	const ethHdr = new EthHdr(false);
+	const ethHdr = new EthHdr();
 	ethHdr.daddr = fromAddr || MAC_BROADCAST;
 	ethHdr.saddr = config.ourMac;
 	ethHdr.ethtype = ETH_ARP;

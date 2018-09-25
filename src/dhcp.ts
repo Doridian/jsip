@@ -1,4 +1,3 @@
-import { IHdr } from "./util";
 import { config, configOut } from "./config";
 import { ARP_HTYPE, ARP_HLEN } from "./arp";
 import { IPAddr, IPHdr, IP_NONE, IP_BROADCAST, IPNet } from "./ip";
@@ -31,7 +30,7 @@ let dhcpInInitialConfig = false;
 
 const DHCP_OFFSET_MAGIC = 236;
 
-class DHCPPkt extends IHdr {
+class DHCPPkt {
 	public op = 1;
 	public htype = ARP_HTYPE;
 	public hlen = ARP_HLEN;
@@ -46,13 +45,10 @@ class DHCPPkt extends IHdr {
 	public chaddr = config.ourMac;
 	public options: { [key: string]: Uint8Array } = {};
 
-	fill() {
-	}
-
 	static fromPacket(packet: ArrayBuffer, offset: number) {
 		const data = new Uint8Array(packet, offset);
 
-		const dhcp = new DHCPPkt(false);
+		const dhcp = new DHCPPkt();
 		dhcp.op = data[0];
 		dhcp.htype = data[1];
 		dhcp.hlen = data[2];
@@ -193,7 +189,7 @@ function makeDHCPRenewRequest() {
 }
 
 function makeDHCPUDP(dhcp: DHCPPkt) {
-	const pkt = new UDPPkt(false);
+	const pkt = new UDPPkt();
 	pkt.data = dhcp.toBytes();
 	pkt.sport = 68;
 	pkt.dport = 67;

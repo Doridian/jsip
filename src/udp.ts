@@ -1,19 +1,16 @@
-import { IHdr, computeChecksumPseudo, computeChecksum, IPacket } from "./util";
+import { computeChecksumPseudo, computeChecksum, IPacket } from "./util";
 import { IPHdr } from "./ip";
 
 export const PROTO_UDP = 17;
 
-export class UDPPkt extends IHdr implements IPacket {
+export class UDPPkt implements IPacket {
 	public sport = 0;
 	public dport = 0;
 	private checksum = 0;
 	public data: Uint8Array|undefined = undefined;
 
-	fill() {
-	}
-
 	static fromPacket(packet: ArrayBuffer, offset: number, len: number, ipHdr: IPHdr) {
-		const udp = new UDPPkt(false);
+		const udp = new UDPPkt();
 		const data = new Uint8Array(packet, offset, len);
 		udp.sport = data[1] + (data[0] << 8);
 		udp.dport = data[3] + (data[2] << 8);

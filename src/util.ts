@@ -79,17 +79,6 @@ export function boolToBit(bool: boolean, bit: number) {
 	return bool ? (1 << bit) : 0;
 }
 
-export class IHdr {
-	constructor(fill = true) {
-		if (fill) {
-			this.fill();
-		}
-	}
-
-	fill() {
-	}
-}
-
 export interface IPacket {
 	toPacket(array: ArrayBuffer, offset: number, ipHdr: IPHdr|undefined): number;
 	getFullLength(): number;
