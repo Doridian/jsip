@@ -21,25 +21,29 @@ const tcpListeners: { [key: number]: TCPListener } = {
 // Public API:
 // *connect / *listen / send / close / kill
 
-const TCP_CB_SENT = 0;
-const TCP_CB_ACKD = 1;
+export const enum TCP_CBTYPE {
+	SENT = 0,
+	ACKD = 1,
+};
 
-const TCP_STATE_CLOSED = 0;
-const TCP_STATE_SYN_SENT = 1;
-const TCP_STATE_SYN_RECEIVED = 2;
-const TCP_STATE_FIN_WAIT_1 = 3;
-const TCP_STATE_FIN_WAIT_2 = 4;
-const TCP_STATE_CLOSING = 5;
-//const TCP_STATE_TIME_WAIT = 6;
-//const TCP_STATE_CLOSE_WAIT = 7;
-const TCP_STATE_LAST_ACK = 8;
-const TCP_STATE_ESTABLISHED = 9;
+const enum TCP_STATE {
+	CLOSED = 0,
+	SYN_SENT = 1,
+	SYN_RECEIVED = 2,
+	FIN_WAIT_1 = 3,
+	FIN_WAIT_2 = 4,
+	CLOSING = 5,
+	TIME_WAIT = 6,
+	CLOSE_WAIT = 7,
+	LAST_ACK = 8,
+	ESTABLISHED = 9,
+};
 
 const TCP_ONLY_SEND_ON_PSH = false;
 
 const TCP_FLAG_INCSEQ = ~(TCP_FLAGS.PSH | TCP_FLAGS.ACK);
 
-export type TCPONAckHandler = (type: number) => void;
+export type TCPONAckHandler = (type: TCP_CBTYPE) => void;
 export type TCPConnectHandler = (res: boolean, conn: TCPConn|undefined) => void;
 export type TCPDisconnectHandler = (conn: TCPConn) => void;
 
@@ -51,7 +55,7 @@ type WBufferEntry = {
 };
 
 export class TCPConn {
-	private state = TCP_STATE_CLOSED;
+	private state = TCP_STATE.CLOSED;
 	private daddr: IPAddr|undefined = undefined;
 	private sport = 0;
 	private dport = 0;
@@ -117,7 +121,7 @@ export class TCPConn {
 	}
 
 	delete() {
-		this.state = TCP_STATE_CLOSED;
+		this.state = TCP_STATE.CLOSED;
 		this.wbuffers = [];
 		this.rbuffers = [];
 		if (this.disconnect_cb) {
@@ -142,7 +146,7 @@ export class TCPConn {
 			return;
 		}
 
-		cb(TCP_CB_SENT);
+		cb(TCP_CBTYPE.SENT);
 
 		const ack = this.lseqno;
 		const onack = this.onack[ack!];
@@ -154,7 +158,7 @@ export class TCPConn {
 	}
 
 	close(cb: TCPONAckHandler|undefined = undefined) {
-		if (!this.wlastack || this.state !== TCP_STATE_ESTABLISHED) {
+		if (!this.wlastack || this.state !== TCP_STATE.ESTABLISHED) {
 			this.wbuffers.push({ close: true, cb });
 			return;
 		}
@@ -200,7 +204,7 @@ export class TCPConn {
 			return;
 		}
 
-		const isReady = this.wlastack && this.state === TCP_STATE_ESTABLISHED;
+		const isReady = this.wlastack && this.state === TCP_STATE.ESTABLISHED;
 
 		let psh = true;
 		if (data.byteLength > this.mss) {
@@ -252,7 +256,7 @@ export class TCPConn {
 	}
 
 	gotPacket(_ipHdr: IPHdr, tcpPkt: TCPPkt) {
-		if (this.state === TCP_STATE_CLOSED) {
+		if (this.state === TCP_STATE.CLOSED) {
 			return this.kill();
 		}
 
@@ -268,13 +272,13 @@ export class TCPConn {
 
 		if (tcpPkt.hasFlag(TCP_FLAGS.SYN)) {
 			//this.rlastack = false;
-			if (this.state === TCP_STATE_SYN_SENT || this.state === TCP_STATE_SYN_RECEIVED) {
+			if (this.state === TCP_STATE.SYN_SENT || this.state === TCP_STATE.SYN_RECEIVED) {
 				this.rseqno = tcpPkt.seqno;
 
 				this.incRSeq(1);
 				const ip = this._makeIp(true);
 				const tcp = this._makeTcp();
-				if (this.state === TCP_STATE_SYN_RECEIVED) {
+				if (this.state === TCP_STATE.SYN_RECEIVED) {
 					this.sendPacket(ip, tcp);
 				} else {
 					sendPacket(ip, tcp);
@@ -283,7 +287,7 @@ export class TCPConn {
 				rseqno = this.rseqno;
 				lseqno = this.lseqno;
 
-				this.state = TCP_STATE_ESTABLISHED;
+				this.state = TCP_STATE.ESTABLISHED;
 				this._connectCB(true);
 			} else {
 				throw new Error('Unexpected SYN');
@@ -350,13 +354,13 @@ export class TCPConn {
 			if (tcpPkt.ackno === lseqno) {
 				const onack = this.onack[tcpPkt.ackno];
 				if (onack) {
-					onack.forEach(cb => cb(TCP_CB_ACKD));
+					onack.forEach(cb => cb(TCP_CBTYPE.ACKD));
 					delete this.onack[tcpPkt.ackno];
 				}
 
 				this.wlastack = true;
 				this.wretrycount = 0;
-				if (this.state === TCP_STATE_CLOSING || this.state === TCP_STATE_LAST_ACK) {
+				if (this.state === TCP_STATE.CLOSING || this.state === TCP_STATE.LAST_ACK) {
 					this.delete();
 				} else {
 					const next = this.wbuffers.shift();
@@ -374,23 +378,23 @@ export class TCPConn {
 			const ip = this._makeIp(true);
 			const tcp = this._makeTcp();
 			switch (this.state) {
-				case TCP_STATE_FIN_WAIT_1:
-				case TCP_STATE_FIN_WAIT_2:
+				case TCP_STATE.FIN_WAIT_1:
+				case TCP_STATE.FIN_WAIT_2:
 					sendPacket(ip, tcp); // ACK it
 					if (!tcpPkt.hasFlag(TCP_FLAGS.ACK)) {
-						this.state = TCP_STATE_CLOSING;
+						this.state = TCP_STATE.CLOSING;
 					} else {
 						this.delete();
 					}
 					break;
-				case TCP_STATE_CLOSING:
-				case TCP_STATE_LAST_ACK:
+				case TCP_STATE.CLOSING:
+				case TCP_STATE.LAST_ACK:
 					this.delete();
 					sendPacket(ip, tcp);
 					this.incLSeq(1);
 					break;
 				default:
-					this.state = TCP_STATE_LAST_ACK;
+					this.state = TCP_STATE.LAST_ACK;
 					tcp.setFlag(TCP_FLAGS.FIN);
 					sendPacket(ip, tcp);
 					this.incLSeq(1);
@@ -400,7 +404,7 @@ export class TCPConn {
 	}
 
 	accept(ipHdr: IPHdr, tcpPkt: TCPPkt) {
-		this.state =  TCP_STATE_SYN_RECEIVED;
+		this.state =  TCP_STATE.SYN_RECEIVED;
 		this.daddr = ipHdr.saddr;
 		this.dport = tcpPkt.sport;
 		this.sport = tcpPkt.dport;
@@ -410,7 +414,7 @@ export class TCPConn {
 	}
 
 	connect(dport: number, daddr: IPAddr, cb: TCPConnectHandler, dccb: TCPDisconnectHandler|undefined) {
-		this.state = TCP_STATE_SYN_SENT;
+		this.state = TCP_STATE.SYN_SENT;
 		this.daddr = daddr;
 		this.dport = dport;
 		this.connect_cb = cb;
