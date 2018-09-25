@@ -18,17 +18,21 @@ const dnsQueueTimeout: { [key: string]: number } = {};
 const DNS_SEG_PTR = 0b11000000;
 const DNS_SEG_MAX = 0b00111111;
 
-export const DNS_TYPE_A = 0x0001;
-export const DNS_TYPE_CNAME = 0x0005;
-export const DNS_TYPE_MX = 0x000F;
-export const DNS_TYPE_NS = 0x0002;
+export const enum DNS_TYPE {
+	A = 0x0001,
+	CNAME = 0x0005,
+	MX = 0x000F,
+	NS = 0x0002,
+};
 
-export const DNS_CLASS_IN = 0x0001;
+export const enum DNS_CLASS {
+	IN = 0x0001,
+};
 
 export class DNSQuestion {
 	public name: string = '';
-	public type = DNS_TYPE_A;
-	public class = DNS_CLASS_IN;
+	public type = DNS_TYPE.A;
+	public class = DNS_CLASS.IN;
 
 	write(packet: Uint8Array, pos: number) {
 		const nameLbL = makeDNSLabel(this.name);
@@ -48,8 +52,8 @@ export class DNSQuestion {
 
 export class DNSAnswer {
 	public name: string = '';
-	public type = DNS_TYPE_A;
-	public class = DNS_CLASS_IN;
+	public type = DNS_TYPE.A;
+	public class = DNS_CLASS.IN;
 	public ttl = 0;
 	public data: Uint8Array|undefined = undefined;
 	public datapos = 0;
@@ -297,7 +301,7 @@ export class DNSPkt {
 	}
 }
 
-function makeDNSRequest(domain: string, type: number) {
+function makeDNSRequest(domain: string, type: DNS_TYPE) {
 	const pkt = new DNSPkt();
 	const q = new DNSQuestion();
 	q.type = type;
@@ -324,7 +328,7 @@ function makeDNSIP() {
 	return ip;
 }
 
-function _makeDNSCacheKey(domain: string, type: number) {
+function _makeDNSCacheKey(domain: string, type: DNS_TYPE) {
 	return `${type},${domain}`;
 }
 
@@ -367,7 +371,7 @@ udpListen(53, (data: Uint8Array|undefined, _ipHdr: IPHdr) => {
 	// This could clash if asked for ANY, but ANY is deprecated
 	const answerMap: { [key: string]: DNSAnswer } = {};
 	dns.answers.forEach(a => {
-		if (a.class !== DNS_CLASS_IN) {
+		if (a.class !== DNS_CLASS.IN) {
 			return;
 		}
 
@@ -375,13 +379,13 @@ udpListen(53, (data: Uint8Array|undefined, _ipHdr: IPHdr) => {
 	});
 
 	dns.questions.forEach(q => {
-		if (q.class !== DNS_CLASS_IN) {
+		if (q.class !== DNS_CLASS.IN) {
 			return;
 		}
 
 		const domain = q.name;
 		let answer = answerMap[domain];
-		while (answer && answer.type === DNS_TYPE_CNAME && q.type !== DNS_TYPE_CNAME) {
+		while (answer && answer.type === DNS_TYPE.CNAME && q.type !== DNS_TYPE.CNAME) {
 			const cnameTarget = _parseDNSLabel(answer.datapos)!;
 			answer = answerMap[cnameTarget];
 		}
@@ -393,11 +397,11 @@ udpListen(53, (data: Uint8Array|undefined, _ipHdr: IPHdr) => {
 
 		let _answer = undefined;
 		switch (q.type) {
-			case DNS_TYPE_CNAME:
-			case DNS_TYPE_NS:
+			case DNS_TYPE.CNAME:
+			case DNS_TYPE.NS:
 				_answer = _parseDNSLabel(answer.datapos);
 				break;
-			case DNS_TYPE_A:
+			case DNS_TYPE.A:
 				_answer = IPAddr.fromByteArray(answer.data!);
 				break;
 		}
@@ -405,7 +409,7 @@ udpListen(53, (data: Uint8Array|undefined, _ipHdr: IPHdr) => {
 	});
 });
 
-export function dnsResolve(domain: string, type: number, cb: DNSCallback) {
+export function dnsResolve(domain: string, type: DNS_TYPE, cb: DNSCallback) {
 	domain = domain.toLowerCase();
 	const _key = _makeDNSCacheKey(domain, type);
 
@@ -436,7 +440,7 @@ export function dnsResolveOrIp(domain: string, cb: DNSCallback) {
 		return;
 	}
 
-	dnsResolve(domain, DNS_TYPE_A, cb);
+	dnsResolve(domain, DNS_TYPE.A, cb);
 }
 
 export function dnsTcpConnect(domainOrIp: string, port: number, func: TCPListener, cb: TCPConnectHandler, dccb: TCPDisconnectHandler) {
