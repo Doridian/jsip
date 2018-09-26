@@ -84,8 +84,8 @@ export class MACAddr {
     }
 
     public toString() {
-        // tslint:disable-next-line:max-line-length
-        return `${_macPaddedOut(this.a)}:${_macPaddedOut(this.b)}:${_macPaddedOut(this.c)}:${_macPaddedOut(this.d)}:${_macPaddedOut(this.e)}:${_macPaddedOut(this.f)}`;
+        return `${_macPaddedOut(this.a)}:${_macPaddedOut(this.b)}:${_macPaddedOut(this.c)}:` +
+                `${_macPaddedOut(this.d)}:${_macPaddedOut(this.e)}:${_macPaddedOut(this.f)}`;
     }
 
     public isBroadcast() {

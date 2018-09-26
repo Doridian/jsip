@@ -11,6 +11,13 @@ interface IHTTPResult {
     url: string;
 }
 
+interface IHTTPOptions {
+    url: string;
+    method: string;
+    body: Uint8Array;
+    headers?: IHTTPHeaderMap;
+}
+
 type HTTPCallback = (err?: Error, res?: IHTTPResult) => void;
 
 function _isHeaderEnd(ele: number, idx: number, arr: Uint8Array) {
@@ -72,8 +79,12 @@ function httpParse(datas: Uint8Array[]): IHTTPResult {
     };
 }
 
-export function httpGet(urlStr: string, cb: HTTPCallback) {
-    const url = new URL(urlStr);
+export function httpGet(options: IHTTPOptions, cb: HTTPCallback) {
+    const url = new URL(options.url);
+    const headers = options.headers || {};
+    headers.connection = "close";
+    headers["user-agent"] = "jsip";
+    headers.host = url.host;
 
     const datas: Uint8Array[] = [];
     dnsTcpConnect(url.hostname, url.port ? parseInt(url.port, 10) : 80, (data) => {
@@ -90,9 +101,11 @@ export function httpGet(urlStr: string, cb: HTTPCallback) {
             return;
         }
 
-        // tslint:disable-next-line:max-line-length
-        const str = `GET ${url.pathname}${url.search} HTTP/1.1\r\nHost: ${url.host}\r\nUser-Agent: jsip\r\nConnection: close\r\n\r\n`;
-        conn!.send(new Uint8Array(stringToBuffer(str)));
+        const data = [`GET ${url.pathname}${url.search} HTTP/1.1`];
+        for (const headerName of Object.keys(headers)) {
+            data.push(`${headerName}: ${headers[headerName]}`);
+        }
+        conn!.send(new Uint8Array(stringToBuffer(data.join("\r\n") + "\r\n\r\n")));
     }, () => {
         // Disconnect
         let res: IHTTPResult | undefined;

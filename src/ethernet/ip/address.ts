@@ -1,4 +1,6 @@
-import { IPNETS_MULTICAST } from "./subnet";
+import { IPNet } from "./subnet";
+
+let multicastNets: IPNet[] = [];
 
 export class IPAddr {
     public static fromString(ipStr: string) {
@@ -38,6 +40,13 @@ export class IPAddr {
         return ip;
     }
 
+    public static setMulticastNets(nets: IPNet[]) {
+        if (multicastNets.length > 0) {
+            throw new Error("Multicast nets already initialized!");
+        }
+        multicastNets = nets.slice(0);
+    }
+
     private a = 0;
     private b = 0;
     private c = 0;
@@ -72,7 +81,7 @@ export class IPAddr {
     }
 
     public isMulticast() {
-        return IPNETS_MULTICAST.some((net) => net.contains(this));
+        return multicastNets.some((net) => net.contains(this));
     }
 
     public isBroadcast() {

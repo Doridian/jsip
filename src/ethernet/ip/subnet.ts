@@ -51,3 +51,5 @@ export const IPNETS_MULTICAST = [
     IPNet.fromString("234.0.0.0/8"),
     IPNet.fromString("239.0.0.0/8"),
 ];
+
+IPAddr.setMulticastNets(IPNETS_MULTICAST);
