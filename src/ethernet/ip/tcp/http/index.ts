@@ -8,11 +8,11 @@ interface IHTTPResult {
     statusText: string;
     headers: IHTTPHeaderMap;
     body: Uint8Array;
-    url: string;
+    url?: URL;
 }
 
 interface IHTTPOptions {
-    url: string;
+    url: URL;
     method: string;
     body: Uint8Array;
     headers?: IHTTPHeaderMap;
@@ -75,12 +75,12 @@ function httpParse(datas: Uint8Array[]): IHTTPResult {
         headers,
         statusCode,
         statusText,
-        url: "",
+        url: undefined,
     };
 }
 
 export function httpGet(options: IHTTPOptions, cb: HTTPCallback) {
-    const url = new URL(options.url);
+    const url = options.url;
     const headers = options.headers || {};
     headers.connection = "close";
     headers["user-agent"] = "jsip";
@@ -112,7 +112,7 @@ export function httpGet(options: IHTTPOptions, cb: HTTPCallback) {
         let err: Error | undefined;
         try {
             res = httpParse(datas);
-            res.url = url.href;
+            res.url = url;
             err = undefined;
         } catch (e) {
             res = undefined;
