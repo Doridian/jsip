@@ -1,9 +1,10 @@
 import { config, configOut } from "./config";
 import { dhcpNegotiate } from "./dhcp";
-import { ETH_TYPE, EthHdr, MAC_BROADCAST, MACAddr } from "./ethernet";
+import { ETH_TYPE, EthHdr } from "./ethernet";
+import { MAC_BROADCAST, MACAddr } from "./ethernet_addr";
 import { handleEthernet } from "./ethernet_stack";
 import { httpGet } from "./http";
-import { IPNet } from "./ip";
+import { IPNet } from "./ip_net";
 import { handleIP } from "./ip_stack";
 import { randomByte } from "./util";
 

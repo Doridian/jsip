@@ -1,5 +1,7 @@
-import { EthHdr, MACAddr } from "./ethernet";
-import { IPAddr, IPNet } from "./ip";
+import { EthHdr } from "./ethernet";
+import { MACAddr } from "./ethernet_addr";
+import { IPAddr } from "./ip_addr";
+import { IPNet } from "./ip_net";
 
 export const config: {
     ourIp?: IPAddr;

@@ -1,4 +1,4 @@
-import { dnsTcpConnect } from "./dns";
+import { dnsTcpConnect } from "./dns/index";
 import { buffersToBuffer, bufferToString, stringToBuffer } from "./util";
 
 interface IHTTPHeaderMap { [key: string]: string; }

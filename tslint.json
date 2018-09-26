@@ -5,7 +5,6 @@
     ],
     "rules": {
         "no-bitwise": false,
-        "no-console": false,
-        "max-classes-per-file": false
+        "no-console": false
     }
 }

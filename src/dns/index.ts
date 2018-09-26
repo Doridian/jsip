@@ -1,11 +1,14 @@
-import { BitArray } from "./bitfield";
-import { config } from "./config";
-import { IPAddr, IPHdr, IPPROTO } from "./ip";
-import { tcpConnect, TCPConnectHandler, TCPDisconnectHandler, TCPListener } from "./tcp_stack";
-import { UDPPkt } from "./udp";
-import { udpListen } from "./udp_stack";
-import { boolToBit, bufferToString, stringIntoBuffer } from "./util";
-import { sendPacket } from "./wssend";
+import { BitArray } from "../bitfield";
+import { config } from "../config";
+import { IPHdr, IPPROTO } from "../ip";
+import { IPAddr } from "../ip_addr";
+import { tcpConnect, TCPConnectHandler, TCPDisconnectHandler, TCPListener } from "../tcp_stack";
+import { UDPPkt } from "../udp";
+import { udpListen } from "../udp_stack";
+import { boolToBit, bufferToString } from "../util";
+import { sendPacket } from "../wssend";
+import { DNSAnswer } from "./answer";
+import { DNSQuestion } from "./question";
 
 type DNSResult = IPAddr | string | undefined;
 interface IDNSParseState { pos: number; data: Uint8Array; packet: ArrayBuffer; offset: number; }
@@ -27,67 +30,6 @@ export const enum DNS_TYPE {
 
 export const enum DNS_CLASS {
     IN = 0x0001,
-}
-
-export class DNSQuestion {
-    public name: string = "";
-    public type = DNS_TYPE.A;
-    public class = DNS_CLASS.IN;
-
-    public write(packet: Uint8Array, pos: number) {
-        const nameLbL = makeDNSLabel(this.name);
-        for (let i = 0; i < nameLbL.byteLength; i++) {
-            packet[pos + i] = nameLbL[i];
-        }
-        pos += nameLbL.byteLength;
-
-        packet[pos++] = (this.type >>> 8) & 0xFF;
-        packet[pos++] = this.type & 0xFF;
-        packet[pos++] = (this.class >>> 8) & 0xFF;
-        packet[pos++] = this.class & 0xFF;
-
-        return pos;
-    }
-}
-
-export class DNSAnswer {
-    public name: string = "";
-    public type = DNS_TYPE.A;
-    public class = DNS_CLASS.IN;
-    public ttl = 0;
-    public data?: Uint8Array;
-    public datapos = 0;
-
-    public getTTL() {
-        return this.ttl >>> 0;
-    }
-
-    public write(packet: Uint8Array, pos: number) {
-        const nameLbL = makeDNSLabel(this.name);
-        for (let i = 0; i < nameLbL.byteLength; i++) {
-            packet[pos + i] = nameLbL[i];
-        }
-        pos += nameLbL.byteLength;
-
-        packet[pos++] = (this.type >>> 8) & 0xFF;
-        packet[pos++] = this.type & 0xFF;
-        packet[pos++] = (this.class >>> 8) & 0xFF;
-        packet[pos++] = this.class & 0xFF;
-
-        packet[pos++] = (this.ttl >>> 24) & 0xFF;
-        packet[pos++] = (this.ttl >>> 16) & 0xFF;
-        packet[pos++] = (this.ttl >>> 8) & 0xFF;
-        packet[pos++] = this.ttl & 0xFF;
-
-        if (this.data) {
-            for (let i = 0; i  < this.data.byteLength; i++) {
-                packet[pos + i] = this.data[i];
-            }
-            pos += this.data.byteLength;
-        }
-
-        return pos;
-    }
 }
 
 function parseDNSLabel(s: IDNSParseState) {
@@ -133,21 +75,6 @@ function parseDNSLabel(s: IDNSParseState) {
     }
 
     return res.join(".");
-}
-
-function makeDNSLabel(str: string) {
-    const spl = str.split(".");
-    const data = new Uint8Array(str.length + 2); // First len + 0x00 end
-    let pos = 0;
-    for (const s of spl) {
-        if (s.length < 1) {
-            continue;
-        }
-        data[pos] = s.length;
-        stringIntoBuffer(s, data, pos + 1);
-        pos += s.length + 1;
-    }
-    return data;
 }
 
 function parseAnswerSection(count: number, state: IDNSParseState) {

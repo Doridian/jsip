@@ -1,6 +1,6 @@
 import { config } from "./config";
-import { MACAddr } from "./ethernet";
-import { IPAddr } from "./ip";
+import { MACAddr } from "./ethernet_addr";
+import { IPAddr } from "./ip_addr";
 
 export const ARP_HTYPE = 1;
 export const ARP_PTYPE = 0x800;

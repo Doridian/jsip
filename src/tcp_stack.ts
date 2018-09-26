@@ -1,5 +1,6 @@
 import { config } from "./config";
-import { IPAddr, IPHdr, IPPROTO } from "./ip";
+import { IPHdr, IPPROTO } from "./ip";
+import { IPAddr } from "./ip_addr";
 import { registerIpHandler } from "./ip_stack";
 import { TCP_FLAGS, TCPPkt } from "./tcp";
 import { sendPacket } from "./wssend";
