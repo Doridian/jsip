@@ -75,7 +75,6 @@ function httpParse(datas: Uint8Array[]): IHTTPResult {
         headers,
         statusCode,
         statusText,
-        url: undefined,
     };
 }
 
