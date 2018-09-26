@@ -3,8 +3,8 @@ import { MAC_BROADCAST, MACAddr } from "./ethernet/address";
 import { ETH_TYPE, EthHdr } from "./ethernet/index";
 import { handleIP } from "./ethernet/ip/stack";
 import { IPNet } from "./ethernet/ip/subnet";
-import { httpGet } from "./ethernet/ip/tcp/http";
-import { dhcpNegotiate } from "./ethernet/ip/udp/dhcp";
+import { httpGet } from "./ethernet/ip/tcp/http/index";
+import { dhcpNegotiate } from "./ethernet/ip/udp/dhcp/index";
 import { handleEthernet } from "./ethernet/stack";
 import { randomByte } from "./util/index";
 
