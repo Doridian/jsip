@@ -1,7 +1,7 @@
-import { ICMPPkt } from "./icmp";
-import { IPHdr, IPPROTO } from "./ip";
-import { registerIpHandler } from "./ip_stack";
-import { sendPacket } from "./wssend";
+import { sendPacket } from "../../../wssend";
+import { IPHdr, IPPROTO } from "../index";
+import { registerIpHandler } from "../stack";
+import { ICMPPkt } from "./index";
 
 type ICMPHandler = (icmpPkt: ICMPPkt, ipHdr: IPHdr) => void;
 

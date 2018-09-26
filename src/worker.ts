@@ -1,12 +1,12 @@
 import { config, configOut } from "./config";
-import { dhcpNegotiate } from "./dhcp";
-import { ETH_TYPE, EthHdr } from "./ethernet";
-import { MAC_BROADCAST, MACAddr } from "./ethernet_addr";
-import { handleEthernet } from "./ethernet_stack";
-import { httpGet } from "./http";
-import { IPNet } from "./ip_net";
-import { handleIP } from "./ip_stack";
-import { randomByte } from "./util";
+import { MAC_BROADCAST, MACAddr } from "./ethernet/address";
+import { ETH_TYPE, EthHdr } from "./ethernet/index";
+import { handleIP } from "./ethernet/ip/stack";
+import { IPNet } from "./ethernet/ip/subnet";
+import { httpGet } from "./ethernet/ip/tcp/http";
+import { dhcpNegotiate } from "./ethernet/ip/udp/dhcp";
+import { handleEthernet } from "./ethernet/stack";
+import { randomByte } from "./util/index";
 
 type VoidCB = () => void;
 

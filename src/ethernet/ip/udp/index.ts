@@ -1,5 +1,6 @@
-import { IPHdr, IPPROTO } from "./ip";
-import { computeChecksum, computeChecksumPseudo, IPacket } from "./util";
+import { IPacket } from "../../../ipacket";
+import { computeChecksum, computeChecksumPseudo } from "../../../util/checksum";
+import { IPHdr, IPPROTO } from "../index";
 
 export class UDPPkt implements IPacket {
     public static fromPacket(packet: ArrayBuffer, offset: number, len: number, ipHdr: IPHdr) {

@@ -1,8 +1,8 @@
-import { makeEthIPHdr } from "./arp_stack";
 import { config } from "./config";
-import { ETH_LEN, EthHdr } from "./ethernet";
-import { IPHdr } from "./ip";
-import { IPacket } from "./util";
+import { makeEthIPHdr } from "./ethernet/arp/stack";
+import { ETH_LEN, EthHdr } from "./ethernet/index";
+import { IPHdr } from "./ethernet/ip/index";
+import { IPacket } from "./ipacket";
 
 export function sendPacket(ipHdr: IPHdr, payload: IPacket) {
     if (!ipHdr) {

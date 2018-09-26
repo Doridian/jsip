@@ -1,4 +1,4 @@
-import { stringIntoBuffer } from "../util";
+import { stringIntoBuffer } from "../../../../util/string";
 
 export function makeDNSLabel(str: string) {
     const spl = str.split(".");

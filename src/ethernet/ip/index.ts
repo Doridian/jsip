@@ -1,7 +1,7 @@
-import { BitArray } from "./bitfield";
-import { config } from "./config";
-import { IPAddr } from "./ip_addr";
-import { computeChecksum } from "./util";
+import { config } from "../../config";
+import { BitArray } from "../../util/bitfield";
+import { computeChecksum } from "../../util/checksum";
+import { IPAddr } from "./address";
 
 export const enum IPPROTO {
     NONE = 0,

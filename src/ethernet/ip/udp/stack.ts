@@ -1,7 +1,7 @@
-import { IPHdr, IPPROTO } from "./ip";
-import { registerIpHandler } from "./ip_stack";
-import { UDPPkt } from "./udp";
-import { sendPacket } from "./wssend";
+import { sendPacket } from "../../../wssend";
+import { IPHdr, IPPROTO } from "../index";
+import { registerIpHandler } from "../stack";
+import { UDPPkt } from "./index";
 
 type UDPReplyFunc = (data: Uint8Array) => void;
 type UDPListener = (data: Uint8Array, ipHdr: IPHdr, reply: UDPReplyFunc) => void;

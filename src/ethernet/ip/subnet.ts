@@ -1,4 +1,4 @@
-import { IPAddr } from "./ip_addr";
+import { IPAddr } from "./address";
 
 export class IPNet {
     public static fromString(ipStr: string) {

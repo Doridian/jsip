@@ -1,9 +1,9 @@
-import { ARP_LEN, ARP_REPLY, ARP_REQUEST, ARPPkt } from "./arp";
-import { config } from "./config";
-import { ETH_LEN, ETH_TYPE, EthHdr } from "./ethernet";
-import { MAC_BROADCAST, MACAddr } from "./ethernet_addr";
-import { registerEthHandler } from "./ethernet_stack";
-import { IPAddr } from "./ip_addr";
+import { config } from "../../config";
+import { MAC_BROADCAST, MACAddr } from "../address";
+import { ETH_LEN, ETH_TYPE, EthHdr } from "../index";
+import { IPAddr } from "../ip/address";
+import { registerEthHandler } from "../stack";
+import { ARP_LEN, ARP_REPLY, ARP_REQUEST, ARPPkt } from "./index";
 
 type ARPCallback = (ethHdr?: MACAddr) => void;
 

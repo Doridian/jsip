@@ -1,4 +1,4 @@
-import { IPNETS_MULTICAST } from "./ip_net";
+import { IPNETS_MULTICAST } from "./subnet";
 
 export class IPAddr {
     public static fromString(ipStr: string) {

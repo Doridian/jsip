@@ -1,4 +1,4 @@
-import { MACAddr } from "./ethernet_addr";
+import { MACAddr } from "./address";
 
 export const enum ETH_TYPE {
     NONE = 0x0000,

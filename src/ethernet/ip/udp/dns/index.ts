@@ -1,12 +1,13 @@
-import { BitArray } from "../bitfield";
-import { config } from "../config";
-import { IPHdr, IPPROTO } from "../ip";
-import { IPAddr } from "../ip_addr";
-import { tcpConnect, TCPConnectHandler, TCPDisconnectHandler, TCPListener } from "../tcp_stack";
-import { UDPPkt } from "../udp";
-import { udpListen } from "../udp_stack";
-import { boolToBit, bufferToString } from "../util";
-import { sendPacket } from "../wssend";
+import { config } from "../../../../config";
+import { BitArray } from "../../../../util/bitfield";
+import { boolToBit } from "../../../../util/index";
+import { bufferToString } from "../../../../util/string";
+import { sendPacket } from "../../../../wssend";
+import { IPAddr } from "../../address";
+import { IPHdr, IPPROTO } from "../../index";
+import { tcpConnect, TCPConnectHandler, TCPDisconnectHandler, TCPListener } from "../../tcp/stack";
+import { UDPPkt } from "../index";
+import { udpListen } from "../stack";
 import { DNSAnswer } from "./answer";
 import { DNSQuestion } from "./question";
 

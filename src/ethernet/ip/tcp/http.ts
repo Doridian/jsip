@@ -1,5 +1,5 @@
-import { dnsTcpConnect } from "./dns/index";
-import { buffersToBuffer, bufferToString, stringToBuffer } from "./util";
+import { buffersToBuffer, bufferToString, stringToBuffer } from "../../../util/string";
+import { dnsTcpConnect } from "../udp/dns/index";
 
 interface IHTTPHeaderMap { [key: string]: string; }
 

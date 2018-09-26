@@ -1,12 +1,12 @@
-import { ARP_HLEN, ARP_HTYPE } from "./arp";
-import { config, configOut } from "./config";
-import { MACAddr } from "./ethernet_addr";
-import { IPHdr, IPPROTO } from "./ip";
-import { IP_BROADCAST, IP_NONE, IPAddr } from "./ip_addr";
-import { IPNet } from "./ip_net";
-import { UDPPkt } from "./udp";
-import { udpListen } from "./udp_stack";
-import { sendPacket } from "./wssend";
+import { config, configOut } from "../../../config";
+import { sendPacket } from "../../../wssend";
+import { MACAddr } from "../../address";
+import { ARP_HLEN, ARP_HTYPE } from "../../arp/index";
+import { IP_BROADCAST, IP_NONE, IPAddr } from "../address";
+import { IPHdr, IPPROTO } from "../index";
+import { IPNet } from "../subnet";
+import { UDPPkt } from "./index";
+import { udpListen } from "./stack";
 
 const DHCP_MAGIC = new Uint8Array([0x63, 0x82, 0x53, 0x63]);
 

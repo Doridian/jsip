@@ -1,7 +1,8 @@
-import { BitArray } from "./bitfield";
-import { config } from "./config";
-import { IPHdr, IPPROTO } from "./ip";
-import { computeChecksum, computeChecksumPseudo, IPacket } from "./util";
+import { config } from "../../../config";
+import { IPacket } from "../../../ipacket";
+import { BitArray } from "../../../util/bitfield";
+import { computeChecksum, computeChecksumPseudo } from "../../../util/checksum";
+import { IPHdr, IPPROTO } from "../index";
 
 export const enum TCP_FLAGS {
     NS = 0x100,

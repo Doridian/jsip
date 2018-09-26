@@ -1,9 +1,9 @@
-import { config } from "./config";
-import { IPHdr, IPPROTO } from "./ip";
-import { IPAddr } from "./ip_addr";
-import { registerIpHandler } from "./ip_stack";
-import { TCP_FLAGS, TCPPkt } from "./tcp";
-import { sendPacket } from "./wssend";
+import { config } from "../../../config";
+import { sendPacket } from "../../../wssend";
+import { IPAddr } from "../address";
+import { IPHdr, IPPROTO } from "../index";
+import { registerIpHandler } from "../stack";
+import { TCP_FLAGS, TCPPkt } from "./index";
 
 export type TCPListener = (data: Uint8Array, tcpConn: TCPConn) => void;
 
