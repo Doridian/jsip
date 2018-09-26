@@ -5,16 +5,12 @@ import { IPHdr } from "./ethernet/ip/index";
 import { IPacket } from "./ipacket";
 
 export function sendPacket(ipHdr: IPHdr, payload: IPacket) {
-    if (!ipHdr) {
-        return;
-    }
-
     if (!config.sendEth) {
         _sendPacket(ipHdr, payload);
         return;
     }
 
-    makeEthIPHdr(ipHdr.daddr!, (ethHdr) => {
+    makeEthIPHdr(ipHdr.daddr, (ethHdr) => {
         if (!ethHdr) {
             return;
         }

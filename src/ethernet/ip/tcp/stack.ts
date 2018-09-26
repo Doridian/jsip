@@ -1,6 +1,6 @@
 import { config } from "../../../config";
 import { sendPacket } from "../../../wssend";
-import { IPAddr } from "../address";
+import { IP_NONE, IPAddr } from "../address";
 import { IPHdr, IPPROTO } from "../index";
 import { registerIpHandler } from "../stack";
 import { TCP_FLAGS, TCPPkt } from "./index";
@@ -58,7 +58,7 @@ interface IWBufferEntry {
 export class TCPConn {
     public disconnectCb?: TCPDisconnectHandler;
     private state = TCP_STATE.CLOSED;
-    private daddr?: IPAddr;
+    private daddr: IPAddr = IP_NONE;
     private sport = 0;
     private dport = 0;
     private lseqno?: number;
@@ -77,7 +77,7 @@ export class TCPConn {
     private mss = config.mss;
     private connectCb?: TCPConnectHandler;
     private handler?: TCPListener;
-    private connId?: string;
+    private connId: string = "";
 
     private lastIp?: IPHdr;
     private lastTcp?: TCPPkt;
@@ -130,7 +130,7 @@ export class TCPConn {
             this.disconnectCb = undefined;
         }
         this._connectCB(false);
-        delete tcpConns[this.connId!];
+        delete tcpConns[this.connId];
     }
 
     public kill() {
@@ -149,10 +149,10 @@ export class TCPConn {
 
         cb(TCP_CBTYPE.SENT);
 
-        const ack = this.lseqno;
-        const onack = this.onack[ack!];
+        const ack = this.lseqno!;
+        const onack = this.onack[ack];
         if (!onack) {
-            this.onack[ack!] = [cb];
+            this.onack[ack] = [cb];
             return;
         }
         onack.push(cb);

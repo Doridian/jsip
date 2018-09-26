@@ -2,7 +2,7 @@ import { config } from "../../config";
 import { BitArray } from "../../util/bitfield";
 import { computeChecksum } from "../../util/checksum";
 import { logDebug } from "../../util/log";
-import { IPAddr } from "./address";
+import { IP_NONE, IPAddr } from "./address";
 
 export const enum IPPROTO {
     NONE = 0,
@@ -58,8 +58,8 @@ export class IPHdr {
     public mf = false;
     public fragOffset = 0;
     public protocol = IPPROTO.NONE;
-    public saddr?: IPAddr;
-    public daddr?: IPAddr;
+    public saddr: IPAddr = IP_NONE;
+    public daddr: IPAddr = IP_NONE;
     public options?: ArrayBuffer;
     private version = 4;
     private ttl = 64;
@@ -85,8 +85,9 @@ export class IPHdr {
         const replyIp = new IPHdr();
         replyIp.protocol = this.protocol;
 
-        replyIp.saddr = (this.daddr && this.daddr.isUnicast()) ? this.daddr : config.ourIp;
+        replyIp.saddr = this.daddr.isUnicast() ? this.daddr : config.ourIp;
         replyIp.daddr = this.saddr;
+
         return replyIp;
     }
 
@@ -106,8 +107,8 @@ export class IPHdr {
         packet[9] = this.protocol & 0xFF;
         packet[10] = 0; // Checksum A
         packet[11] = 0; // Checksum B
-        this.saddr!.toBytes(packet, 12);
-        this.daddr!.toBytes(packet, 16);
+        this.saddr.toBytes(packet, 12);
+        this.daddr.toBytes(packet, 16);
         if (this.options && this.options.byteLength > 0) {
             const o8 = new Uint8Array(this.options);
             for (let i = 0; i < o8.length; i++) {

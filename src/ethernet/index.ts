@@ -1,4 +1,4 @@
-import { MACAddr } from "./address";
+import { MAC_NONE, MACAddr } from "./address";
 
 export const enum ETH_TYPE {
     NONE = 0x0000,
@@ -20,8 +20,8 @@ export class EthHdr {
     }
 
     public ethtype = ETH_TYPE.NONE;
-    public saddr?: MACAddr;
-    public daddr?: MACAddr;
+    public saddr: MACAddr = MAC_NONE;
+    public daddr: MACAddr = MAC_NONE;
 
     public makeReply() {
         const replyEth = new EthHdr();
@@ -37,8 +37,8 @@ export class EthHdr {
 
     public toPacket(array: ArrayBuffer, offset: number) {
         const packet = new Uint8Array(array, offset, ETH_LEN);
-        this.daddr!.toBytes(packet, 0);
-        this.saddr!.toBytes(packet, 6);
+        this.daddr.toBytes(packet, 0);
+        this.saddr.toBytes(packet, 6);
         packet[12] = (this.ethtype >>> 8) & 0xFF;
         packet[13] = this.ethtype & 0xFF;
         return ETH_LEN;

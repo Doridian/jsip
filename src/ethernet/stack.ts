@@ -10,14 +10,11 @@ export function handleEthernet(buffer: ArrayBuffer) {
     let offset = 0;
 
     const ethHdr = EthHdr.fromPacket(buffer, offset);
-    if (!ethHdr) {
-        return;
-    }
 
-    const isBroadcast = ethHdr.daddr!.isBroadcast();
+    const isBroadcast = ethHdr.daddr.isBroadcast();
 
-    if (!ethHdr.daddr!.equals(config.ourMac) && !isBroadcast) {
-        logDebug(`Discarding packet not meant for us, but for ${ethHdr.daddr!.toString()}`);
+    if (!ethHdr.daddr.equals(config.ourMac) && !isBroadcast) {
+        logDebug(`Discarding packet not meant for us, but for ${ethHdr.daddr.toString()}`);
         return;
     }
 

@@ -1,15 +1,15 @@
-import { MACAddr } from "./ethernet/address";
+import { MAC_NONE, MACAddr } from "./ethernet/address";
 import { EthHdr } from "./ethernet/index";
-import { IPAddr } from "./ethernet/ip/address";
+import { IP_NONE, IPAddr } from "./ethernet/ip/address";
 import { IPNet } from "./ethernet/ip/subnet";
 import { logDebug } from "./util/log";
 
 export const config: {
-    ourIp?: IPAddr;
-    serverIp?: IPAddr;
-    gatewayIp?: IPAddr;
+    ourIp: IPAddr;
+    serverIp: IPAddr;
+    gatewayIp: IPAddr;
     ourSubnet?: IPNet;
-    ourMac?: MACAddr;
+    ourMac: MACAddr;
     mss: number;
     mtu: number;
     sendEth: boolean;
@@ -19,9 +19,13 @@ export const config: {
     ws?: WebSocket;
 } = {
     dnsServerIps: [],
+    gatewayIp: IP_NONE,
     mss: -1,
     mtu: -1,
+    ourIp: IP_NONE,
+    ourMac: MAC_NONE,
     sendEth: false,
+    serverIp: IP_NONE,
 };
 
 export function configOut() {

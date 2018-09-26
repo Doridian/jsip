@@ -1,6 +1,6 @@
 import { config } from "../../config";
-import { MACAddr } from "../address";
-import { IPAddr } from "../ip/address";
+import { MAC_NONE, MACAddr } from "../address";
+import { IP_NONE, IPAddr } from "../ip/address";
 
 export const ARP_HTYPE = 1;
 export const ARP_PTYPE = 0x800;
@@ -33,10 +33,10 @@ export class ARPPkt {
     public hlen = ARP_HLEN;
     public plen = ARP_PLEN;
     public operation = 0;
-    public sha?: MACAddr;
-    public spa?: IPAddr;
-    public tha?: MACAddr;
-    public tpa?: IPAddr;
+    public sha: MACAddr = MAC_NONE;
+    public spa: IPAddr = IP_NONE;
+    public tha: MACAddr = MAC_NONE;
+    public tpa: IPAddr = IP_NONE;
 
     public makeReply() {
         if (this.operation !== ARP_REQUEST) {
@@ -67,10 +67,10 @@ export class ARPPkt {
         packet[6] = (this.operation >>> 8) & 0xFF;
         packet[7] = this.operation & 0xFF;
 
-        this.sha!.toBytes(packet, 8);
-        this.spa!.toBytes(packet, 14);
-        this.tha!.toBytes(packet, 18);
-        this.tpa!.toBytes(packet, 24);
+        this.sha.toBytes(packet, 8);
+        this.spa.toBytes(packet, 14);
+        this.tha.toBytes(packet, 18);
+        this.tpa.toBytes(packet, 24);
 
         return ARP_LEN;
     }

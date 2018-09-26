@@ -91,13 +91,13 @@ class DHCPPkt {
     public htype = ARP_HTYPE;
     public hlen = ARP_HLEN;
     public hops = 0;
-    public xid = ourDHCPXID;
+    public xid = ourDHCPXID!;
     public secs = ourDHCPSecs;
     public flags = 0;
-    public ciaddr?: IPAddr;
-    public yiaddr?: IPAddr;
-    public siaddr?: IPAddr;
-    public giaddr?: IPAddr;
+    public ciaddr: IPAddr = IP_NONE;
+    public yiaddr: IPAddr = IP_NONE;
+    public siaddr: IPAddr = IP_NONE;
+    public giaddr: IPAddr = IP_NONE;
     public chaddr = config.ourMac;
     public options: { [key: string]: Uint8Array } = {};
 
@@ -125,27 +125,19 @@ class DHCPPkt {
         packet[1] = this.htype;
         packet[2] = this.hlen;
         packet[3] = this.hops;
-        packet[4] = (this.xid! >>> 24) & 0xFF;
-        packet[5] = (this.xid! >>> 16) & 0xFF;
-        packet[6] = (this.xid! >>> 8) & 0xFF;
-        packet[7] = this.xid! & 0xFF;
+        packet[4] = (this.xid >>> 24) & 0xFF;
+        packet[5] = (this.xid >>> 16) & 0xFF;
+        packet[6] = (this.xid >>> 8) & 0xFF;
+        packet[7] = this.xid & 0xFF;
         packet[8] = (this.secs >>> 8) & 0xFF;
         packet[9] = this.secs & 0xFF;
         packet[10] = (this.flags >>> 8) & 0xFF;
         packet[11] = this.flags & 0xFF;
-        if (this.ciaddr) {
-            this.ciaddr.toBytes(packet, 12);
-        }
-        if (this.yiaddr) {
-            this.yiaddr.toBytes(packet, 16);
-        }
-        if (this.siaddr) {
-            this.siaddr.toBytes(packet, 20);
-        }
-        if (this.giaddr) {
-            this.giaddr.toBytes(packet, 24);
-        }
-        this.chaddr!.toBytes(packet, 28);
+        this.ciaddr.toBytes(packet, 12);
+        this.yiaddr.toBytes(packet, 16);
+        this.siaddr.toBytes(packet, 20);
+        this.giaddr.toBytes(packet, 24);
+        this.chaddr.toBytes(packet, 28);
         packet[DHCP_OFFSET_MAGIC] = DHCP_MAGIC[0];
         packet[DHCP_OFFSET_MAGIC + 1] = DHCP_MAGIC[1];
         packet[DHCP_OFFSET_MAGIC + 2] = DHCP_MAGIC[2];
@@ -185,16 +177,16 @@ function makeDHCPDiscover() {
 function makeDHCPRequest(offer: DHCPPkt) {
     const pkt = new DHCPPkt();
     pkt.options[DHCP_OPTION.MODE] = new Uint8Array([DHCP_MODE.REQUEST]);
-    pkt.options[DHCP_OPTION.IP] = offer.yiaddr!.toByteArray();
-    pkt.options[DHCP_OPTION.SERVER] = offer.siaddr!.toByteArray();
+    pkt.options[DHCP_OPTION.IP] = offer.yiaddr.toByteArray();
+    pkt.options[DHCP_OPTION.SERVER] = offer.siaddr.toByteArray();
     return makeDHCPUDP(pkt);
 }
 
 function makeDHCPRenewRequest() {
     const pkt = new DHCPPkt();
     pkt.options[DHCP_OPTION.MODE] = new Uint8Array([DHCP_MODE.REQUEST]);
-    pkt.options[DHCP_OPTION.IP] = config.ourIp!.toByteArray();
-    pkt.options[DHCP_OPTION.SERVER] = config.serverIp!.toByteArray();
+    pkt.options[DHCP_OPTION.IP] = config.ourIp.toByteArray();
+    pkt.options[DHCP_OPTION.SERVER] = config.serverIp.toByteArray();
     return makeDHCPUDP(pkt);
 }
 
@@ -251,7 +243,7 @@ udpListen(68, (data: Uint8Array) => {
             if (dhcp.options[DHCP_OPTION.SUBNET]) {
                 const subnet = dhcp.options[DHCP_OPTION.SUBNET];
                 config.ourSubnet = new IPNet(
-                    config.ourIp!,
+                    config.ourIp,
                     subnet[3] + (subnet[2] << 8) + (subnet[1] << 16) + (subnet[0] << 24),
                 );
             } else {
@@ -268,7 +260,7 @@ udpListen(68, (data: Uint8Array) => {
 
             config.dnsServerIps = dhcp.options[DHCP_OPTION.DNS] ?
                 [IPAddr.fromByteArray(dhcp.options[DHCP_OPTION.DNS], 0)] :
-                [config.gatewayIp!];
+                [config.gatewayIp];
 
             let ttl;
             if (dhcp.options[DHCP_OPTION.LEASETIME]) {

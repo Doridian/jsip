@@ -92,7 +92,7 @@ export function httpGet(options: IHTTPOptions, cb: HTTPCallback) {
         datas.push(data);
     }, (res, conn) => {
         // Connect
-        if (res === false) {
+        if (res === false || !conn) {
             try {
                 cb(new Error("Could not connect"), undefined);
             } catch (e) {
@@ -105,7 +105,7 @@ export function httpGet(options: IHTTPOptions, cb: HTTPCallback) {
         for (const headerName of Object.keys(headers)) {
             data.push(`${headerName}: ${headers[headerName]}`);
         }
-        conn!.send(new Uint8Array(stringToBuffer(data.join("\r\n") + "\r\n\r\n")));
+        conn.send(new Uint8Array(stringToBuffer(data.join("\r\n") + "\r\n\r\n")));
     }, () => {
         // Disconnect
         let res: IHTTPResult | undefined;

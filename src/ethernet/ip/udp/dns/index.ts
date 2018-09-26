@@ -1,7 +1,6 @@
 import { config } from "../../../../config";
 import { BitArray } from "../../../../util/bitfield";
 import { boolToBit } from "../../../../util/index";
-import { logDebug } from "../../../../util/log";
 import { bufferToString } from "../../../../util/string";
 import { sendPacket } from "../../../../wssend";
 import { IPAddr } from "../../address";
@@ -43,16 +42,14 @@ function parseDNSLabel(s: IDNSParseState) {
         const segLen = s.data[s.pos++];
         if (segLen > DNS_SEG_MAX) {
             if ((segLen & DNS_SEG_PTR) !== DNS_SEG_PTR) {
-                logDebug(`Invalid DNS segment length ${segLen}`);
-                break;
+                throw new Error(`Invalid DNS segment length ${segLen}`);
             }
             if (lastPos === undefined) {
                 lastPos = s.pos + 1;
             }
             s.pos = ((segLen & DNS_SEG_MAX) << 8) | s.data[s.pos];
             if (donePointers[s.pos]) {
-                logDebug("Recursive pointers detected");
-                break;
+                throw new Error("Recursive pointers detected");
             }
             donePointers[s.pos] = true;
             continue;
@@ -72,7 +69,7 @@ function parseDNSLabel(s: IDNSParseState) {
     }
 
     if (!dataGood) {
-        return undefined;
+        throw new Error("Unexpected DNS label end");
     }
 
     return res.join(".");
@@ -85,11 +82,7 @@ function parseAnswerSection(count: number, state: IDNSParseState) {
     for (let i = 0; i < count; i++) {
         const a = new DNSAnswer();
 
-        a.name = parseDNSLabel(state)!;
-        if (!a.name) {
-            return answers;
-        }
-
+        a.name = parseDNSLabel(state);
         a.type = data[state.pos + 1] + (data[state.pos] << 8);
         a.class = data[state.pos + 3] + (data[state.pos + 2] << 8);
         a.ttl = data[state.pos + 7] +
@@ -138,7 +131,7 @@ export class DNSPkt {
         const state = { pos: 12, data, packet, offset };
         for (let i = 0; i < qdcount; i++) {
             const q = new DNSQuestion();
-            q.name = parseDNSLabel(state)!;
+            q.name = parseDNSLabel(state);
             q.type = data[state.pos + 1] + (data[state.pos] << 8);
             q.class = data[state.pos + 3] + (data[state.pos + 2] << 8);
             state.pos += 4;
@@ -316,7 +309,7 @@ udpListen(53, (data: Uint8Array) => {
         const domain = q.name;
         let answer = answerMap[domain];
         while (answer && answer.type === DNS_TYPE.CNAME && q.type !== DNS_TYPE.CNAME) {
-            const cnameTarget = subParseDNSLabel(answer.datapos)!;
+            const cnameTarget = subParseDNSLabel(answer.datapos);
             answer = answerMap[cnameTarget];
         }
 

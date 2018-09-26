@@ -8,7 +8,7 @@ export class IPNet {
         return new IPNet(ip, ~((1 << (32 - subnetLen)) - 1));
     }
 
-    public ip?: IPAddr;
+    public ip: IPAddr;
     private bitmask = 0;
     private mask?: IPAddr;
     private baseIpInt = 0;
@@ -24,7 +24,7 @@ export class IPNet {
         if (!ipNet) {
             return false;
         }
-        return this.bitmask === ipNet.bitmask && this.ip!.equals(ipNet.ip!);
+        return this.bitmask === ipNet.bitmask && this.ip.equals(ipNet.ip);
     }
 
     public toString() {

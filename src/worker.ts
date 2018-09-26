@@ -1,6 +1,7 @@
 import { config, configOut } from "./config";
 import { MAC_BROADCAST, MACAddr } from "./ethernet/address";
 import { ETH_TYPE, EthHdr } from "./ethernet/index";
+import { IP_NONE } from "./ethernet/ip/address";
 import { handleIP } from "./ethernet/ip/stack";
 import { IPNet } from "./ethernet/ip/subnet";
 import { httpGet } from "./ethernet/ip/tcp/http/index";
@@ -36,7 +37,7 @@ function handleInit(data: string, cb: VoidCB) {
         case "TAP_NOCONF":
             config.sendEth = true;
             config.ourSubnet = undefined;
-            config.serverIp = undefined;
+            config.serverIp = IP_NONE;
             needDHCP = true;
             break;
     }
@@ -58,9 +59,9 @@ function handleInit(data: string, cb: VoidCB) {
         config.ethBcastHdr.daddr = MAC_BROADCAST;
     }
 
-    config.ourIp = config.ourSubnet ? config.ourSubnet.ip : undefined;
+    config.ourIp = config.ourSubnet ? config.ourSubnet.ip : IP_NONE;
     config.gatewayIp = config.serverIp;
-    config.dnsServerIps = [config.gatewayIp!];
+    config.dnsServerIps = [config.gatewayIp];
     configOut();
 
     if (needDHCP) {

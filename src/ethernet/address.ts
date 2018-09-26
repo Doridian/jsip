@@ -94,3 +94,4 @@ export class MACAddr {
 }
 
 export const MAC_BROADCAST = MACAddr.fromBytes(255, 255, 255, 255, 255 , 255);
+export const MAC_NONE = MACAddr.fromBytes(0, 0, 0, 0, 0, 0);

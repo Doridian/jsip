@@ -57,7 +57,7 @@ export class TCPPkt implements IPacket {
                 i += optLen;
             }
         } else {
-            tcp.options = new Uint8Array(0);
+            tcp.options = undefined;
             tcp.data = new Uint8Array(packet, 20 + offset);
         }
 

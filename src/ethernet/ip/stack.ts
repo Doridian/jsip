@@ -2,6 +2,7 @@ import { config } from "../../config";
 import { logDebug } from "../../util/log";
 import { ETH_TYPE } from "../index";
 import { registerEthHandler } from "../stack";
+import { IP_NONE } from "./address";
 import { IPHdr } from "./index";
 
 type IPHandler = (data: ArrayBuffer, offset: number, len: number, ipHdr: IPHdr) => void;
@@ -41,8 +42,8 @@ export function handleIP(buffer: ArrayBuffer, offset = 0) {
         return;
     }
 
-    if (config.ourIp && ipHdr.daddr.isUnicast() && !ipHdr.daddr.equals(config.ourIp)) {
-        logDebug(`Discarding packet not meant for us, but for ${ipHdr.daddr!.toString()}`);
+    if (config.ourIp !== IP_NONE && ipHdr.daddr.isUnicast() && !ipHdr.daddr.equals(config.ourIp)) {
+        logDebug(`Discarding packet not meant for us, but for ${ipHdr.daddr.toString()}`);
         return;
     }
 
@@ -53,7 +54,7 @@ export function handleIP(buffer: ArrayBuffer, offset = 0) {
         return handlePacket(ipHdr, buffer, offset);
     }
 
-    const pktId = ipHdr.id + (ipHdr.saddr!.toInt() << 16);
+    const pktId = ipHdr.id + (ipHdr.saddr.toInt() << 16);
     let curFrag = fragmentCache[pktId];
     if (!curFrag) {
         curFrag = {

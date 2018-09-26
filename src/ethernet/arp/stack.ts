@@ -13,14 +13,14 @@ const arpTimeouts: { [key: string]: number } = {};
 
 export function makeEthIPHdr(destIp: IPAddr, cb: (ethHdr?: EthHdr) => void) {
     if (config.ourSubnet && !config.ourSubnet.contains(destIp)) {
-        destIp = config.gatewayIp!;
+        destIp = config.gatewayIp;
     }
 
     const destIpStr = destIp.toString();
 
     const ethHdr = new EthHdr();
     ethHdr.ethtype = ETH_TYPE.IP;
-    ethHdr.saddr = config.ourMac!;
+    ethHdr.saddr = config.ourMac;
     if (arpCache[destIpStr]) {
         ethHdr.daddr = arpCache[destIpStr];
         cb(ethHdr);
@@ -58,7 +58,7 @@ export function makeEthIPHdr(destIp: IPAddr, cb: (ethHdr?: EthHdr) => void) {
 
     const arpReq = new ARPPkt();
     arpReq.operation = ARP_REQUEST;
-    arpReq.sha = config.ourMac!;
+    arpReq.sha = config.ourMac;
     arpReq.spa = config.ourIp;
     arpReq.tha = MAC_BROADCAST;
     arpReq.tpa = destIp;
@@ -84,13 +84,12 @@ function handleARP(buffer: ArrayBuffer, offset: number, ethHdr: EthHdr) {
     switch (arpPkt.operation) {
         case ARP_REQUEST:
             if (arpPkt.tpa && arpPkt.tpa.equals(config.ourIp)) {
-                const arpReply = arpPkt.makeReply()!;
-                sendARPPkt(arpReply, ethHdr.saddr);
+                sendARPPkt(arpPkt.makeReply()!, ethHdr.saddr);
             }
             break;
         case ARP_REPLY:
-            const ip = arpPkt.spa!.toString();
-            const mac = arpPkt.sha!;
+            const ip = arpPkt.spa.toString();
+            const mac = arpPkt.sha;
             arpCache[ip] = mac;
             if (arpQueue[ip]) {
                 arpQueue[ip].forEach((cb) => cb(mac));
