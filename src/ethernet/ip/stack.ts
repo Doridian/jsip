@@ -1,4 +1,5 @@
 import { config } from "../../config";
+import { logDebug } from "../../util/log";
 import { ETH_TYPE } from "../index";
 import { registerEthHandler } from "../stack";
 import { IPHdr } from "./index";
@@ -41,7 +42,7 @@ export function handleIP(buffer: ArrayBuffer, offset = 0) {
     }
 
     if (config.ourIp && ipHdr.daddr.isUnicast() && !ipHdr.daddr.equals(config.ourIp)) {
-        console.log(`Discarding packet not meant for us, but for ${ipHdr.daddr!.toString()}`);
+        logDebug(`Discarding packet not meant for us, but for ${ipHdr.daddr!.toString()}`);
         return;
     }
 

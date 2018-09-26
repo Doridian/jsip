@@ -1,3 +1,4 @@
+import { logError } from "../../../../util/log";
 import { buffersToBuffer, bufferToString, stringToBuffer } from "../../../../util/string";
 import { dnsTcpConnect } from "../../udp/dns/tcp_util";
 
@@ -95,7 +96,7 @@ export function httpGet(options: IHTTPOptions, cb: HTTPCallback) {
             try {
                 cb(new Error("Could not connect"), undefined);
             } catch (e) {
-                console.error(e.stack || e);
+                logError(e.stack || e);
             }
             return;
         }
@@ -121,7 +122,7 @@ export function httpGet(options: IHTTPOptions, cb: HTTPCallback) {
         try {
             cb(err, res);
         } catch (e) {
-            console.error(e.stack || e);
+            logError(e.stack || e);
         }
     });
 }

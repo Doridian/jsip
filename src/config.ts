@@ -2,6 +2,7 @@ import { MACAddr } from "./ethernet/address";
 import { EthHdr } from "./ethernet/index";
 import { IPAddr } from "./ethernet/ip/address";
 import { IPNet } from "./ethernet/ip/subnet";
+import { logDebug } from "./util/log";
 
 export const config: {
     ourIp?: IPAddr;
@@ -24,8 +25,8 @@ export const config: {
 };
 
 export function configOut() {
-    console.log(`Our Subnet: ${config.ourSubnet}`);
-    console.log(`Our IP: ${config.ourIp}`);
-    console.log(`Server IP: ${config.serverIp}`);
-    console.log(`Gateway IP: ${config.gatewayIp}`);
+    logDebug(`Our Subnet: ${config.ourSubnet}`);
+    logDebug(`Our IP: ${config.ourIp}`);
+    logDebug(`Server IP: ${config.serverIp}`);
+    logDebug(`Gateway IP: ${config.gatewayIp}`);
 }

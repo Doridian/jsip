@@ -1,4 +1,5 @@
 import { config, configOut } from "../../../../config";
+import { logDebug } from "../../../../util/log";
 import { sendPacket } from "../../../../wssend";
 import { MACAddr } from "../../../address";
 import { ARP_HLEN, ARP_HTYPE } from "../../../arp/index";
@@ -58,7 +59,7 @@ class DHCPPkt {
             data[DHCP_OFFSET_MAGIC + 1] !== DHCP_MAGIC[1] ||
             data[DHCP_OFFSET_MAGIC + 2] !== DHCP_MAGIC[2] ||
             data[DHCP_OFFSET_MAGIC + 3] !== DHCP_MAGIC[3]) {
-            console.error("Invalid DHCP magic");
+            logDebug("Invalid DHCP magic");
             return null;
         }
 
@@ -79,7 +80,7 @@ class DHCPPkt {
         }
 
         if (!gotEnd) {
-            console.error("Invalid DHCP end");
+            logDebug("Invalid DHCP end");
             return null;
         }
 
@@ -239,7 +240,7 @@ udpListen(68, (data: Uint8Array) => {
 
     switch (dhcp.options[DHCP_OPTION.MODE][0]) {
         case DHCP_MODE.OFFER:
-            console.log("Got DHCP offer, sending DHCP request...");
+            logDebug("Got DHCP offer, sending DHCP request...");
             sendPacket(makeDHCPIP(), makeDHCPRequest(dhcp));
             break;
         case DHCP_MODE.ACK:
@@ -283,7 +284,7 @@ udpListen(68, (data: Uint8Array) => {
             }
             ourDHCPXID = undefined;
 
-            console.log(`DHCP TTL: ${ttl}`);
+            logDebug(`DHCP TTL: ${ttl}`);
             const ttlHalftime = ((ttl * 1000) / 2) + 1000;
             dhcpRenewTimer = setTimeout(dhcpRenew, ttlHalftime, (ttl * 1000) - ttlHalftime);
 
@@ -307,9 +308,9 @@ export function dhcpNegotiate(secs = 0) {
 
     if (secs === 0) {
         ourDHCPXID = Math.floor(Math.random() * 0xFFFFFFFF) | 0;
-        console.log("DHCP Initial XID", (ourDHCPXID >>> 0).toString(16));
+        logDebug(`DHCP Initial XID ${(ourDHCPXID >>> 0).toString(16)}`);
     } else {
-        console.log(`DHCP Initial retry: secs = ${secs}`);
+        logDebug(`DHCP Initial retry: secs = ${secs}`);
     }
     ourDHCPSecs = secs;
 
@@ -324,6 +325,6 @@ function dhcpRenew(renegotiateAfter: number = 0) {
 
     ourDHCPSecs = 0;
     ourDHCPXID = Math.floor(Math.random() * 0xFFFFFFFF) | 0;
-    console.log("DHCP Renew XID", (ourDHCPXID >>> 0).toString(16));
+    logDebug(`DHCP Renew XID ${(ourDHCPXID >>> 0).toString(16)}`);
     sendPacket(makeDHCPIP(true), makeDHCPRenewRequest());
 }

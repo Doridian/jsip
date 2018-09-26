@@ -1,6 +1,7 @@
 import { config } from "../../../../config";
 import { BitArray } from "../../../../util/bitfield";
 import { boolToBit } from "../../../../util/index";
+import { logDebug } from "../../../../util/log";
 import { bufferToString } from "../../../../util/string";
 import { sendPacket } from "../../../../wssend";
 import { IPAddr } from "../../address";
@@ -42,7 +43,7 @@ function parseDNSLabel(s: IDNSParseState) {
         const segLen = s.data[s.pos++];
         if (segLen > DNS_SEG_MAX) {
             if ((segLen & DNS_SEG_PTR) !== DNS_SEG_PTR) {
-                console.error(`Invalid DNS segment length ${segLen}`);
+                logDebug(`Invalid DNS segment length ${segLen}`);
                 break;
             }
             if (lastPos === undefined) {
@@ -50,7 +51,7 @@ function parseDNSLabel(s: IDNSParseState) {
             }
             s.pos = ((segLen & DNS_SEG_MAX) << 8) | s.data[s.pos];
             if (donePointers[s.pos]) {
-                console.error("Recursive pointers detected");
+                logDebug("Recursive pointers detected");
                 break;
             }
             donePointers[s.pos] = true;

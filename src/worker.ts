@@ -7,6 +7,7 @@ import { httpGet } from "./ethernet/ip/tcp/http/index";
 import { dhcpNegotiate } from "./ethernet/ip/udp/dhcp/index";
 import { handleEthernet } from "./ethernet/stack";
 import { randomByte } from "./util/index";
+import { logDebug } from "./util/log";
 
 type VoidCB = () => void;
 
@@ -42,15 +43,15 @@ function handleInit(data: string, cb: VoidCB) {
 
     config.mtu = parseInt(spl[4], 10);
 
-    console.log(`Mode: ${spl[2]}`);
+    logDebug(`Mode: ${spl[2]}`);
 
-    console.log(`Link-MTU: ${config.mtu}`);
+    logDebug(`Link-MTU: ${config.mtu}`);
 
     config.mss = config.mtu - 40;
 
     if (config.sendEth) {
         config.ourMac = MACAddr.fromBytes(0x0A, randomByte(), randomByte(), randomByte(), randomByte(), randomByte());
-        console.log(`Our MAC: ${config.ourMac}`);
+        logDebug(`Our MAC: ${config.ourMac}`);
         config.ethBcastHdr = new EthHdr();
         config.ethBcastHdr.ethtype = ETH_TYPE.IP;
         config.ethBcastHdr.saddr = config.ourMac;
@@ -63,7 +64,7 @@ function handleInit(data: string, cb: VoidCB) {
     configOut();
 
     if (needDHCP) {
-        console.log("Starting DHCP procedure...");
+        logDebug("Starting DHCP procedure...");
         config.ipDoneCB = cb;
         dhcpNegotiate();
     } else if (cb) {
@@ -72,7 +73,7 @@ function handleInit(data: string, cb: VoidCB) {
 }
 
 function _workerMain(url: string, cb: VoidCB) {
-    console.log(`Connecting to WSVPN: ${url}`);
+    logDebug(`Connecting to WSVPN: ${url}`);
 
     config.ws = new WebSocket(url);
     config.ws.binaryType = "arraybuffer";

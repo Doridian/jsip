@@ -1,6 +1,7 @@
 import { config } from "../../config";
 import { BitArray } from "../../util/bitfield";
 import { computeChecksum } from "../../util/checksum";
+import { logDebug } from "../../util/log";
 import { IPAddr } from "./address";
 
 export const enum IPPROTO {
@@ -16,6 +17,7 @@ export class IPHdr {
         const bit = new BitArray(packet, offset);
         ipv4.version = bit.read(4);
         if (ipv4.version !== 4) {
+            logDebug(`Ignoring IP version: ${ipv4.version}`);
             return null;
         }
         ipv4.ihl = bit.read(4);
@@ -41,7 +43,7 @@ export class IPHdr {
         }
         const checksum = computeChecksum(new Uint8Array(packet, offset, oLen));
         if (checksum !== 0) {
-            console.error(`Invalid IPv4 checksum: ${checksum} !== 0`, ipv4);
+            logDebug(`Invalid IPv4 checksum: ${checksum} !== 0`);
             return null;
         }
         return ipv4;

@@ -4,7 +4,6 @@
         "tslint:latest"
     ],
     "rules": {
-        "no-bitwise": false,
-        "no-console": false
+        "no-bitwise": false
     }
 }
