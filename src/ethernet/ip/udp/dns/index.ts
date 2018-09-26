@@ -5,7 +5,6 @@ import { bufferToString } from "../../../../util/string";
 import { sendPacket } from "../../../../wssend";
 import { IPAddr } from "../../address";
 import { IPHdr, IPPROTO } from "../../index";
-import { tcpConnect, TCPConnectHandler, TCPDisconnectHandler, TCPListener } from "../../tcp/stack";
 import { UDPPkt } from "../index";
 import { udpListen } from "../stack";
 import { DNSAnswer } from "./answer";
@@ -371,20 +370,4 @@ export function dnsResolveOrIp(domain: string, cb: DNSCallback) {
     }
 
     dnsResolve(domain, DNS_TYPE.A, cb);
-}
-
-export function dnsTcpConnect(
-    domainOrIp: string,
-    port: number,
-    func: TCPListener,
-    cb: TCPConnectHandler,
-    dccb: TCPDisconnectHandler,
-) {
-    dnsResolveOrIp(domainOrIp, (ip) => {
-        if (!ip) {
-            cb(false, undefined);
-            return;
-        }
-        tcpConnect(ip as IPAddr, port, func, cb, dccb);
-    });
 }
