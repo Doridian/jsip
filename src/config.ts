@@ -1,6 +1,7 @@
 import { MAC_NONE, MACAddr } from "./ethernet/address";
 import { IP_NONE, IPAddr } from "./ethernet/ip/address";
 import { getRoutes } from "./ethernet/ip/router";
+import { getDNSServers } from "./ethernet/ip/udp/dns/index";
 import { logDebug } from "./util/log";
 
 export const config: {
@@ -20,4 +21,5 @@ export function configOut() {
     getRoutes().forEach((route) => {
         logDebug(`Route to ${route.subnet} via ${(route.router === IP_NONE) ? "direct" : route.router}`);
     });
+    logDebug(`DNS servers: ${getDNSServers().join(", ")}`);
 }

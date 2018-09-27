@@ -252,7 +252,7 @@ function makeDNSIP() {
     const ip = new IPHdr();
     ip.protocol = IPPROTO.UDP;
     ip.saddr = config.ourIp;
-    ip.daddr = dnsServerIps[Math.floor(Math.random() * dnsServerIps.length)];
+    ip.daddr = getDNSServer();
     ip.df = false;
     return ip;
 }
@@ -389,4 +389,12 @@ export function removeDNSServer(ip: IPAddr) {
 
 export function flushDNSServers() {
     dnsServerIps = [];
+}
+
+export function getDNSServer(): IPAddr {
+    return dnsServerIps[Math.floor(Math.random() * dnsServerIps.length)];
+}
+
+export function getDNSServers(): IPAddr[] {
+    return dnsServerIps.slice(0);
 }
