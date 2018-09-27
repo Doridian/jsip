@@ -214,6 +214,14 @@ function makeDHCPIP(unicast: boolean = false) {
     return ip;
 }
 
+function byteArrayToIpAddrs(array: Uint8Array) {
+    const res = [];
+    for (let i = 0; i < array.byteLength; i += 4) {
+        res.push(IPAddr.fromByteArray(array, i));
+    }
+    return res;
+}
+
 udpListen(68, (data: Uint8Array) => {
     const packet = data.buffer;
     const offset = data.byteOffset;
@@ -261,7 +269,7 @@ udpListen(68, (data: Uint8Array) => {
                 config.serverIp;
 
             config.dnsServerIps = dhcp.options[DHCP_OPTION.DNS] ?
-                [IPAddr.fromByteArray(dhcp.options[DHCP_OPTION.DNS], 0)] :
+                byteArrayToIpAddrs(dhcp.options[DHCP_OPTION.DNS]) :
                 [config.gatewayIp];
 
             let ttl;
