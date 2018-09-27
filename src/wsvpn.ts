@@ -75,7 +75,7 @@ function handleInit(data: string, cb: VoidCB) {
 
     if (needDHCP) {
         logDebug("Starting DHCP procedure...");
-        dhcpNegotiate(0, cb);
+        dhcpNegotiate(cb);
     } else if (cb) {
         setTimeout(cb, 0);
     }

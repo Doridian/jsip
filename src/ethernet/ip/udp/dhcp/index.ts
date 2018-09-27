@@ -288,12 +288,12 @@ udpListen(68, (data: Uint8Array) => {
             }
             break;
         case DHCP_MODE.NACK:
-            setTimeout(dhcpNegotiate, 0);
+            setTimeout(() => dhcpNegotiate(dhcpDoneCB, 0), 0);
             break;
     }
 });
 
-export function dhcpNegotiate(secs = 0, cb?: VoidCB) {
+export function dhcpNegotiate(cb?: VoidCB, secs = 0) {
     dhcpDoneCB = cb;
 
     dhcpInInitialConfig = true;
@@ -310,13 +310,13 @@ export function dhcpNegotiate(secs = 0, cb?: VoidCB) {
     }
     ourDHCPSecs = secs;
 
-    dhcpRenewTimer = setTimeout(dhcpNegotiate, 5000, secs + 5);
+    dhcpRenewTimer = setTimeout(() => dhcpNegotiate(cb, secs + 5), 5000);
     sendIPPacket(makeDHCPIP(), makeDHCPDiscover());
 }
 
 function dhcpRenew(renegotiateAfter: number = 0) {
     if (renegotiateAfter) {
-        dhcpRenewTimer = setTimeout(dhcpNegotiate, renegotiateAfter);
+        dhcpRenewTimer = setTimeout(() => dhcpNegotiate(dhcpDoneCB), renegotiateAfter);
     }
 
     ourDHCPSecs = 0;
