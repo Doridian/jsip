@@ -175,6 +175,7 @@ function makeDHCPDiscover() {
         DHCP_OPTION.LEASETIME,
         DHCP_OPTION.SERVER,
         DHCP_OPTION.IP,
+        DHCP_OPTION.CLASSLESS_STATIC_ROUTE,
     ]);
     return makeDHCPUDP(pkt);
 }
