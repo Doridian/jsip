@@ -286,10 +286,11 @@ udpListen(68, (data: Uint8Array) => {
                     const subnetLen = routes[i];
                     const optLen = Math.ceil(subnetLen / 8);
 
+                    i++;
                     const route = IPNet.fromIPAndSubnet(IPAddr.fromPartialByteArray(routes, i, optLen), subnetLen);
                     i += optLen;
                     const ip = IPAddr.fromByteArray(routes, i);
-                    i += 4;
+                    i += 3;
 
                     addRoute(route, ip);
                 }
