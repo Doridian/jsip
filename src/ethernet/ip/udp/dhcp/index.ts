@@ -310,7 +310,7 @@ export function dhcpNegotiate(cb?: VoidCB, secs = 0) {
     }
     ourDHCPSecs = secs;
 
-    dhcpRenewTimer = setTimeout(() => dhcpNegotiate(cb, secs + 5), 5000);
+    dhcpRenewTimer = setTimeout(() => dhcpNegotiate(dhcpDoneCB, secs + 5), 5000);
     sendIPPacket(makeDHCPIP(), makeDHCPDiscover());
 }
 
