@@ -11,18 +11,17 @@ export const config: {
     ourMac: MACAddr;
     mss: number;
     mtu: number;
-    sendEth: boolean;
+    enableEthernet: boolean;
     dnsServerIps: IPAddr[];
-    ipDoneCB?: (() => void);
 } = {
     dnsServerIps: [],
+    enableEthernet: false,
     gatewayIp: IP_NONE,
     mss: -1,
     mtu: -1,
     ourIp: IP_NONE,
     ourMac: MAC_NONE,
     ourSubnet: IPNET_NONE,
-    sendEth: false,
     serverIp: IP_NONE,
 };
 

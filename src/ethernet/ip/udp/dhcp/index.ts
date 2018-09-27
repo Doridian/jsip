@@ -1,4 +1,5 @@
 import { config, configOut } from "../../../../config";
+import { VoidCB } from "../../../../util/index";
 import { logDebug } from "../../../../util/log";
 import { MACAddr } from "../../../address";
 import { ARP_HLEN, ARP_HTYPE } from "../../../arp/index";
@@ -34,6 +35,7 @@ let ourDHCPXID: number | undefined;
 let ourDHCPSecs = 0;
 let dhcpRenewTimer: number | undefined;
 let dhcpInInitialConfig = false;
+let dhcpDoneCB: VoidCB | undefined;
 
 const DHCP_OFFSET_MAGIC = 236;
 
@@ -280,9 +282,9 @@ udpListen(68, (data: Uint8Array) => {
             const ttlHalftime = ((ttl * 1000) / 2) + 1000;
             dhcpRenewTimer = setTimeout(dhcpRenew, ttlHalftime, (ttl * 1000) - ttlHalftime);
 
-            if (config.ipDoneCB) {
-                config.ipDoneCB();
-                config.ipDoneCB = undefined;
+            if (dhcpDoneCB) {
+                dhcpDoneCB();
+                dhcpDoneCB = undefined;
             }
             break;
         case DHCP_MODE.NACK:
@@ -291,7 +293,9 @@ udpListen(68, (data: Uint8Array) => {
     }
 });
 
-export function dhcpNegotiate(secs = 0) {
+export function dhcpNegotiate(secs = 0, cb?: VoidCB) {
+    dhcpDoneCB = cb;
+
     dhcpInInitialConfig = true;
     if (dhcpRenewTimer !== undefined) {
         clearTimeout(dhcpRenewTimer);

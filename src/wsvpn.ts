@@ -23,7 +23,7 @@ export function connectWSVPN(url: string, cb: VoidCB) {
     ws.onmessage = (msg) => {
         const data = msg.data;
         if (typeof data !== "string") {
-            if (config.sendEth) {
+            if (config.enableEthernet) {
                 handleEthernet(data);
             } else {
                 handleIP(data);
@@ -42,13 +42,13 @@ function handleInit(data: string, cb: VoidCB) {
 
     switch (spl[2]) {
         case "TAP":
-            config.sendEth = true;
+            config.enableEthernet = true;
         case "TUN":
             config.ourSubnet = IPNet.fromString(spl[3]);
             config.serverIp = config.ourSubnet.getAddress(0);
             break;
         case "TAP_NOCONF":
-            config.sendEth = true;
+            config.enableEthernet = true;
             config.ourSubnet = IPNET_NONE;
             config.serverIp = IP_NONE;
             needDHCP = true;
@@ -63,7 +63,7 @@ function handleInit(data: string, cb: VoidCB) {
 
     config.mss = config.mtu - 40;
 
-    if (config.sendEth) {
+    if (config.enableEthernet) {
         config.ourMac = MACAddr.fromBytes(0x0A, randomByte(), randomByte(), randomByte(), randomByte(), randomByte());
         logDebug(`Our MAC: ${config.ourMac}`);
     }
@@ -75,8 +75,7 @@ function handleInit(data: string, cb: VoidCB) {
 
     if (needDHCP) {
         logDebug("Starting DHCP procedure...");
-        config.ipDoneCB = cb;
-        dhcpNegotiate();
+        dhcpNegotiate(0, cb);
     } else if (cb) {
         setTimeout(cb, 0);
     }

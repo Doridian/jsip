@@ -6,7 +6,7 @@ import { ETH_LEN, EthHdr } from "../index";
 import { IPHdr } from "./index";
 
 export function sendIPPacket(ipHdr: IPHdr, payload: IPacket) {
-    if (!config.sendEth) {
+    if (!config.enableEthernet) {
         _sendIPPacket(ipHdr, payload);
         return;
     }
