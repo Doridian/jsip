@@ -13,6 +13,23 @@ export class IPAddr {
         return ip;
     }
 
+    public static fromPartialByteArray(ipBytes: Uint8Array, offset = 0, len = 4) {
+        const ip = new IPAddr();
+        if (len >= 1) {
+            ip.a = ipBytes[offset];
+        }
+        if (len >= 2) {
+            ip.b = ipBytes[offset + 1];
+        }
+        if (len >= 3) {
+            ip.c = ipBytes[offset + 2];
+        }
+        if (len >= 4) {
+            ip.d = ipBytes[offset + 3];
+        }
+        return ip;
+    }
+
     public static fromByteArray(ipBytes: Uint8Array, offset = 0) {
         const ip = new IPAddr();
         ip.a = ipBytes[offset];

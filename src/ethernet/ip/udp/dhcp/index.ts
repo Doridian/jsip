@@ -24,6 +24,7 @@ const enum DHCP_OPTION {
     ROUTER = 3,
     DNS = 6,
     LEASETIME = 51,
+    CLASSLESS_STATIC_ROUTE = 121,
 }
 
 const enum DHCP_MODE {
@@ -271,20 +272,31 @@ udpListen(68, (data: Uint8Array) => {
                 IPAddr.fromByteArray(dhcp.options[DHCP_OPTION.SERVER], 0) :
                 dhcp.siaddr;
 
-            const defgw = dhcp.options[DHCP_OPTION.ROUTER] ?
-                IPAddr.fromByteArray(dhcp.options[DHCP_OPTION.ROUTER], 0) :
-                undefined;
+            if (dhcp.options[DHCP_OPTION.ROUTER]) {
+                addRoute(IPNET_ALL, IPAddr.fromByteArray(dhcp.options[DHCP_OPTION.ROUTER], 0));
+            }
 
             const dnsServers = dhcp.options[DHCP_OPTION.DNS] ?
                 byteArrayToIpAddrs(dhcp.options[DHCP_OPTION.DNS]) :
                 [];
 
+            if (dhcp.options[DHCP_OPTION.CLASSLESS_STATIC_ROUTE]) {
+                const routes = dhcp.options[DHCP_OPTION.CLASSLESS_STATIC_ROUTE];
+                for (let i = 0; i < routes.byteLength; i++) {
+                    const subnetLen = routes[i];
+                    const optLen = Math.ceil(subnetLen / 8);
+
+                    const route = IPNet.fromIPAndSubnet(IPAddr.fromPartialByteArray(routes, i, optLen), subnetLen);
+                    i += optLen;
+                    const ip = IPAddr.fromByteArray(routes, i);
+                    i += 4;
+
+                    addRoute(route, ip);
+                }
+            }
+
             flushDNSServers();
             dnsServers.forEach((server) => addDNSServer(server));
-
-            if (defgw) {
-                addRoute(IPNET_ALL, defgw);
-            }
 
             let ttl;
             if (dhcp.options[DHCP_OPTION.LEASETIME]) {

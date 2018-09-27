@@ -66,6 +66,7 @@ export function flushRoutes() {
 }
 
 export function addRoute(subnet: IPNet, router: IPAddr) {
+    delRoute(subnet);
     routes.push({ router, subnet });
     routes = sortRoutes(routes);
     routeCache = {};
@@ -75,8 +76,8 @@ export function delRoute(subnet: IPNet) {
     const idx = routes.findIndex((value) => value.subnet.equals(subnet));
     if (idx >= 0) {
         routes.splice(idx, 1);
+        routeCache = {};
     }
-    routeCache = {};
 }
 
 flushRoutes();

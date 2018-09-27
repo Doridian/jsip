@@ -1,6 +1,6 @@
 import { config, configOut } from "./config";
 import { MACAddr } from "./ethernet/address";
-import { IP_NONE } from "./ethernet/ip/address";
+import { IP_NONE, IPAddr } from "./ethernet/ip/address";
 import { addRoute, flushRoutes } from "./ethernet/ip/router";
 import { IPNet, IPNET_ALL } from "./ethernet/ip/subnet";
 import { dhcpNegotiate } from "./ethernet/ip/udp/dhcp/index";
@@ -45,7 +45,7 @@ function handleInit(data: string, cb: VoidCB) {
             config.enableEthernet = true;
         case "TUN":
             const subnet = IPNet.fromString(spl[3]);
-            config.ourIp = subnet.ip;
+            config.ourIp = IPAddr.fromString(spl[3].split("/")[0]);
             addRoute(subnet, IP_NONE);
             addRoute(IPNET_ALL, subnet.getAddress(0));
             addDNSServer(subnet.getAddress(0));
