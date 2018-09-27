@@ -5,7 +5,7 @@ import { MACAddr } from "../../../address";
 import { ARP_HLEN, ARP_HTYPE } from "../../../arp/index";
 import { IP_BROADCAST, IP_NONE, IPAddr } from "../../address";
 import { IPHdr, IPPROTO } from "../../index";
-import { addRoute, resetRoutes } from "../../router";
+import { addRoute, flushRoutes } from "../../router";
 import { sendIPPacket } from "../../send";
 import { IPNet, IPNET_ALL } from "../../subnet";
 import { addDNSServer, flushDNSServers } from "../dns/index";
@@ -248,7 +248,7 @@ udpListen(68, (data: Uint8Array) => {
             sendIPPacket(makeDHCPIP(), makeDHCPRequest(dhcp));
             break;
         case DHCP_MODE.ACK:
-            resetRoutes();
+            flushRoutes();
 
             config.ourIp = dhcp.options[DHCP_OPTION.IP] ?
                 IPAddr.fromByteArray(dhcp.options[DHCP_OPTION.IP], 0) :

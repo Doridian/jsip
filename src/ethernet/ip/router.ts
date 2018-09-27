@@ -60,7 +60,7 @@ export function getRoutes() {
     return routes.slice(0);
 }
 
-export function resetRoutes() {
+export function flushRoutes() {
     routes = sortRoutes(staticRoutes.slice(0));
     routeCache = {};
 }
@@ -79,4 +79,4 @@ export function delRoute(subnet: IPNet) {
     routeCache = {};
 }
 
-resetRoutes();
+flushRoutes();

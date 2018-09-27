@@ -1,7 +1,7 @@
 import { config, configOut } from "./config";
 import { MACAddr } from "./ethernet/address";
 import { IP_NONE } from "./ethernet/ip/address";
-import { addRoute, resetRoutes } from "./ethernet/ip/router";
+import { addRoute, flushRoutes } from "./ethernet/ip/router";
 import { IPNet, IPNET_ALL } from "./ethernet/ip/subnet";
 import { dhcpNegotiate } from "./ethernet/ip/udp/dhcp/index";
 import { addDNSServer, flushDNSServers } from "./ethernet/ip/udp/dns/index";
@@ -37,7 +37,7 @@ function handleInit(data: string, cb: VoidCB) {
     // 1|init|TUN|192.168.3.1/24|1280
     const spl = data.split("|");
 
-    resetRoutes();
+    flushRoutes();
     flushDNSServers();
 
     switch (spl[2]) {
