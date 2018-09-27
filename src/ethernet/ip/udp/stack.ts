@@ -1,5 +1,5 @@
-import { sendPacket } from "../../../wssend";
 import { IPHdr, IPPROTO } from "../index";
+import { sendIPPacket } from "../send";
 import { registerIpHandler } from "../stack";
 import { UDPPkt } from "./index";
 
@@ -26,7 +26,7 @@ function udpGotPacket(data: ArrayBuffer, offset: number, len: number, ipHdr: IPH
             udp.sport = udpPkt.dport;
             udp.dport = udpPkt.sport;
             udp.data = sendData;
-            return sendPacket(ip, udp);
+            return sendIPPacket(ip, udp);
         });
     }
 }

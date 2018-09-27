@@ -1,10 +1,10 @@
 import { config, configOut } from "../../../../config";
 import { logDebug } from "../../../../util/log";
-import { sendPacket } from "../../../../wssend";
 import { MACAddr } from "../../../address";
 import { ARP_HLEN, ARP_HTYPE } from "../../../arp/index";
 import { IP_BROADCAST, IP_NONE, IPAddr } from "../../address";
 import { IPHdr, IPPROTO } from "../../index";
+import { sendIPPacket } from "../../send";
 import { IPNet } from "../../subnet";
 import { UDPPkt } from "../index";
 import { udpListen } from "../stack";
@@ -233,7 +233,7 @@ udpListen(68, (data: Uint8Array) => {
     switch (dhcp.options[DHCP_OPTION.MODE][0]) {
         case DHCP_MODE.OFFER:
             logDebug("Got DHCP offer, sending DHCP request...");
-            sendPacket(makeDHCPIP(), makeDHCPRequest(dhcp));
+            sendIPPacket(makeDHCPIP(), makeDHCPRequest(dhcp));
             break;
         case DHCP_MODE.ACK:
             config.ourIp = dhcp.options[DHCP_OPTION.IP] ?
@@ -307,7 +307,7 @@ export function dhcpNegotiate(secs = 0) {
     ourDHCPSecs = secs;
 
     dhcpRenewTimer = setTimeout(dhcpNegotiate, 5000, secs + 5);
-    sendPacket(makeDHCPIP(), makeDHCPDiscover());
+    sendIPPacket(makeDHCPIP(), makeDHCPDiscover());
 }
 
 function dhcpRenew(renegotiateAfter: number = 0) {
@@ -318,5 +318,5 @@ function dhcpRenew(renegotiateAfter: number = 0) {
     ourDHCPSecs = 0;
     ourDHCPXID = Math.floor(Math.random() * 0xFFFFFFFF) | 0;
     logDebug(`DHCP Renew XID ${(ourDHCPXID >>> 0).toString(16)}`);
-    sendPacket(makeDHCPIP(true), makeDHCPRenewRequest());
+    sendIPPacket(makeDHCPIP(true), makeDHCPRenewRequest());
 }

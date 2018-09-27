@@ -1,12 +1,13 @@
-import { config } from "./config";
-import { makeEthIPHdr } from "./ethernet/arp/stack";
-import { ETH_LEN, EthHdr } from "./ethernet/index";
-import { IPHdr } from "./ethernet/ip/index";
-import { IPacket } from "./ipacket";
+import { config } from "../../config";
+import { IPacket } from "../../ipacket";
+import { sendRaw } from "../../wsvpn";
+import { makeEthIPHdr } from "../arp/stack";
+import { ETH_LEN, EthHdr } from "../index";
+import { IPHdr } from "./index";
 
-export function sendPacket(ipHdr: IPHdr, payload: IPacket) {
+export function sendIPPacket(ipHdr: IPHdr, payload: IPacket) {
     if (!config.sendEth) {
-        _sendPacket(ipHdr, payload);
+        _sendIPPacket(ipHdr, payload);
         return;
     }
 
@@ -14,11 +15,11 @@ export function sendPacket(ipHdr: IPHdr, payload: IPacket) {
         if (!ethHdr) {
             return;
         }
-        _sendPacket(ipHdr, payload, ethHdr);
+        _sendIPPacket(ipHdr, payload, ethHdr);
     });
 }
 
-function _sendPacket(ipHdr: IPHdr, payload: IPacket, ethIPHdr?: EthHdr) {
+function _sendIPPacket(ipHdr: IPHdr, payload: IPacket, ethIPHdr?: EthHdr) {
     const fullLength = payload.getFullLength();
     const cOffset = ipHdr.getContentOffset();
     const hdrLen = (ethIPHdr ? ETH_LEN : 0) + cOffset;
@@ -36,7 +37,7 @@ function _sendPacket(ipHdr: IPHdr, payload: IPacket, ethIPHdr?: EthHdr) {
         offset += ipHdr.toPacket(reply, offset);
         offset += payload.toPacket(reply, offset, ipHdr);
 
-        config.ws!.send(reply);
+        sendRaw(reply);
         return;
     }
 
@@ -79,6 +80,6 @@ function _sendPacket(ipHdr: IPHdr, payload: IPacket, ethIPHdr?: EthHdr) {
             p8[j + hdrLen] = r8[j + offset];
         }
 
-        config.ws!.send(pktData);
+        sendRaw(pktData);
     }
 }

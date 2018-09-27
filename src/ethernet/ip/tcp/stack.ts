@@ -1,7 +1,7 @@
 import { config } from "../../../config";
-import { sendPacket } from "../../../wssend";
 import { IP_NONE, IPAddr } from "../address";
 import { IPHdr, IPPROTO } from "../index";
+import { sendIPPacket } from "../send";
 import { registerIpHandler } from "../stack";
 import { TCP_FLAGS, TCPPkt } from "./index";
 
@@ -138,7 +138,7 @@ export class TCPConn {
         const tcp = this._makeTcp();
         tcp.flags = 0;
         tcp.setFlag(TCP_FLAGS.RST);
-        sendPacket(ip, tcp);
+        sendIPPacket(ip, tcp);
         this.delete();
     }
 
@@ -176,7 +176,7 @@ export class TCPConn {
     public sendPacket(ipHdr: IPHdr, tcpPkt: TCPPkt) {
         this.lastIp = ipHdr;
         this.lastTcp = tcpPkt;
-        sendPacket(ipHdr, tcpPkt);
+        sendIPPacket(ipHdr, tcpPkt);
         this.wlastack = false;
         this.wlastsend = Date.now();
     }
@@ -196,7 +196,7 @@ export class TCPConn {
                 return;
             }
             if (this.lastIp) {
-                sendPacket(this.lastIp, this.lastTcp);
+                sendIPPacket(this.lastIp, this.lastTcp);
             }
             this.wretrycount++;
         }
@@ -265,7 +265,7 @@ export class TCPConn {
 
         if (this.rlastseqno !== undefined && tcpPkt.seqno <= this.rlastseqno) {
             if (this.lastAckTcp && this.lastAckIp) {
-                sendPacket(this.lastAckIp, this.lastAckTcp);
+                sendIPPacket(this.lastAckIp, this.lastAckTcp);
             }
             return;
         }
@@ -284,7 +284,7 @@ export class TCPConn {
                 if (this.state === TCP_STATE.SYN_RECEIVED) {
                     this.sendPacket(ip, tcp);
                 } else {
-                    sendPacket(ip, tcp);
+                    sendIPPacket(ip, tcp);
                 }
 
                 rseqno = this.rseqno;
@@ -316,7 +316,7 @@ export class TCPConn {
                 this.incRSeq(tcpPkt.data.byteLength);
                 const ip = this._makeIp(true);
                 const tcp = this._makeTcp();
-                sendPacket(ip, tcp);
+                sendIPPacket(ip, tcp);
                 this.lastAckIp = ip;
                 this.lastAckTcp = tcp;
 
@@ -383,7 +383,7 @@ export class TCPConn {
             switch (this.state) {
                 case TCP_STATE.FIN_WAIT_1:
                 case TCP_STATE.FIN_WAIT_2:
-                    sendPacket(ip, tcp); // ACK it
+                    sendIPPacket(ip, tcp); // ACK it
                     if (!tcpPkt.hasFlag(TCP_FLAGS.ACK)) {
                         this.state = TCP_STATE.CLOSING;
                     } else {
@@ -393,13 +393,13 @@ export class TCPConn {
                 case TCP_STATE.CLOSING:
                 case TCP_STATE.LAST_ACK:
                     this.delete();
-                    sendPacket(ip, tcp);
+                    sendIPPacket(ip, tcp);
                     this.incLSeq(1);
                     break;
                 default:
                     this.state = TCP_STATE.LAST_ACK;
                     tcp.setFlag(TCP_FLAGS.FIN);
-                    sendPacket(ip, tcp);
+                    sendIPPacket(ip, tcp);
                     this.incLSeq(1);
                     break;
             }

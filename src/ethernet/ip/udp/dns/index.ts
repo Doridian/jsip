@@ -2,9 +2,9 @@ import { config } from "../../../../config";
 import { BitArray } from "../../../../util/bitfield";
 import { boolToBit } from "../../../../util/index";
 import { bufferToString } from "../../../../util/string";
-import { sendPacket } from "../../../../wssend";
 import { IPAddr } from "../../address";
 import { IPHdr, IPPROTO } from "../../index";
+import { sendIPPacket } from "../../send";
 import { UDPPkt } from "../index";
 import { udpListen } from "../stack";
 import { DNSAnswer } from "./answer";
@@ -352,7 +352,7 @@ export function dnsResolve(domain: string, type: DNS_TYPE, cb: DNSCallback) {
         domainCB(domain, type, undefined);
     }, 10000);
 
-    sendPacket(makeDNSIP(), makeDNSRequest(domain, type));
+    sendIPPacket(makeDNSIP(), makeDNSRequest(domain, type));
 }
 
 const IP_REGEX = /^\d+\.\d+\.\d+\.\d+$/;

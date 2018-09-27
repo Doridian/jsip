@@ -14,7 +14,6 @@ export const config: {
     sendEth: boolean;
     dnsServerIps: IPAddr[];
     ipDoneCB?: (() => void);
-    ws?: WebSocket;
 } = {
     dnsServerIps: [],
     gatewayIp: IP_NONE,

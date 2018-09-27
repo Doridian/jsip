@@ -1,4 +1,5 @@
 import { config } from "../../config";
+import { sendRaw } from "../../wsvpn";
 import { MAC_BROADCAST, MACAddr } from "../address";
 import { ETH_LEN, ETH_TYPE, EthHdr } from "../index";
 import { IPAddr } from "../ip/address";
@@ -78,7 +79,7 @@ function sendARPPkt(arpPkt: ARPPkt, fromAddr?: MACAddr) {
     ethHdr.toPacket(pkt, 0);
     arpPkt.toPacket(pkt, ETH_LEN);
 
-    config.ws!.send(pkt);
+    sendRaw(pkt);
 }
 
 function handleARP(buffer: ArrayBuffer, offset: number, ethHdr: EthHdr) {

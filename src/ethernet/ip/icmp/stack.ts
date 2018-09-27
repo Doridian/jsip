@@ -1,5 +1,5 @@
-import { sendPacket } from "../../../wssend";
 import { IPHdr, IPPROTO } from "../index";
+import { sendIPPacket } from "../send";
 import { registerIpHandler } from "../stack";
 import { ICMPPkt } from "./index";
 
@@ -25,7 +25,7 @@ function icmpHandleEchoRequest(icmpPkt: ICMPPkt, ipHdr: IPHdr) {
     replyICMP.rest = icmpPkt.rest;
     replyICMP.data = icmpPkt.data;
 
-    sendPacket(replyIp, replyICMP);
+    sendIPPacket(replyIp, replyICMP);
 }
 
 function registerICMPHandler(type: number, handler: ICMPHandler) {
