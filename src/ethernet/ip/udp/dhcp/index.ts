@@ -11,6 +11,7 @@ import { UDPPkt } from "../index";
 import { udpListen } from "../stack";
 
 const DHCP_MAGIC = new Uint8Array([0x63, 0x82, 0x53, 0x63]);
+const DHCP_MAGIC_OFFSET = 236;
 
 const enum DHCP_OPTION {
     MODE = 53,
@@ -37,8 +38,6 @@ let dhcpRenewTimer: number | undefined;
 let dhcpInInitialConfig = false;
 let dhcpDoneCB: VoidCB | undefined;
 
-const DHCP_OFFSET_MAGIC = 236;
-
 class DHCPPkt {
     public static fromPacket(packet: ArrayBuffer, offset: number) {
         const data = new Uint8Array(packet, offset);
@@ -57,17 +56,17 @@ class DHCPPkt {
         dhcp.giaddr = IPAddr.fromByteArray(data, 24);
         dhcp.chaddr = MACAddr.fromByteArray(data, 28);
 
-        if (data[DHCP_OFFSET_MAGIC] !== DHCP_MAGIC[0] ||
-            data[DHCP_OFFSET_MAGIC + 1] !== DHCP_MAGIC[1] ||
-            data[DHCP_OFFSET_MAGIC + 2] !== DHCP_MAGIC[2] ||
-            data[DHCP_OFFSET_MAGIC + 3] !== DHCP_MAGIC[3]) {
+        if (data[DHCP_MAGIC_OFFSET] !== DHCP_MAGIC[0] ||
+            data[DHCP_MAGIC_OFFSET + 1] !== DHCP_MAGIC[1] ||
+            data[DHCP_MAGIC_OFFSET + 2] !== DHCP_MAGIC[2] ||
+            data[DHCP_MAGIC_OFFSET + 3] !== DHCP_MAGIC[3]) {
             logDebug("Invalid DHCP magic");
             return null;
         }
 
         dhcp.options = {};
 
-        let i = DHCP_OFFSET_MAGIC + 4;
+        let i = DHCP_MAGIC_OFFSET + 4;
         let gotEnd = false;
         while (i < data.byteLength) {
             const optId = data[i];
@@ -109,7 +108,7 @@ class DHCPPkt {
             const opt = this.options[optK];
             optLen += 2 + opt.byteLength;
         });
-        return DHCP_OFFSET_MAGIC + 4 + optLen;
+        return DHCP_MAGIC_OFFSET + 4 + optLen;
     }
 
     public toPacket(array: ArrayBuffer, offset: number) {
@@ -140,12 +139,12 @@ class DHCPPkt {
         this.siaddr.toBytes(packet, 20);
         this.giaddr.toBytes(packet, 24);
         this.chaddr.toBytes(packet, 28);
-        packet[DHCP_OFFSET_MAGIC] = DHCP_MAGIC[0];
-        packet[DHCP_OFFSET_MAGIC + 1] = DHCP_MAGIC[1];
-        packet[DHCP_OFFSET_MAGIC + 2] = DHCP_MAGIC[2];
-        packet[DHCP_OFFSET_MAGIC + 3] = DHCP_MAGIC[3];
+        packet[DHCP_MAGIC_OFFSET] = DHCP_MAGIC[0];
+        packet[DHCP_MAGIC_OFFSET + 1] = DHCP_MAGIC[1];
+        packet[DHCP_MAGIC_OFFSET + 2] = DHCP_MAGIC[2];
+        packet[DHCP_MAGIC_OFFSET + 3] = DHCP_MAGIC[3];
 
-        let optPos = DHCP_OFFSET_MAGIC + 4;
+        let optPos = DHCP_MAGIC_OFFSET + 4;
         Object.keys(this.options).forEach((optId) => {
             const opt = this.options[optId];
             const optLen = opt.byteLength;
