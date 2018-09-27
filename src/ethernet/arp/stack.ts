@@ -12,7 +12,9 @@ const arpQueue: { [key: string]: ARPCallback[] } = {};
 const arpTimeouts: { [key: string]: number } = {};
 
 export function makeEthIPHdr(destIp: IPAddr, cb: (ethHdr?: EthHdr) => void) {
-    if (config.ourSubnet && !config.ourSubnet.contains(destIp)) {
+    const destUnicast = destIp.isUnicast();
+
+    if (destUnicast && !config.ourSubnet.contains(destIp)) {
         destIp = config.gatewayIp;
     }
 
@@ -27,7 +29,7 @@ export function makeEthIPHdr(destIp: IPAddr, cb: (ethHdr?: EthHdr) => void) {
         return;
     }
 
-    if (!destIp.isUnicast()) {
+    if (!destUnicast) {
         ethHdr.daddr = MAC_BROADCAST;
         cb(ethHdr);
         return;

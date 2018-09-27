@@ -1,4 +1,4 @@
-import { IPAddr } from "./address";
+import { IP_NONE, IPAddr } from "./address";
 
 export class IPNet {
     public static fromString(ipStr: string) {
@@ -51,5 +51,7 @@ export const IPNETS_MULTICAST = [
     IPNet.fromString("234.0.0.0/8"),
     IPNet.fromString("239.0.0.0/8"),
 ];
+
+export const IPNET_NONE = new IPNet(IP_NONE, ~0);
 
 IPAddr.setMulticastNets(IPNETS_MULTICAST);
