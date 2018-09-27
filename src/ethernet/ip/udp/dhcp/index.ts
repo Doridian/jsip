@@ -165,9 +165,8 @@ class DHCPPkt {
     }
 }
 
-function makeDHCPDiscover() {
-    const pkt = new DHCPPkt();
-    pkt.options[DHCP_OPTION.MODE] = new Uint8Array([DHCP_MODE.DISCOVER]);
+function addDHCPOptions(pkt: DHCPPkt, mode: DHCP_MODE) {
+    pkt.options[DHCP_OPTION.MODE] = new Uint8Array([mode]);
     pkt.options[DHCP_OPTION.OPTIONS] = new Uint8Array([
         DHCP_OPTION.ROUTER,
         DHCP_OPTION.SUBNET,
@@ -177,23 +176,28 @@ function makeDHCPDiscover() {
         DHCP_OPTION.IP,
         DHCP_OPTION.CLASSLESS_STATIC_ROUTE,
     ]);
+}
+
+function makeDHCPDiscover() {
+    const pkt = new DHCPPkt();
+    addDHCPOptions(pkt, DHCP_MODE.DISCOVER);
     return makeDHCPUDP(pkt);
 }
 
-function makeDHCPRequest(offer: DHCPPkt) {
+function makeDHCPRequest(ip: IPAddr, server: IPAddr) {
     const pkt = new DHCPPkt();
-    pkt.options[DHCP_OPTION.MODE] = new Uint8Array([DHCP_MODE.REQUEST]);
-    pkt.options[DHCP_OPTION.IP] = offer.yiaddr.toByteArray();
-    pkt.options[DHCP_OPTION.SERVER] = offer.siaddr.toByteArray();
+    addDHCPOptions(pkt, DHCP_MODE.REQUEST);
+    pkt.options[DHCP_OPTION.IP] = ip.toByteArray();
+    pkt.options[DHCP_OPTION.SERVER] = server.toByteArray();
     return makeDHCPUDP(pkt);
+}
+
+function makeDHCPRequestFromOffer(offer: DHCPPkt) {
+    return makeDHCPRequest(offer.yiaddr, offer.siaddr);
 }
 
 function makeDHCPRenewRequest() {
-    const pkt = new DHCPPkt();
-    pkt.options[DHCP_OPTION.MODE] = new Uint8Array([DHCP_MODE.REQUEST]);
-    pkt.options[DHCP_OPTION.IP] = config.ourIp.toByteArray();
-    pkt.options[DHCP_OPTION.SERVER] = dhcpServer.toByteArray();
-    return makeDHCPUDP(pkt);
+    return makeDHCPRequest(config.ourIp, dhcpServer);
 }
 
 function makeDHCPUDP(dhcp: DHCPPkt) {
@@ -247,7 +251,7 @@ udpListen(68, (data: Uint8Array) => {
     switch (dhcp.options[DHCP_OPTION.MODE][0]) {
         case DHCP_MODE.OFFER:
             logDebug("Got DHCP offer, sending DHCP request...");
-            sendIPPacket(makeDHCPIP(), makeDHCPRequest(dhcp));
+            sendIPPacket(makeDHCPIP(), makeDHCPRequestFromOffer(dhcp));
             break;
         case DHCP_MODE.ACK:
             flushRoutes();
