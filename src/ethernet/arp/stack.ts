@@ -9,9 +9,9 @@ import { ARP_LEN, ARP_REPLY, ARP_REQUEST, ARPPkt } from "./index";
 
 type ARPCallback = (ethHdr?: MACAddr) => void;
 
-const arpCache: { [key: string]: MACAddr } = {};
-const arpQueue: { [key: string]: ARPCallback[] } = {};
-const arpTimeouts: { [key: string]: number } = {};
+const arpCache = new Map<number, MACAddr>();
+const arpQueue = new Map<number, ARPCallback[]>();
+const arpTimeouts = new Map<number, number>();
 
 export function makeEthIPHdr(destIp: IPAddr, cb: (ethHdr?: EthHdr) => void) {
     const router = getRoute(destIp);
@@ -23,13 +23,15 @@ export function makeEthIPHdr(destIp: IPAddr, cb: (ethHdr?: EthHdr) => void) {
         destIp = router;
     }
 
-    const destIpStr = destIp.toString();
+    const destIpKey = destIp.toInt();
 
     const ethHdr = new EthHdr();
     ethHdr.ethtype = ETH_TYPE.IP;
     ethHdr.saddr = config.ourMac;
-    if (arpCache[destIpStr]) {
-        ethHdr.daddr = arpCache[destIpStr];
+
+    const cacheValue = arpCache.get(destIpKey);
+    if (cacheValue) {
+        ethHdr.daddr = cacheValue;
         cb(ethHdr);
         return;
     }
@@ -55,19 +57,21 @@ export function makeEthIPHdr(destIp: IPAddr, cb: (ethHdr?: EthHdr) => void) {
         cb(ethHdr);
     };
 
-    if (arpQueue[destIpStr]) {
-        arpQueue[destIpStr].push(cbTmp);
+    const queue = arpQueue.get(destIpKey);
+    if (queue) {
+        queue.push(cbTmp);
         return;
     }
 
-    arpQueue[destIpStr] = [cbTmp];
-    arpTimeouts[destIpStr] = setTimeout(() => {
-        delete arpTimeouts[destIpStr];
-        if (arpQueue[destIpStr]) {
-            arpQueue[destIpStr].forEach((queueCb) => queueCb());
-            delete arpQueue[destIpStr];
+    arpQueue.set(destIpKey, [cbTmp]);
+    arpTimeouts.set(destIpKey, setTimeout(() => {
+        arpTimeouts.delete(destIpKey);
+        const timeoutQueue = arpQueue.get(destIpKey);
+        if (timeoutQueue) {
+            timeoutQueue.forEach((queueCb) => queueCb());
+            arpQueue.delete(destIpKey);
         }
-    }, 10000);
+    }, 10000));
 
     const arpReq = new ARPPkt();
     arpReq.operation = ARP_REQUEST;
@@ -101,16 +105,20 @@ function handleARP(buffer: ArrayBuffer, offset: number, ethHdr: EthHdr) {
             }
             break;
         case ARP_REPLY:
-            const ip = arpPkt.spa.toString();
+            const ip = arpPkt.spa.toInt();
             const mac = arpPkt.sha;
-            arpCache[ip] = mac;
-            if (arpQueue[ip]) {
-                arpQueue[ip].forEach((cb) => cb(mac));
-                delete arpQueue[ip];
+
+            arpCache.set(ip, mac);
+
+            const queue = arpQueue.get(ip);
+            if (queue) {
+                queue.forEach((cb) => cb(mac));
+                arpQueue.delete(ip);
             }
-            if (arpTimeouts[ip]) {
-                clearTimeout(arpTimeouts[ip]);
-                delete arpTimeouts[ip];
+            const timeout = arpTimeouts.get(ip);
+            if (timeout) {
+                clearTimeout(timeout);
+                arpTimeouts.delete(ip);
             }
             break;
     }

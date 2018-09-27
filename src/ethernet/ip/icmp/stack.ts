@@ -5,12 +5,12 @@ import { ICMPPkt } from "./index";
 
 type ICMPHandler = (icmpPkt: ICMPPkt, ipHdr: IPHdr) => void;
 
-const icmpHandlers: { [key: number]: ICMPHandler } = {};
+const icmpHandlers = new Map<number, ICMPHandler>();
 
 function icmpGotPacket(data: ArrayBuffer, offset: number, len: number, ipHdr: IPHdr) {
     const icmpPkt = ICMPPkt.fromPacket(data, offset, len);
 
-    const handler = icmpHandlers[icmpPkt.type];
+    const handler = icmpHandlers.get(icmpPkt.type);
     if (handler) {
         handler(icmpPkt, ipHdr);
     }
@@ -29,7 +29,7 @@ function icmpHandleEchoRequest(icmpPkt: ICMPPkt, ipHdr: IPHdr) {
 }
 
 function registerICMPHandler(type: number, handler: ICMPHandler) {
-    icmpHandlers[type] = handler;
+    icmpHandlers.set(type, handler);
 }
 
 registerICMPHandler(8, icmpHandleEchoRequest);

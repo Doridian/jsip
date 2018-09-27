@@ -14,9 +14,9 @@ type DNSResult = IPAddr | string | undefined;
 interface IDNSParseState { pos: number; data: Uint8Array; packet: ArrayBuffer; offset: number; }
 type DNSCallback = (result: DNSResult) => void;
 
-const dnsCache: { [key: string]: DNSResult } = {};
-const dnsQueue: { [key: string]: DNSCallback[] } = {};
-const dnsQueueTimeout: { [key: string]: number } = {};
+const dnsCache = new Map<string, DNSResult>();
+const dnsQueue = new Map<string, DNSCallback[]>();
+const dnsQueueTimeout = new Map<string, number>();
 
 const DNS_SEG_PTR = 0b11000000;
 const DNS_SEG_MAX = 0b00111111;
@@ -36,7 +36,7 @@ export const enum DNS_CLASS {
 
 function parseDNSLabel(s: IDNSParseState) {
     const res = [];
-    const donePointers: { [key: number]: boolean } = {};
+    const donePointers = new Set<number>();
     let lastPos;
     let dataGood = false;
 
@@ -50,10 +50,10 @@ function parseDNSLabel(s: IDNSParseState) {
                 lastPos = s.pos + 1;
             }
             s.pos = ((segLen & DNS_SEG_MAX) << 8) | s.data[s.pos];
-            if (donePointers[s.pos]) {
+            if (donePointers.has(s.pos)) {
                 throw new Error("Recursive pointers detected");
             }
-            donePointers[s.pos] = true;
+            donePointers.add(s.pos);
             continue;
         }
 
@@ -264,19 +264,21 @@ function _makeDNSCacheKey(domain: string, type: DNS_TYPE) {
 function domainCB(domain: string, type: number, result: DNSResult) {
     const cacheKey = _makeDNSCacheKey(domain, type);
     if (result) {
-        dnsCache[cacheKey] = result;
+        dnsCache.set(cacheKey, result);
     } else {
-        delete dnsCache[cacheKey];
+        dnsCache.delete(cacheKey);
     }
 
-    if (dnsQueue[cacheKey]) {
-        dnsQueue[cacheKey].forEach((cb) => cb(result));
-        delete dnsQueue[cacheKey];
+    const queue = dnsQueue.get(cacheKey);
+    if (queue) {
+        queue.forEach((cb) => cb(result));
+        dnsQueue.delete(cacheKey);
     }
 
-    if (dnsQueueTimeout[cacheKey]) {
-        clearTimeout(dnsQueueTimeout[cacheKey]);
-        delete dnsQueueTimeout[cacheKey];
+    const timeout = dnsQueueTimeout.get(cacheKey);
+    if (timeout) {
+        clearTimeout(timeout);
+        dnsQueueTimeout.delete(cacheKey);
     }
 }
 
@@ -294,13 +296,13 @@ udpListen(53, (data: Uint8Array) => {
     };
 
     // This could clash if asked for ANY, but ANY is deprecated
-    const answerMap: { [key: string]: DNSAnswer } = {};
+    const answerMap = new Map<string, DNSAnswer>();
     dns.answers.forEach((a) => {
         if (a.class !== DNS_CLASS.IN) {
             return;
         }
 
-        answerMap[a.name] = a;
+        answerMap.set(a.name, a);
     });
 
     dns.questions.forEach((q) => {
@@ -309,10 +311,10 @@ udpListen(53, (data: Uint8Array) => {
         }
 
         const domain = q.name;
-        let answer = answerMap[domain];
+        let answer = answerMap.get(domain);
         while (answer && answer.type === DNS_TYPE.CNAME && q.type !== DNS_TYPE.CNAME) {
             const cnameTarget = subParseDNSLabel(answer.datapos);
-            answer = answerMap[cnameTarget];
+            answer = answerMap.get(cnameTarget);
         }
 
         if (!answer || answer.type !== q.type) {
@@ -343,21 +345,23 @@ export function dnsResolve(domain: string, type: DNS_TYPE, cb: DNSCallback) {
         return;
     }
 
-    if (dnsCache[cacheKey]) {
-        cb(dnsCache[cacheKey]);
+    const cache = dnsCache.get(cacheKey);
+    if (cache) {
+        cb(cache);
         return;
     }
 
-    if (dnsQueue[cacheKey]) {
-        dnsQueue[cacheKey].push(cb);
+    const queue = dnsQueue.get(cacheKey);
+    if (queue) {
+        queue.push(cb);
         return;
     }
 
-    dnsQueue[cacheKey] = [cb];
-    dnsQueueTimeout[cacheKey] = setTimeout(() => {
-        delete dnsQueueTimeout[cacheKey];
+    dnsQueue.set(cacheKey, [cb]);
+    dnsQueueTimeout.set(cacheKey, setTimeout(() => {
+        dnsQueueTimeout.delete(cacheKey);
         domainCB(domain, type, undefined);
-    }, 10000);
+    }, 10000));
 
     sendIPPacket(makeDNSIP(), makeDNSRequest(domain, type));
 }

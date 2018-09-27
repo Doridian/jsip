@@ -4,7 +4,7 @@ import { ETH_TYPE, EthHdr } from "./index";
 
 type EthHandler = (buffer: ArrayBuffer, offset: number, ethHdr: EthHdr) => void;
 
-const ethHandlers: { [key: number]: EthHandler } = {};
+const ethHandlers = new Map<number, EthHandler>();
 
 export function handleEthernet(buffer: ArrayBuffer) {
     let offset = 0;
@@ -18,12 +18,12 @@ export function handleEthernet(buffer: ArrayBuffer) {
 
     offset += ethHdr.getContentOffset();
 
-    const handler = ethHandlers[ethHdr.ethtype];
+    const handler = ethHandlers.get(ethHdr.ethtype);
     if (handler) {
         handler(buffer, offset, ethHdr);
     }
 }
 
 export function registerEthHandler(ethtype: ETH_TYPE, handler: EthHandler) {
-    ethHandlers[ethtype] = handler;
+    ethHandlers.set(ethtype, handler);
 }

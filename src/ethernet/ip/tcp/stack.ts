@@ -7,9 +7,11 @@ import { TCP_FLAGS, TCPPkt } from "./index";
 
 export type TCPListener = (data: Uint8Array, tcpConn: TCPConn) => void;
 
-const tcpConns: { [key: string]: TCPConn } = {};
-const tcpListeners: { [key: number]: TCPListener } = {
-    7: (data, tcpConn) => { // ECHO
+const tcpConns = new Map<string, TCPConn>();
+const tcpListeners = new Map<number, TCPListener>();
+tcpListeners.set(
+    7,
+    (data, tcpConn) => { // ECHO
         const d = new Uint8Array(data);
         if (data.byteLength === 1 && d[0] === 10) {
             tcpConn.close();
@@ -17,7 +19,7 @@ const tcpListeners: { [key: number]: TCPListener } = {
             tcpConn.send(d);
         }
     },
-};
+);
 
 // Public API:
 // *connect / *listen / send / close / kill
@@ -44,7 +46,7 @@ const TCP_ONLY_SEND_ON_PSH = false;
 
 const TCP_FLAG_INCSEQ = ~(TCP_FLAGS.PSH | TCP_FLAGS.ACK);
 
-export type TCPONAckHandler = (type: TCP_CBTYPE) => void;
+export type TCPOnAckHandler = (type: TCP_CBTYPE) => void;
 export type TCPConnectHandler = (res: boolean, conn?: TCPConn) => void;
 export type TCPDisconnectHandler = (conn: TCPConn) => void;
 
@@ -52,7 +54,7 @@ interface IWBufferEntry {
     close?: boolean;
     data?: Uint8Array;
     psh?: boolean;
-    cb?: TCPONAckHandler;
+    cb?: TCPOnAckHandler;
 }
 
 export class TCPConn {
@@ -73,7 +75,7 @@ export class TCPConn {
     private wlastsend = 0;
     private wretrycount = 0;
     private rlastseqno?: number;
-    private onack: { [key: number]: [TCPONAckHandler] } = {};
+    private onack = new Map<number, TCPOnAckHandler[]>();
     private mss = config.mtu - 40;
     private connectCb?: TCPConnectHandler;
     private handler?: TCPListener;
@@ -130,7 +132,7 @@ export class TCPConn {
             this.disconnectCb = undefined;
         }
         this._connectCB(false);
-        delete tcpConns[this.connId];
+        tcpConns.delete(this.connId);
     }
 
     public kill() {
@@ -142,7 +144,7 @@ export class TCPConn {
         this.delete();
     }
 
-    public addOnAck(cb?: TCPONAckHandler) {
+    public addOnAck(cb?: TCPOnAckHandler) {
         if (!cb) {
             return;
         }
@@ -150,15 +152,15 @@ export class TCPConn {
         cb(TCP_CBTYPE.SENT);
 
         const ack = this.lseqno!;
-        const onack = this.onack[ack];
+        const onack = this.onack.get(ack);
         if (!onack) {
-            this.onack[ack] = [cb];
+            this.onack.set(ack, [cb]);
             return;
         }
         onack.push(cb);
     }
 
-    public close(cb?: TCPONAckHandler) {
+    public close(cb?: TCPOnAckHandler) {
         if (!this.wlastack || this.state !== TCP_STATE.ESTABLISHED) {
             this.wbuffers.push({ close: true, cb });
             return;
@@ -202,7 +204,7 @@ export class TCPConn {
         }
     }
 
-    public send(data: Uint8Array, cb?: TCPONAckHandler) {
+    public send(data: Uint8Array, cb?: TCPOnAckHandler) {
         if (!data || !data.byteLength) {
             return;
         }
@@ -246,7 +248,7 @@ export class TCPConn {
         }
     }
 
-    public _send(data?: Uint8Array, psh?: boolean, cb?: TCPONAckHandler) {
+    public _send(data?: Uint8Array, psh?: boolean, cb?: TCPOnAckHandler) {
         const ip = this._makeIp();
         const tcp = this._makeTcp();
         tcp.data = data;
@@ -355,10 +357,10 @@ export class TCPConn {
 
         if (tcpPkt.hasFlag(TCP_FLAGS.ACK)) {
             if (tcpPkt.ackno === lseqno) {
-                const onack = this.onack[tcpPkt.ackno];
+                const onack = this.onack.get(tcpPkt.ackno);
                 if (onack) {
                     onack.forEach((cb) => cb(TCP_CBTYPE.ACKD));
-                    delete this.onack[tcpPkt.ackno];
+                    this.onack.delete(tcpPkt.ackno);
                 }
 
                 this.wlastack = true;
@@ -412,7 +414,7 @@ export class TCPConn {
         this.dport = tcpPkt.sport;
         this.sport = tcpPkt.dport;
         this.connId = this.toString();
-        tcpConns[this.connId] = this;
+        tcpConns.set(this.connId, this);
         this.gotPacket(ipHdr, tcpPkt);
     }
 
@@ -425,8 +427,8 @@ export class TCPConn {
         do {
             this.sport = 4097 + Math.floor(Math.random() * 61347);
             this.connId = this.toString();
-        } while (tcpConns[this.connId] || tcpListeners[this.sport]);
-        tcpConns[this.connId] = this;
+        } while (tcpConns.has(this.connId) || tcpListeners.has(this.sport));
+        tcpConns.set(this.connId, this);
 
         const ip = this._makeIp(true);
         const tcp = this._makeTcp();
@@ -442,13 +444,17 @@ function tcpGotPacket(data: ArrayBuffer, offset: number, len: number, ipHdr: IPH
     const tcpPkt = TCPPkt.fromPacket(data, offset, len, ipHdr);
 
     const id = `${ipHdr.saddr}|${tcpPkt.dport}|${tcpPkt.sport}`;
-    if (tcpConns[id]) {
-        return tcpConns[id].gotPacket(ipHdr, tcpPkt);
+    const gotConn = tcpConns.get(id);
+    if (gotConn) {
+        return gotConn.gotPacket(ipHdr, tcpPkt);
     }
 
-    if (tcpPkt.hasFlag(TCP_FLAGS.SYN) && !tcpPkt.hasFlag(TCP_FLAGS.ACK) && tcpListeners[tcpPkt.dport]) {
-        const conn = new TCPConn(tcpListeners[tcpPkt.dport]);
-        return conn.accept(ipHdr, tcpPkt);
+    if (tcpPkt.hasFlag(TCP_FLAGS.SYN) && !tcpPkt.hasFlag(TCP_FLAGS.ACK)) {
+        const listener = tcpListeners.get(tcpPkt.dport);
+        if (listener) {
+            const conn = new TCPConn(listener);
+            return conn.accept(ipHdr, tcpPkt);
+        }
     }
 }
 
@@ -457,11 +463,11 @@ export function tcpListen(port: number, func: TCPListener) {
         return false;
     }
 
-    if  (tcpListeners[port]) {
+    if  (tcpListeners.has(port)) {
         return false;
     }
 
-    tcpListeners[port] = func;
+    tcpListeners.set(port, func);
     return true;
 }
 
@@ -474,7 +480,7 @@ export function tcpCloseListener(port: number) {
         return false;
     }
 
-    delete tcpListeners[port];
+    tcpListeners.delete(port);
     return true;
 }
 
@@ -490,10 +496,7 @@ export function tcpConnect(
 }
 
 setInterval(1000, () => {
-    for (const id of Object.keys(tcpConns)) {
-        const conn = tcpConns[id];
-        conn.cycle();
-    }
+    tcpConns.forEach((conn) => conn.cycle());
 });
 
 registerIpHandler(IPPROTO.TCP, tcpGotPacket);

@@ -34,12 +34,12 @@ function sortRoutes(toSort: IPRoute[]): IPRoute[] {
     });
 }
 
-let routeCache: { [key: string]: IPAddr | null } = {};
+const routeCache = new Map<number, IPAddr | null>();
 let routes: IPRoute[];
 
 export function getRoute(ip: IPAddr): IPAddr | null {
-    const ipStr = ip.toString();
-    const cache = routeCache[ipStr];
+    const ipKey = ip.toInt();
+    const cache = routeCache.get(ipKey);
     if (cache !== undefined) {
         return cache;
     }
@@ -52,7 +52,7 @@ export function getRoute(ip: IPAddr): IPAddr | null {
         }
     }
 
-    routeCache[ipStr] = res;
+    routeCache.set(ipKey, res);
     return res;
 }
 
@@ -62,21 +62,21 @@ export function getRoutes() {
 
 export function flushRoutes() {
     routes = sortRoutes(staticRoutes.slice(0));
-    routeCache = {};
+    routeCache.clear();
 }
 
 export function addRoute(subnet: IPNet, router: IPAddr) {
     delRoute(subnet);
     routes.push({ router, subnet });
     routes = sortRoutes(routes);
-    routeCache = {};
+    routeCache.clear();
 }
 
 export function delRoute(subnet: IPNet) {
     const idx = routes.findIndex((value) => value.subnet.equals(subnet));
     if (idx >= 0) {
         routes.splice(idx, 1);
-        routeCache = {};
+        routeCache.clear();
     }
 }
 

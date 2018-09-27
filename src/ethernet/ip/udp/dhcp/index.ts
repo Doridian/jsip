@@ -68,7 +68,7 @@ class DHCPPkt {
             return null;
         }
 
-        dhcp.options = {};
+        dhcp.options = new Map<DHCP_OPTION, Uint8Array>();
 
         let i = DHCP_MAGIC_OFFSET + 4;
         let gotEnd = false;
@@ -80,7 +80,7 @@ class DHCPPkt {
             }
 
             const optLen = data[i + 1];
-            dhcp.options[optId] = new Uint8Array(packet, offset + i + 2, optLen);
+            dhcp.options.set(optId, new Uint8Array(packet, offset + i + 2, optLen));
             i += optLen + 2;
         }
 
@@ -104,12 +104,11 @@ class DHCPPkt {
     public siaddr: IPAddr = IP_NONE;
     public giaddr: IPAddr = IP_NONE;
     public chaddr = config.ourMac;
-    public options: { [key: string]: Uint8Array } = {};
+    public options = new Map<DHCP_OPTION, Uint8Array>();
 
     public getFullLength() {
         let optLen = 1; // 0xFF always needed
-        Object.keys(this.options).forEach((optK) => {
-            const opt = this.options[optK];
+        this.options.forEach((opt) => {
             optLen += 2 + opt.byteLength;
         });
         return DHCP_MAGIC_OFFSET + 4 + optLen;
@@ -149,10 +148,9 @@ class DHCPPkt {
         packet[DHCP_MAGIC_OFFSET + 3] = DHCP_MAGIC[3];
 
         let optPos = DHCP_MAGIC_OFFSET + 4;
-        Object.keys(this.options).forEach((optId) => {
-            const opt = this.options[optId];
+        this.options.forEach((opt, optId) => {
             const optLen = opt.byteLength;
-            packet[optPos] = parseInt(optId, 10);
+            packet[optPos] = optId;
             packet[optPos + 1] = optLen;
             for (let i = 0; i < optLen; i++) {
                 packet[optPos + 2 + i] = opt[i];
@@ -166,8 +164,8 @@ class DHCPPkt {
 }
 
 function addDHCPOptions(pkt: DHCPPkt, mode: DHCP_MODE) {
-    pkt.options[DHCP_OPTION.MODE] = new Uint8Array([mode]);
-    pkt.options[DHCP_OPTION.OPTIONS] = new Uint8Array([
+    pkt.options.set(DHCP_OPTION.MODE, new Uint8Array([mode]));
+    pkt.options.set(DHCP_OPTION.OPTIONS, new Uint8Array([
         DHCP_OPTION.ROUTER,
         DHCP_OPTION.SUBNET,
         DHCP_OPTION.DNS,
@@ -175,7 +173,7 @@ function addDHCPOptions(pkt: DHCPPkt, mode: DHCP_MODE) {
         DHCP_OPTION.SERVER,
         DHCP_OPTION.IP,
         DHCP_OPTION.CLASSLESS_STATIC_ROUTE,
-    ]);
+    ]));
 }
 
 function makeDHCPDiscover() {
@@ -187,8 +185,8 @@ function makeDHCPDiscover() {
 function makeDHCPRequest(ip: IPAddr, server: IPAddr) {
     const pkt = new DHCPPkt();
     addDHCPOptions(pkt, DHCP_MODE.REQUEST);
-    pkt.options[DHCP_OPTION.IP] = ip.toByteArray();
-    pkt.options[DHCP_OPTION.SERVER] = server.toByteArray();
+    pkt.options.set(DHCP_OPTION.IP, ip.toByteArray());
+    pkt.options.set(DHCP_OPTION.SERVER, server.toByteArray());
     return makeDHCPUDP(pkt);
 }
 
@@ -248,7 +246,7 @@ udpListen(68, (data: Uint8Array) => {
         dhcpRenewTimer = undefined;
     }
 
-    switch (dhcp.options[DHCP_OPTION.MODE][0]) {
+    switch (dhcp.options.get(DHCP_OPTION.MODE)![0]) {
         case DHCP_MODE.OFFER:
             logDebug("Got DHCP offer, sending DHCP request...");
             sendIPPacket(makeDHCPIP(), makeDHCPRequestFromOffer(dhcp));
@@ -256,13 +254,14 @@ udpListen(68, (data: Uint8Array) => {
         case DHCP_MODE.ACK:
             flushRoutes();
 
-            config.ourIp = dhcp.options[DHCP_OPTION.IP] ?
-                IPAddr.fromByteArray(dhcp.options[DHCP_OPTION.IP], 0) :
+            const dhcpOptIp = dhcp.options.get(DHCP_OPTION.IP);
+            config.ourIp = dhcpOptIp ?
+                IPAddr.fromByteArray(dhcpOptIp, 0) :
                 dhcp.yiaddr;
 
             let subnet;
-            if (dhcp.options[DHCP_OPTION.SUBNET]) {
-                const subnetDHCP = dhcp.options[DHCP_OPTION.SUBNET];
+            const subnetDHCP = dhcp.options.get(DHCP_OPTION.SUBNET);
+            if (subnetDHCP) {
                 subnet = new IPNet(
                     config.ourIp,
                     subnetDHCP[3] + (subnetDHCP[2] << 8) + (subnetDHCP[1] << 16) + (subnetDHCP[0] << 24),
@@ -273,28 +272,26 @@ udpListen(68, (data: Uint8Array) => {
 
             addRoute(subnet, IP_NONE);
 
-            dhcpServer = dhcp.options[DHCP_OPTION.SERVER] ?
-                IPAddr.fromByteArray(dhcp.options[DHCP_OPTION.SERVER], 0) :
+            const dhcpServerRaw = dhcp.options.get(DHCP_OPTION.SERVER);
+            dhcpServer = dhcpServerRaw ?
+                IPAddr.fromByteArray(dhcpServerRaw, 0) :
                 dhcp.siaddr;
 
-            if (dhcp.options[DHCP_OPTION.ROUTER]) {
-                addRoute(IPNET_ALL, IPAddr.fromByteArray(dhcp.options[DHCP_OPTION.ROUTER], 0));
+            const dhcpRouterRaw = dhcp.options.get(DHCP_OPTION.ROUTER);
+            if (dhcpRouterRaw) {
+                addRoute(IPNET_ALL, IPAddr.fromByteArray(dhcpRouterRaw, 0));
             }
 
-            const dnsServers = dhcp.options[DHCP_OPTION.DNS] ?
-                byteArrayToIpAddrs(dhcp.options[DHCP_OPTION.DNS]) :
-                [];
-
-            if (dhcp.options[DHCP_OPTION.CLASSLESS_STATIC_ROUTE]) {
-                const routes = dhcp.options[DHCP_OPTION.CLASSLESS_STATIC_ROUTE];
-                for (let i = 0; i < routes.byteLength; i++) {
-                    const subnetLen = routes[i];
+            const routesRaw = dhcp.options.get(DHCP_OPTION.CLASSLESS_STATIC_ROUTE);
+            if (routesRaw) {
+                for (let i = 0; i < routesRaw.byteLength; i++) {
+                    const subnetLen = routesRaw[i];
                     const optLen = Math.ceil(subnetLen / 8);
 
                     i++;
-                    const route = IPNet.fromIPAndSubnet(IPAddr.fromPartialByteArray(routes, i, optLen), subnetLen);
+                    const route = IPNet.fromIPAndSubnet(IPAddr.fromPartialByteArray(routesRaw, i, optLen), subnetLen);
                     i += optLen;
-                    const ip = IPAddr.fromByteArray(routes, i);
+                    const ip = IPAddr.fromByteArray(routesRaw, i);
                     i += 3;
 
                     addRoute(route, ip);
@@ -302,15 +299,16 @@ udpListen(68, (data: Uint8Array) => {
             }
 
             flushDNSServers();
-            dnsServers.forEach((server) => addDNSServer(server));
-
-            let ttl;
-            if (dhcp.options[DHCP_OPTION.LEASETIME]) {
-                const rawTtl = dhcp.options[DHCP_OPTION.LEASETIME];
-                ttl = (rawTtl[3] + (rawTtl[2] << 8) + (rawTtl[1] << 16) + (rawTtl[0] << 24)) >>> 0;
-            } else {
-                ttl = 300;
+            const dnsServersRaw = dhcp.options.get(DHCP_OPTION.DNS);
+            if (dnsServersRaw) {
+                const dnsServers = byteArrayToIpAddrs(dnsServersRaw);
+                dnsServers.forEach((server) => addDNSServer(server));
             }
+
+            const rawTtl = dhcp.options.get(DHCP_OPTION.LEASETIME);
+            const ttl = rawTtl ?
+                (rawTtl[3] + (rawTtl[2] << 8) + (rawTtl[1] << 16) + (rawTtl[0] << 24)) >>> 0 :
+                300;
 
             if (dhcpInInitialConfig) {
                 dhcpInInitialConfig = false;

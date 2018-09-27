@@ -7,34 +7,36 @@ import { IPHdr } from "./index";
 
 type IPHandler = (data: ArrayBuffer, offset: number, len: number, ipHdr: IPHdr) => void;
 
-const ipHandlers: { [key: number]: IPHandler } = {};
+const ipHandlers = new Map<number, IPHandler>();
 
 function handlePacket(ipHdr: IPHdr, data: ArrayBuffer, offset: number) {
     const len = data.byteLength - offset;
 
-    const handler = ipHandlers[ipHdr.protocol];
+    const handler = ipHandlers.get(ipHdr.protocol);
     if (handler) {
         handler(data, offset, len, ipHdr);
     }
 }
 
 export function registerIpHandler(iptype: number, handler: IPHandler) {
-    ipHandlers[iptype] = handler;
+    ipHandlers.set(iptype, handler);
 }
 
 interface IPFragment {
+    ipHdr: IPHdr;
+    buffer: ArrayBuffer;
+    offset: number;
+    len: number;
+}
+
+interface IPFragmentContainer {
     time: number;
     last?: number;
     validUntil?: number;
-    [key: number]: {
-        ipHdr: IPHdr;
-        buffer: ArrayBuffer;
-        offset: number;
-        len: number;
-    };
+    fragments: Map<number, IPFragment>;
 }
 
-const fragmentCache: { [key: string]: IPFragment } = {};
+const fragmentCache = new Map<number, IPFragmentContainer>();
 
 export function handleIP(buffer: ArrayBuffer, offset = 0) {
     const ipHdr = IPHdr.fromPacket(buffer, offset);
@@ -58,38 +60,40 @@ export function handleIP(buffer: ArrayBuffer, offset = 0) {
     }
 
     const pktId = ipHdr.id + (ipHdr.saddr.toInt() << 16);
-    let curFrag = fragmentCache[pktId];
+    let curFrag = fragmentCache.get(pktId);
     if (!curFrag) {
         curFrag = {
+            fragments: new Map(),
             last: undefined,
             time: Date.now(),
             validUntil: undefined,
         };
-        fragmentCache[pktId] = curFrag;
+        fragmentCache.set(pktId, curFrag);
     }
 
     const fragOffset = ipHdr.fragOffset << 3;
-    curFrag[fragOffset] = {
+    curFrag.fragments.set(fragOffset, {
         buffer,
         ipHdr,
         len: buffer.byteLength - offset,
         offset,
-    };
+    });
     if (!ipHdr.mf) {
         curFrag.last = fragOffset;
     }
-    if (ipHdr.fragOffset === 0) {
+    if (fragOffset === 0) {
         curFrag.validUntil = 0;
     }
 
     // Check if we got all fragments
     if (curFrag.validUntil !== undefined && curFrag.last !== undefined) {
         let curPiecePos = curFrag.validUntil;
-        let curPiece = curFrag[curPiecePos];
+        let curPiece: IPFragment | undefined = curFrag.fragments.get(curPiecePos)!;
+
         let gotAll = false;
         while (true) {
             curPiecePos += curPiece.len;
-            curPiece = curFrag[curPiecePos];
+            curPiece = curFrag.fragments.get(curPiecePos);
             if (!curPiece) {
                 break;
             }
@@ -100,10 +104,10 @@ export function handleIP(buffer: ArrayBuffer, offset = 0) {
         }
 
         if (gotAll) {
-            const fullData = new ArrayBuffer(curFrag[curFrag.last].len + curFrag.last);
+            const fullData = new ArrayBuffer(curFrag.fragments.get(curFrag.last)!.len + curFrag.last);
             const d8 = new Uint8Array(fullData);
             curPiecePos = 0;
-            curPiece = curFrag[curPiecePos];
+            curPiece = curFrag.fragments.get(curPiecePos)!;
             while (true) {
                 const p8 = new Uint8Array(curPiece.buffer, curPiece.offset);
                 for (let i = 0; i < p8.length; i++) {
@@ -113,7 +117,7 @@ export function handleIP(buffer: ArrayBuffer, offset = 0) {
                     break;
                 }
                 curPiecePos += curPiece.len;
-                curPiece = curFrag[curPiecePos];
+                curPiece = curFrag.fragments.get(curPiecePos)!;
             }
             return handlePacket(ipHdr, fullData, 0);
         }
@@ -122,10 +126,10 @@ export function handleIP(buffer: ArrayBuffer, offset = 0) {
 
 function timeoutFragments() {
     const cutoff = Date.now() - 30000;
-    for (const id of Object.keys(fragmentCache)) {
-        const frag = fragmentCache[id];
+    for (const id of Array.from(fragmentCache.keys())) {
+        const frag = fragmentCache.get(id)!;
         if (frag.time < cutoff) {
-            delete fragmentCache[id];
+            fragmentCache.delete(id);
         }
     }
 }
