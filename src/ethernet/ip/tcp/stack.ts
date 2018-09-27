@@ -74,7 +74,7 @@ export class TCPConn {
     private wretrycount = 0;
     private rlastseqno?: number;
     private onack: { [key: number]: [TCPONAckHandler] } = {};
-    private mss = config.mss;
+    private mss = config.mtu - 40;
     private connectCb?: TCPConnectHandler;
     private handler?: TCPListener;
     private connId: string = "";

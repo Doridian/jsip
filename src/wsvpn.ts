@@ -61,8 +61,6 @@ function handleInit(data: string, cb: VoidCB) {
 
     logDebug(`Link-MTU: ${config.mtu}`);
 
-    config.mss = config.mtu - 40;
-
     if (config.enableEthernet) {
         config.ourMac = MACAddr.fromBytes(0x0A, randomByte(), randomByte(), randomByte(), randomByte(), randomByte());
         logDebug(`Our MAC: ${config.ourMac}`);

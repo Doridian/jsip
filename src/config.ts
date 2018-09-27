@@ -4,20 +4,18 @@ import { IPNet, IPNET_NONE } from "./ethernet/ip/subnet";
 import { logDebug } from "./util/log";
 
 export const config: {
-    ourIp: IPAddr;
-    serverIp: IPAddr;
-    gatewayIp: IPAddr;
-    ourSubnet: IPNet;
-    ourMac: MACAddr;
-    mss: number;
-    mtu: number;
-    enableEthernet: boolean;
     dnsServerIps: IPAddr[];
+    enableEthernet: boolean;
+    gatewayIp: IPAddr;
+    mtu: number;
+    ourIp: IPAddr;
+    ourMac: MACAddr;
+    ourSubnet: IPNet;
+    serverIp: IPAddr;
 } = {
     dnsServerIps: [],
     enableEthernet: false,
     gatewayIp: IP_NONE,
-    mss: -1,
     mtu: -1,
     ourIp: IP_NONE,
     ourMac: MAC_NONE,
