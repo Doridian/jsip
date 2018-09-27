@@ -1,6 +1,5 @@
 import { config, configOut } from "./config";
-import { MAC_BROADCAST, MACAddr } from "./ethernet/address";
-import { ETH_TYPE, EthHdr } from "./ethernet/index";
+import { MACAddr } from "./ethernet/address";
 import { IP_NONE } from "./ethernet/ip/address";
 import { handleIP } from "./ethernet/ip/stack";
 import { IPNet, IPNET_NONE } from "./ethernet/ip/subnet";
@@ -53,10 +52,6 @@ function handleInit(data: string, cb: VoidCB) {
     if (config.sendEth) {
         config.ourMac = MACAddr.fromBytes(0x0A, randomByte(), randomByte(), randomByte(), randomByte(), randomByte());
         logDebug(`Our MAC: ${config.ourMac}`);
-        config.ethBcastHdr = new EthHdr();
-        config.ethBcastHdr.ethtype = ETH_TYPE.IP;
-        config.ethBcastHdr.saddr = config.ourMac;
-        config.ethBcastHdr.daddr = MAC_BROADCAST;
     }
 
     config.ourIp = config.ourSubnet.ip;

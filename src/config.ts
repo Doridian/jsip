@@ -1,5 +1,4 @@
 import { MAC_NONE, MACAddr } from "./ethernet/address";
-import { EthHdr } from "./ethernet/index";
 import { IP_NONE, IPAddr } from "./ethernet/ip/address";
 import { IPNet, IPNET_NONE } from "./ethernet/ip/subnet";
 import { logDebug } from "./util/log";
@@ -13,7 +12,6 @@ export const config: {
     mss: number;
     mtu: number;
     sendEth: boolean;
-    ethBcastHdr?: EthHdr;
     dnsServerIps: IPAddr[];
     ipDoneCB?: (() => void);
     ws?: WebSocket;
