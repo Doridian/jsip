@@ -13,13 +13,15 @@ export class IPNet {
     }
 
     public ip: IPAddr;
-    public bitmask = 0;
+    private bitmask: number;
     private mask?: IPAddr;
-    private baseIpInt = 0;
+    private baseIpInt: number;
+    private sortmask: number;
 
     constructor(ip: IPAddr, bitmask: number) {
         this.ip = ip;
         this.bitmask = bitmask;
+        this.sortmask = bitmask >>> 0;
         this.mask = IPAddr.fromInt32(bitmask);
         this.baseIpInt = ip.toInt() & bitmask;
     }
@@ -43,7 +45,7 @@ export class IPNet {
     }
 
     public compareTo(ipNet: IPNet) {
-        return (this.bitmask >>> 0) - (ipNet.bitmask >>> 0);
+        return this.sortmask - ipNet.sortmask;
     }
 
     public getAddress(num: number) {
