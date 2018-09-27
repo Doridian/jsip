@@ -4,13 +4,11 @@ import { getRoutes } from "./ethernet/ip/router";
 import { logDebug } from "./util/log";
 
 export const config: {
-    dnsServerIps: IPAddr[];
     enableEthernet: boolean;
     mtu: number;
     ourIp: IPAddr;
     ourMac: MACAddr;
 } = {
-    dnsServerIps: [],
     enableEthernet: false,
     mtu: -1,
     ourIp: IP_NONE,

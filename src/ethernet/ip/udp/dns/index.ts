@@ -21,6 +21,8 @@ const dnsQueueTimeout: { [key: string]: number } = {};
 const DNS_SEG_PTR = 0b11000000;
 const DNS_SEG_MAX = 0b00111111;
 
+let dnsServerIps: IPAddr[] = [];
+
 export const enum DNS_TYPE {
     A = 0x0001,
     CNAME = 0x0005,
@@ -250,7 +252,7 @@ function makeDNSIP() {
     const ip = new IPHdr();
     ip.protocol = IPPROTO.UDP;
     ip.saddr = config.ourIp;
-    ip.daddr = config.dnsServerIps[0];
+    ip.daddr = dnsServerIps[Math.floor(Math.random() * dnsServerIps.length)];
     ip.df = false;
     return ip;
 }
@@ -336,7 +338,7 @@ export function dnsResolve(domain: string, type: DNS_TYPE, cb: DNSCallback) {
     domain = domain.toLowerCase();
     const cacheKey = _makeDNSCacheKey(domain, type);
 
-    if (config.dnsServerIps.length < 1) {
+    if (dnsServerIps.length < 1) {
         cb(undefined);
         return;
     }
@@ -369,4 +371,22 @@ export function dnsResolveOrIp(domain: string, cb: DNSCallback) {
     }
 
     dnsResolve(domain, DNS_TYPE.A, cb);
+}
+
+export function addDNSServer(ip: IPAddr) {
+    if (dnsServerIps.indexOf(ip) >= 0) {
+        return;
+    }
+    dnsServerIps.push(ip);
+}
+
+export function removeDNSServer(ip: IPAddr) {
+    const idx = dnsServerIps.indexOf(ip);
+    if (idx >= 0) {
+        dnsServerIps = dnsServerIps.splice(idx, 1);
+    }
+}
+
+export function flushDNSServers() {
+    dnsServerIps = [];
 }

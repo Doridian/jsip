@@ -4,6 +4,7 @@ import { IP_NONE } from "./ethernet/ip/address";
 import { addRoute, resetRoutes } from "./ethernet/ip/router";
 import { IPNet, IPNET_ALL } from "./ethernet/ip/subnet";
 import { dhcpNegotiate } from "./ethernet/ip/udp/dhcp/index";
+import { addDNSServer, flushDNSServers } from "./ethernet/ip/udp/dns/index";
 import { randomByte, VoidCB } from "./util/index";
 import { logDebug } from "./util/log";
 import { handlePacket } from "./util/packet";
@@ -37,6 +38,7 @@ function handleInit(data: string, cb: VoidCB) {
     const spl = data.split("|");
 
     resetRoutes();
+    flushDNSServers();
 
     switch (spl[2]) {
         case "TAP":
@@ -46,6 +48,7 @@ function handleInit(data: string, cb: VoidCB) {
             config.ourIp = subnet.ip;
             addRoute(subnet, IP_NONE);
             addRoute(IPNET_ALL, subnet.getAddress(0));
+            addDNSServer(subnet.getAddress(0));
             break;
         case "TAP_NOCONF":
             config.enableEthernet = true;
@@ -64,8 +67,6 @@ function handleInit(data: string, cb: VoidCB) {
         logDebug(`Our MAC: ${config.ourMac}`);
     }
 
-    resetRoutes();
-    config.dnsServerIps = [];
     configOut();
 
     if (needDHCP) {

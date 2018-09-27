@@ -8,6 +8,7 @@ import { IPHdr, IPPROTO } from "../../index";
 import { addRoute, resetRoutes } from "../../router";
 import { sendIPPacket } from "../../send";
 import { IPNet, IPNET_ALL } from "../../subnet";
+import { addDNSServer, flushDNSServers } from "../dns/index";
 import { UDPPkt } from "../index";
 import { udpListen } from "../stack";
 
@@ -274,9 +275,12 @@ udpListen(68, (data: Uint8Array) => {
                 IPAddr.fromByteArray(dhcp.options[DHCP_OPTION.ROUTER], 0) :
                 undefined;
 
-            config.dnsServerIps = dhcp.options[DHCP_OPTION.DNS] ?
+            const dnsServers = dhcp.options[DHCP_OPTION.DNS] ?
                 byteArrayToIpAddrs(dhcp.options[DHCP_OPTION.DNS]) :
                 [];
+
+            flushDNSServers();
+            dnsServers.forEach((server) => addDNSServer(server));
 
             if (defgw) {
                 addRoute(IPNET_ALL, defgw);
