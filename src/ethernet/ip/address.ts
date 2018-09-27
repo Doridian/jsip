@@ -91,6 +91,10 @@ export class IPAddr {
     public isUnicast() {
         return !this.isBroadcast() && !this.isMulticast();
     }
+
+    public isLoopback() {
+        return this.a === 127;
+    }
 }
 
 export const IP_BROADCAST = IPAddr.fromString("255.255.255.255");

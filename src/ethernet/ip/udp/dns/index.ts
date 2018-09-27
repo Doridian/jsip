@@ -336,6 +336,11 @@ export function dnsResolve(domain: string, type: DNS_TYPE, cb: DNSCallback) {
     domain = domain.toLowerCase();
     const cacheKey = _makeDNSCacheKey(domain, type);
 
+    if (config.dnsServerIps.length < 1) {
+        cb(undefined);
+        return;
+    }
+
     if (dnsCache[cacheKey]) {
         cb(dnsCache[cacheKey]);
         return;

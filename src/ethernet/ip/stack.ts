@@ -42,7 +42,10 @@ export function handleIP(buffer: ArrayBuffer, offset = 0) {
         return;
     }
 
-    if (config.ourIp !== IP_NONE && ipHdr.daddr.isUnicast() && !ipHdr.daddr.equals(config.ourIp)) {
+    if (config.ourIp !== IP_NONE &&
+        ipHdr.daddr.isUnicast() &&
+        !ipHdr.daddr.isLoopback() &&
+        !ipHdr.daddr.equals(config.ourIp)) {
         logDebug(`Discarding packet not meant for us, but for ${ipHdr.daddr.toString()}`);
         return;
     }

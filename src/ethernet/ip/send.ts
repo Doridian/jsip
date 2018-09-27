@@ -1,5 +1,6 @@
 import { config } from "../../config";
 import { IPacket } from "../../ipacket";
+import { handlePacket } from "../../util/packet";
 import { sendRaw } from "../../wsvpn";
 import { makeEthIPHdr } from "../arp/stack";
 import { ETH_LEN, EthHdr } from "../index";
@@ -25,6 +26,8 @@ function _sendIPPacket(ipHdr: IPHdr, payload: IPacket, ethIPHdr?: EthHdr) {
     const hdrLen = (ethIPHdr ? ETH_LEN : 0) + cOffset;
     const maxPacketSize = config.mtu - cOffset;
 
+    const isLoopback = ipHdr.daddr.isLoopback();
+
     if (fullLength <= maxPacketSize) {
         ipHdr.setContentLength(fullLength);
 
@@ -37,7 +40,11 @@ function _sendIPPacket(ipHdr: IPHdr, payload: IPacket, ethIPHdr?: EthHdr) {
         offset += ipHdr.toPacket(reply, offset);
         offset += payload.toPacket(reply, offset, ipHdr);
 
-        sendRaw(reply);
+        if (isLoopback) {
+            handlePacket(reply);
+        } else {
+            sendRaw(reply);
+        }
         return;
     }
 
@@ -80,6 +87,10 @@ function _sendIPPacket(ipHdr: IPHdr, payload: IPacket, ethIPHdr?: EthHdr) {
             p8[j + hdrLen] = r8[j + offset];
         }
 
-        sendRaw(pktData);
+        if (isLoopback) {
+            handlePacket(pktData);
+        } else {
+            sendRaw(pktData);
+        }
     }
 }

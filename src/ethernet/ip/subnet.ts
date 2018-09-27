@@ -1,15 +1,19 @@
-import { IP_NONE, IPAddr } from "./address";
+import { IP_BROADCAST, IP_NONE, IPAddr } from "./address";
+
+function makeSubnetBitmask(subnetLen: number) {
+    return ~((1 << (32 - subnetLen)) - 1);
+}
 
 export class IPNet {
     public static fromString(ipStr: string) {
         const ipS = ipStr.split("/");
         const ip = IPAddr.fromString(ipS[0]);
         const subnetLen = parseInt(ipS[1], 10);
-        return new IPNet(ip, ~((1 << (32 - subnetLen)) - 1));
+        return new IPNet(ip, makeSubnetBitmask(subnetLen));
     }
 
     public ip: IPAddr;
-    private bitmask = 0;
+    public bitmask = 0;
     private mask?: IPAddr;
     private baseIpInt = 0;
 
@@ -44,14 +48,12 @@ export class IPNet {
 }
 
 export const IPNETS_MULTICAST = [
-    IPNet.fromString("224.0.0.0/14"),
-    IPNet.fromString("224.4.0.0/16"),
-    IPNet.fromString("232.0.0.0/8"),
-    IPNet.fromString("233.0.0.0/8"),
-    IPNet.fromString("234.0.0.0/8"),
-    IPNet.fromString("239.0.0.0/8"),
+    IPNet.fromString("224.0.0.0/4"),
 ];
 
-export const IPNET_NONE = new IPNet(IP_NONE, ~0);
+export const IPNET_NONE = new IPNet(IP_NONE, makeSubnetBitmask(8));
+export const IPNET_ALL = new IPNet(IP_NONE, 0);
+export const IPNET_LOOPBACK = IPNet.fromString("127.0.0.0/8");
+export const IPNET_BROADCAST = new IPNet(IP_BROADCAST, makeSubnetBitmask(32));
 
 IPAddr.setMulticastNets(IPNETS_MULTICAST);

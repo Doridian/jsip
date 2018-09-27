@@ -5,8 +5,9 @@ import { MACAddr } from "../../../address";
 import { ARP_HLEN, ARP_HTYPE } from "../../../arp/index";
 import { IP_BROADCAST, IP_NONE, IPAddr } from "../../address";
 import { IPHdr, IPPROTO } from "../../index";
+import { addRoute, resetRoutes } from "../../router";
 import { sendIPPacket } from "../../send";
-import { IPNet } from "../../subnet";
+import { IPNet, IPNET_ALL } from "../../subnet";
 import { UDPPkt } from "../index";
 import { udpListen } from "../stack";
 
@@ -36,6 +37,7 @@ let ourDHCPXID: number | undefined;
 let ourDHCPSecs = 0;
 let dhcpRenewTimer: number | undefined;
 let dhcpInInitialConfig = false;
+let dhcpServer: IPAddr = IP_BROADCAST;
 let dhcpDoneCB: VoidCB | undefined;
 
 class DHCPPkt {
@@ -187,7 +189,7 @@ function makeDHCPRenewRequest() {
     const pkt = new DHCPPkt();
     pkt.options[DHCP_OPTION.MODE] = new Uint8Array([DHCP_MODE.REQUEST]);
     pkt.options[DHCP_OPTION.IP] = config.ourIp.toByteArray();
-    pkt.options[DHCP_OPTION.SERVER] = config.serverIp.toByteArray();
+    pkt.options[DHCP_OPTION.SERVER] = dhcpServer.toByteArray();
     return makeDHCPUDP(pkt);
 }
 
@@ -204,7 +206,7 @@ function makeDHCPIP(unicast: boolean = false) {
     ip.protocol = IPPROTO.UDP;
     if (unicast) {
         ip.saddr = config.ourIp;
-        ip.daddr = config.serverIp;
+        ip.daddr = dhcpServer;
     } else {
         ip.saddr = IP_NONE;
         ip.daddr = IP_BROADCAST;
@@ -245,31 +247,40 @@ udpListen(68, (data: Uint8Array) => {
             sendIPPacket(makeDHCPIP(), makeDHCPRequest(dhcp));
             break;
         case DHCP_MODE.ACK:
+            resetRoutes();
+
             config.ourIp = dhcp.options[DHCP_OPTION.IP] ?
                 IPAddr.fromByteArray(dhcp.options[DHCP_OPTION.IP], 0) :
                 dhcp.yiaddr;
 
+            let subnet;
             if (dhcp.options[DHCP_OPTION.SUBNET]) {
-                const subnet = dhcp.options[DHCP_OPTION.SUBNET];
-                config.ourSubnet = new IPNet(
+                const subnetDHCP = dhcp.options[DHCP_OPTION.SUBNET];
+                subnet = new IPNet(
                     config.ourIp,
-                    subnet[3] + (subnet[2] << 8) + (subnet[1] << 16) + (subnet[0] << 24),
+                    subnetDHCP[3] + (subnetDHCP[2] << 8) + (subnetDHCP[1] << 16) + (subnetDHCP[0] << 24),
                 );
             } else {
-                config.ourSubnet = IPNet.fromString(`${config.ourIp}/32`);
+                subnet = IPNet.fromString(`${config.ourIp}/32`);
             }
 
-            config.serverIp = dhcp.options[DHCP_OPTION.SERVER] ?
+            addRoute(subnet, IP_NONE);
+
+            dhcpServer = dhcp.options[DHCP_OPTION.SERVER] ?
                 IPAddr.fromByteArray(dhcp.options[DHCP_OPTION.SERVER], 0) :
                 dhcp.siaddr;
 
-            config.gatewayIp = dhcp.options[DHCP_OPTION.ROUTER] ?
+            const defgw = dhcp.options[DHCP_OPTION.ROUTER] ?
                 IPAddr.fromByteArray(dhcp.options[DHCP_OPTION.ROUTER], 0) :
-                config.serverIp;
+                undefined;
 
             config.dnsServerIps = dhcp.options[DHCP_OPTION.DNS] ?
                 byteArrayToIpAddrs(dhcp.options[DHCP_OPTION.DNS]) :
-                [config.gatewayIp];
+                [];
+
+            if (defgw) {
+                addRoute(IPNET_ALL, defgw);
+            }
 
             let ttl;
             if (dhcp.options[DHCP_OPTION.LEASETIME]) {

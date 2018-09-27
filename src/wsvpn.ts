@@ -1,12 +1,12 @@
 import { config, configOut } from "./config";
 import { MACAddr } from "./ethernet/address";
 import { IP_NONE } from "./ethernet/ip/address";
-import { handleIP } from "./ethernet/ip/stack";
-import { IPNet, IPNET_NONE } from "./ethernet/ip/subnet";
+import { addRoute, resetRoutes } from "./ethernet/ip/router";
+import { IPNet, IPNET_ALL } from "./ethernet/ip/subnet";
 import { dhcpNegotiate } from "./ethernet/ip/udp/dhcp/index";
-import { handleEthernet } from "./ethernet/stack";
 import { randomByte, VoidCB } from "./util/index";
 import { logDebug } from "./util/log";
+import { handlePacket } from "./util/packet";
 
 let ws: WebSocket | undefined;
 
@@ -23,11 +23,7 @@ export function connectWSVPN(url: string, cb: VoidCB) {
     ws.onmessage = (msg) => {
         const data = msg.data;
         if (typeof data !== "string") {
-            if (config.enableEthernet) {
-                handleEthernet(data);
-            } else {
-                handleIP(data);
-            }
+            handlePacket(data);
             return;
         }
 
@@ -40,17 +36,19 @@ function handleInit(data: string, cb: VoidCB) {
     // 1|init|TUN|192.168.3.1/24|1280
     const spl = data.split("|");
 
+    resetRoutes();
+
     switch (spl[2]) {
         case "TAP":
             config.enableEthernet = true;
         case "TUN":
-            config.ourSubnet = IPNet.fromString(spl[3]);
-            config.serverIp = config.ourSubnet.getAddress(0);
+            const subnet = IPNet.fromString(spl[3]);
+            config.ourIp = subnet.ip;
+            addRoute(subnet, IP_NONE);
+            addRoute(IPNET_ALL, subnet.getAddress(0));
             break;
         case "TAP_NOCONF":
             config.enableEthernet = true;
-            config.ourSubnet = IPNET_NONE;
-            config.serverIp = IP_NONE;
             needDHCP = true;
             break;
     }
@@ -66,9 +64,8 @@ function handleInit(data: string, cb: VoidCB) {
         logDebug(`Our MAC: ${config.ourMac}`);
     }
 
-    config.ourIp = config.ourSubnet.ip;
-    config.gatewayIp = config.serverIp;
-    config.dnsServerIps = [config.gatewayIp];
+    resetRoutes();
+    config.dnsServerIps = [];
     configOut();
 
     if (needDHCP) {

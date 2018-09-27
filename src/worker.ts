@@ -24,7 +24,7 @@ onmessage = (e) => {
         case "connect":
             _workerMain(e.data[2], () => {
                 postMessage(["connect",
-                    msgId, config.ourIp, config.serverIp, config.gatewayIp, config.ourSubnet, config.mtu], "");
+                    msgId, config.ourIp, config.mtu], "");
             });
             break;
         case "httpGet":

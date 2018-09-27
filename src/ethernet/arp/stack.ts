@@ -2,7 +2,8 @@ import { config } from "../../config";
 import { sendRaw } from "../../wsvpn";
 import { MAC_BROADCAST, MACAddr } from "../address";
 import { ETH_LEN, ETH_TYPE, EthHdr } from "../index";
-import { IPAddr } from "../ip/address";
+import { IP_NONE, IPAddr } from "../ip/address";
+import { getRoute } from "../ip/router";
 import { registerEthHandler } from "../stack";
 import { ARP_LEN, ARP_REPLY, ARP_REQUEST, ARPPkt } from "./index";
 
@@ -13,10 +14,13 @@ const arpQueue: { [key: string]: ARPCallback[] } = {};
 const arpTimeouts: { [key: string]: number } = {};
 
 export function makeEthIPHdr(destIp: IPAddr, cb: (ethHdr?: EthHdr) => void) {
-    const destUnicast = destIp.isUnicast();
-
-    if (destUnicast && !config.ourSubnet.contains(destIp)) {
-        destIp = config.gatewayIp;
+    const router = getRoute(destIp);
+    if (router !== IP_NONE) {
+        if (!router) {
+            cb();
+            return;
+        }
+        destIp = router;
     }
 
     const destIpStr = destIp.toString();
@@ -30,8 +34,14 @@ export function makeEthIPHdr(destIp: IPAddr, cb: (ethHdr?: EthHdr) => void) {
         return;
     }
 
-    if (!destUnicast) {
+    if (!destIp.isUnicast()) {
         ethHdr.daddr = MAC_BROADCAST;
+        cb(ethHdr);
+        return;
+    }
+
+    if (destIp.isLoopback() || destIp.equals(config.ourIp)) {
+        ethHdr.daddr = config.ourMac;
         cb(ethHdr);
         return;
     }

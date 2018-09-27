@@ -11,9 +11,7 @@ export function handleEthernet(buffer: ArrayBuffer) {
 
     const ethHdr = EthHdr.fromPacket(buffer, offset);
 
-    const isBroadcast = ethHdr.daddr.isBroadcast();
-
-    if (!ethHdr.daddr.equals(config.ourMac) && !isBroadcast) {
+    if (!ethHdr.daddr.equals(config.ourMac) && !ethHdr.daddr.isBroadcast()) {
         logDebug(`Discarding packet not meant for us, but for ${ethHdr.daddr.toString()}`);
         return;
     }
