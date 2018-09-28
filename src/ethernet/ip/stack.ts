@@ -1,5 +1,5 @@
 import { config } from "../../config";
-import { logDebug } from "../../util/log";
+import { logDebug, logError } from "../../util/log";
 import { ETH_TYPE } from "../index";
 import { registerEthHandler } from "../stack";
 import { IP_NONE } from "./address";
@@ -14,7 +14,11 @@ function handlePacket(ipHdr: IPHdr, data: ArrayBuffer, offset: number) {
 
     const handler = ipHandlers.get(ipHdr.protocol);
     if (handler) {
-        handler(data, offset, len, ipHdr);
+        try {
+            handler(data, offset, len, ipHdr);
+        } catch (e) {
+            logError(e.stack || e);
+        }
     }
 }
 
