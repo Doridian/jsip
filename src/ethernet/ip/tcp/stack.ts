@@ -165,7 +165,11 @@ export class TCPConn {
             return;
         }
 
-        cb(TCP_CBTYPE.SENT);
+        try {
+            cb(TCP_CBTYPE.SENT);
+        } catch (e) {
+            logError(e.stack || e);
+        }
 
         const ack = this.lseqno!;
         const onack = this.onack.get(ack);
@@ -377,7 +381,7 @@ export class TCPConn {
             if (tcpPkt.ackno === lseqno) {
                 const onack = this.onack.get(tcpPkt.ackno);
                 if (onack) {
-                    onack.forEach((cb) => cb(TCP_CBTYPE.ACKD));
+                    onack.forEach((cb) => { try { cb(TCP_CBTYPE.ACKD); } catch (e) { logError(e.stack || e); } });
                     this.onack.delete(tcpPkt.ackno);
                 }
 
