@@ -13,6 +13,8 @@ import { addDNSServer, flushDNSServers } from "../dns/index";
 import { UDPPkt } from "../index";
 import { udpListen } from "../stack";
 
+// TODO: Actually multi-interface this (make a DHCP negotiator a class)
+
 const DHCP_MAGIC = new Uint8Array([0x63, 0x82, 0x53, 0x63]);
 const DHCP_MAGIC_OFFSET = 236;
 
