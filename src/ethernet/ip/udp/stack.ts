@@ -1,3 +1,4 @@
+import { IInterface } from "../../../interface";
 import { logError } from "../../../util/log";
 import { IPHdr, IPPROTO } from "../index";
 import { sendIPPacket } from "../send";
@@ -5,12 +6,12 @@ import { registerIpHandler } from "../stack";
 import { UDPPkt } from "./index";
 
 type UDPReplyFunc = (data: Uint8Array) => void;
-type UDPListener = (data: Uint8Array, ipHdr: IPHdr, reply: UDPReplyFunc) => void;
+type UDPListener = (data: Uint8Array, ipHdr: IPHdr, iface: IInterface, reply: UDPReplyFunc) => void;
 
 const udpListeners = new Map<number, UDPListener>();
 udpListeners.set(
     7,
-    (data, _, reply) => { // ECHO
+    (data, _, __, reply) => { // ECHO
         if (!data) {
             return;
         }
@@ -18,19 +19,19 @@ udpListeners.set(
     },
 );
 
-function udpGotPacket(data: ArrayBuffer, offset: number, len: number, ipHdr: IPHdr) {
+function udpGotPacket(data: ArrayBuffer, offset: number, len: number, ipHdr: IPHdr, iface: IInterface) {
     const udpPkt = UDPPkt.fromPacket(data, offset, len, ipHdr);
 
     const listener = udpListeners.get(udpPkt.dport);
     if (listener && udpPkt.data) {
         try {
-            listener(udpPkt.data, ipHdr, (sendData) => {
+            listener(udpPkt.data, ipHdr, iface, (sendData) => {
                 const ip = ipHdr.makeReply();
                 const udp = new UDPPkt();
                 udp.sport = udpPkt.dport;
                 udp.dport = udpPkt.sport;
                 udp.data = sendData;
-                return sendIPPacket(ip, udp);
+                return sendIPPacket(ip, udp, iface);
             });
         } catch (e) {
             logError(e.stack || e);

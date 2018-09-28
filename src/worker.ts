@@ -1,7 +1,6 @@
-import { config } from "./config";
 import { httpGet } from "./ethernet/ip/tcp/http/index";
 import { VoidCB } from "./util/index";
-import { connectWSVPN } from "./wsvpn";
+import { WSVPN } from "./wsvpn";
 
 export function workerMain(cb: VoidCB) {
     if (document.location.protocol === "file:") {
@@ -14,7 +13,8 @@ export function workerMain(cb: VoidCB) {
 }
 
 function _workerMain(url: string, cb: VoidCB) {
-    connectWSVPN(url, cb);
+    // tslint:disable-next-line:no-unused-expression
+    new WSVPN(url, cb);
 }
 
 onmessage = (e) => {
@@ -23,8 +23,7 @@ onmessage = (e) => {
     switch (cmd) {
         case "connect":
             _workerMain(e.data[2], () => {
-                postMessage(["connect",
-                    msgId, config.ourIp, config.mtu], "");
+                postMessage(["connect", msgId], "");
             });
             break;
         case "httpGet":

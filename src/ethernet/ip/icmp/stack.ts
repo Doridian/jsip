@@ -1,22 +1,23 @@
+import { IInterface } from "../../../interface";
 import { IPHdr, IPPROTO } from "../index";
 import { sendIPPacket } from "../send";
 import { registerIpHandler } from "../stack";
 import { ICMPPkt } from "./index";
 
-type ICMPHandler = (icmpPkt: ICMPPkt, ipHdr: IPHdr) => void;
+type ICMPHandler = (icmpPkt: ICMPPkt, ipHdr: IPHdr, iface: IInterface) => void;
 
 const icmpHandlers = new Map<number, ICMPHandler>();
 
-function icmpGotPacket(data: ArrayBuffer, offset: number, len: number, ipHdr: IPHdr) {
+function icmpGotPacket(data: ArrayBuffer, offset: number, len: number, ipHdr: IPHdr, iface: IInterface) {
     const icmpPkt = ICMPPkt.fromPacket(data, offset, len);
 
     const handler = icmpHandlers.get(icmpPkt.type);
     if (handler) {
-        handler(icmpPkt, ipHdr);
+        handler(icmpPkt, ipHdr, iface);
     }
 }
 
-function icmpHandleEchoRequest(icmpPkt: ICMPPkt, ipHdr: IPHdr) {
+function icmpHandleEchoRequest(icmpPkt: ICMPPkt, ipHdr: IPHdr, iface: IInterface) {
     const replyIp = ipHdr.makeReply();
 
     const replyICMP = new ICMPPkt();
@@ -25,7 +26,7 @@ function icmpHandleEchoRequest(icmpPkt: ICMPPkt, ipHdr: IPHdr) {
     replyICMP.rest = icmpPkt.rest;
     replyICMP.data = icmpPkt.data;
 
-    sendIPPacket(replyIp, replyICMP);
+    sendIPPacket(replyIp, replyICMP, iface);
 }
 
 function registerICMPHandler(type: number, handler: ICMPHandler) {

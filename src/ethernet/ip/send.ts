@@ -1,32 +1,58 @@
-import { config } from "../../config";
+import { IInterface, INTERFACE_NONE } from "../../interface";
 import { IPacket } from "../../ipacket";
-import { handlePacket } from "../../util/packet";
-import { sendRaw } from "../../wsvpn";
 import { makeEthIPHdr } from "../arp/stack";
 import { ETH_LEN, EthHdr } from "../index";
+import { IP_NONE } from "./address";
 import { IPHdr } from "./index";
+import { getRoute } from "./router";
 
-export function sendIPPacket(ipHdr: IPHdr, payload: IPacket) {
-    if (!config.enableEthernet) {
-        _sendIPPacket(ipHdr, payload);
+export function sendIPPacket(ipHdr: IPHdr, payload: IPacket, iface: IInterface) {
+    let routeDestIp = ipHdr.daddr;
+
+    let route = getRoute(routeDestIp, iface);
+    if (!route) {
         return;
     }
 
-    makeEthIPHdr(ipHdr.daddr, (ethHdr) => {
+    if (route.router !== IP_NONE) {
+        routeDestIp = route.router;
+        if (route.iface === INTERFACE_NONE) {
+            route = getRoute(routeDestIp, iface);
+            if (!route) {
+                return;
+            }
+        }
+    }
+
+    if (iface === INTERFACE_NONE) {
+        if (route.iface === INTERFACE_NONE) {
+            return;
+        }
+        iface = route.iface;
+    }
+
+    if (ipHdr.saddr === IP_NONE) {
+        ipHdr.saddr = iface.getIP();
+    }
+
+    if (!iface.useEthernet()) {
+        _sendIPPacket(ipHdr, payload, iface);
+        return;
+    }
+
+    makeEthIPHdr(routeDestIp, (ethHdr) => {
         if (!ethHdr) {
             return;
         }
-        _sendIPPacket(ipHdr, payload, ethHdr);
-    });
+        _sendIPPacket(ipHdr, payload, iface, ethHdr);
+    }, iface);
 }
 
-function _sendIPPacket(ipHdr: IPHdr, payload: IPacket, ethIPHdr?: EthHdr) {
+function _sendIPPacket(ipHdr: IPHdr, payload: IPacket, iface: IInterface, ethIPHdr?: EthHdr) {
     const fullLength = payload.getFullLength();
     const cOffset = ipHdr.getContentOffset();
     const hdrLen = (ethIPHdr ? ETH_LEN : 0) + cOffset;
-    const maxPacketSize = config.mtu - cOffset;
-
-    const isLoopback = ipHdr.daddr.isLoopback();
+    const maxPacketSize = iface.getMTU() - cOffset;
 
     if (fullLength <= maxPacketSize) {
         ipHdr.setContentLength(fullLength);
@@ -40,11 +66,8 @@ function _sendIPPacket(ipHdr: IPHdr, payload: IPacket, ethIPHdr?: EthHdr) {
         offset += ipHdr.toPacket(reply, offset);
         offset += payload.toPacket(reply, offset, ipHdr);
 
-        if (isLoopback) {
-            handlePacket(reply);
-        } else {
-            sendRaw(reply);
-        }
+        iface.sendRaw(reply);
+
         return;
     }
 
@@ -87,10 +110,6 @@ function _sendIPPacket(ipHdr: IPHdr, payload: IPacket, ethIPHdr?: EthHdr) {
             p8[j + hdrLen] = r8[j + offset];
         }
 
-        if (isLoopback) {
-            handlePacket(pktData);
-        } else {
-            sendRaw(pktData);
-        }
+        iface.sendRaw(pktData);
     }
 }

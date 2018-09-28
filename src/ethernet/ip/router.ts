@@ -1,32 +1,35 @@
+import { IInterface, INTERFACE_LOOPBACK, INTERFACE_NONE } from "../../interface";
 import { IP_NONE, IPAddr } from "./address";
-import { IPNet, IPNET_BROADCAST, IPNET_LINK_LOCAL, IPNET_NONE, IPNETS_MULTICAST } from "./subnet";
+import { IPNet, IPNET_BROADCAST, IPNET_LINK_LOCAL, IPNET_LOOPBACK, IPNET_NONE } from "./subnet";
 
 interface IPRoute {
     router: IPAddr;
+    iface: IInterface;
     subnet: IPNet;
 }
 
 const staticRoutes: IPRoute[] = [
     {
+        iface: INTERFACE_NONE,
         router: IP_NONE,
         subnet: IPNET_NONE,
     },
     {
+        iface: INTERFACE_NONE,
         router: IP_NONE,
         subnet: IPNET_LINK_LOCAL,
     },
     {
+        iface: INTERFACE_NONE,
         router: IP_NONE,
         subnet: IPNET_BROADCAST,
     },
-];
-
-IPNETS_MULTICAST.forEach((net) => {
-    staticRoutes.push({
+    {
+        iface: INTERFACE_LOOPBACK,
         router: IP_NONE,
-        subnet: net,
-    });
-});
+        subnet: IPNET_LOOPBACK,
+    },
+];
 
 function sortRoutes(toSort: IPRoute[]): IPRoute[] {
     return toSort.sort((a, b) => {
@@ -34,10 +37,10 @@ function sortRoutes(toSort: IPRoute[]): IPRoute[] {
     });
 }
 
-const routeCache = new Map<number, IPAddr | null>();
+const routeCache = new Map<number, IPRoute | null>();
 let routes: IPRoute[];
 
-export function getRoute(ip: IPAddr): IPAddr | null {
+export function getRoute(ip: IPAddr, _: IInterface): IPRoute | null {
     const ipKey = ip.toInt();
     const cache = routeCache.get(ipKey);
     if (cache !== undefined) {
@@ -47,7 +50,7 @@ export function getRoute(ip: IPAddr): IPAddr | null {
     let res = null;
     for (const route of routes) {
         if (route.subnet.contains(ip)) {
-            res = route.router;
+            res = route;
             break;
         }
     }
@@ -65,9 +68,9 @@ export function flushRoutes() {
     routeCache.clear();
 }
 
-export function addRoute(subnet: IPNet, router: IPAddr) {
+export function addRoute(subnet: IPNet, router: IPAddr, iface: IInterface) {
     removeRoute(subnet);
-    routes.push({ router, subnet });
+    routes.push({ router, subnet, iface });
     routes = sortRoutes(routes);
     routeCache.clear();
 }

@@ -1,4 +1,3 @@
-import { config } from "../../config";
 import { BitArray } from "../../util/bitfield";
 import { computeChecksum } from "../../util/checksum";
 import { logDebug } from "../../util/log";
@@ -85,7 +84,7 @@ export class IPHdr {
         const replyIp = new IPHdr();
         replyIp.protocol = this.protocol;
 
-        replyIp.saddr = this.daddr.isUnicast() ? this.daddr : config.ourIp;
+        replyIp.saddr = this.daddr.isUnicast() ? this.daddr : IP_NONE;
         replyIp.daddr = this.saddr;
 
         return replyIp;

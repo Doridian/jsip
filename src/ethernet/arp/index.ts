@@ -1,4 +1,3 @@
-import { config } from "../../config";
 import { MAC_NONE, MACAddr } from "../address";
 import { IP_NONE, IPAddr } from "../ip/address";
 
@@ -48,7 +47,7 @@ export class ARPPkt {
         replyARP.hlen = this.hlen;
         replyARP.plen = this.plen;
         replyARP.operation = ARP_REPLY;
-        replyARP.sha = config.ourMac;
+        replyARP.sha = this.tha;
         replyARP.spa = this.tpa;
         replyARP.tha = this.sha;
         replyARP.tpa = this.spa;

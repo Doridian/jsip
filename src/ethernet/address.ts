@@ -1,3 +1,5 @@
+import { randomByte } from "../util/index";
+
 function _macPaddedOut(num: number) {
     if (num < 0x10) {
         return `0${num.toString(16)}`;
@@ -49,6 +51,11 @@ export class MACAddr {
         mac.b = (macInt >>> 32) & 0xFF;
         mac.a = (macInt >>> 40) & 0xFF;
         return mac;
+    }
+
+    public static random() {
+        return MACAddr.fromBytes(0x0A,
+            randomByte(), randomByte(), randomByte(), randomByte(), randomByte());
     }
 
     private a = 0;

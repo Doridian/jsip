@@ -1,9 +1,9 @@
-import { config } from "../../../../config";
+import { INTERFACE_NONE } from "../../../../interface";
 import { BitArray } from "../../../../util/bitfield";
 import { boolToBit } from "../../../../util/index";
 import { logError } from "../../../../util/log";
 import { bufferToString } from "../../../../util/string";
-import { IPAddr } from "../../address";
+import { IP_NONE, IPAddr } from "../../address";
 import { IPHdr, IPPROTO } from "../../index";
 import { sendIPPacket } from "../../send";
 import { UDPPkt } from "../index";
@@ -252,7 +252,7 @@ function makeDNSUDP(dns: DNSPkt) {
 function makeDNSIP() {
     const ip = new IPHdr();
     ip.protocol = IPPROTO.UDP;
-    ip.saddr = config.ourIp;
+    ip.saddr = IP_NONE;
     ip.daddr = getDNSServer();
     ip.df = false;
     return ip;
@@ -364,7 +364,7 @@ export function dnsResolve(domain: string, type: DNS_TYPE, cb: DNSCallback) {
         domainCB(domain, type, undefined);
     }, 10000));
 
-    sendIPPacket(makeDNSIP(), makeDNSRequest(domain, type));
+    sendIPPacket(makeDNSIP(), makeDNSRequest(domain, type), INTERFACE_NONE);
 }
 
 const IP_REGEX = /^\d+\.\d+\.\d+\.\d+$/;

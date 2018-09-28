@@ -1,21 +1,21 @@
-import { config } from "../../config";
+import { IInterface } from "../../interface";
 import { logDebug, logError } from "../../util/log";
-import { ETH_TYPE } from "../index";
+import { ETH_TYPE, EthHdr } from "../index";
 import { registerEthHandler } from "../stack";
 import { IP_NONE } from "./address";
 import { IPHdr } from "./index";
 
-type IPHandler = (data: ArrayBuffer, offset: number, len: number, ipHdr: IPHdr) => void;
+type IPHandler = (data: ArrayBuffer, offset: number, len: number, ipHdr: IPHdr, iface: IInterface) => void;
 
 const ipHandlers = new Map<number, IPHandler>();
 
-function handlePacket(ipHdr: IPHdr, data: ArrayBuffer, offset: number) {
+function handlePacket(ipHdr: IPHdr, data: ArrayBuffer, offset: number, iface: IInterface) {
     const len = data.byteLength - offset;
 
     const handler = ipHandlers.get(ipHdr.protocol);
     if (handler) {
         try {
-            handler(data, offset, len, ipHdr);
+            handler(data, offset, len, ipHdr, iface);
         } catch (e) {
             logError(e.stack || e);
         }
@@ -40,18 +40,18 @@ interface IPFragmentContainer {
     fragments: Map<number, IPFragment>;
 }
 
-const fragmentCache = new Map<number, IPFragmentContainer>();
+const fragmentCache = new Map<string, Map<number, IPFragmentContainer>>();
 
-export function handleIP(buffer: ArrayBuffer, offset = 0) {
+export function handleIP(buffer: ArrayBuffer, offset = 0, _: EthHdr, iface: IInterface) {
     const ipHdr = IPHdr.fromPacket(buffer, offset);
     if (!ipHdr || !ipHdr.daddr) {
         return;
     }
 
-    if (config.ourIp !== IP_NONE &&
+    if (iface.getIP() !== IP_NONE &&
         ipHdr.daddr.isUnicast() &&
         !ipHdr.daddr.isLoopback() &&
-        !ipHdr.daddr.equals(config.ourIp)) {
+        !ipHdr.daddr.equals(iface.getIP())) {
         logDebug(`Discarding packet not meant for us, but for ${ipHdr.daddr.toString()}`);
         return;
     }
@@ -60,11 +60,17 @@ export function handleIP(buffer: ArrayBuffer, offset = 0) {
     offset += ipHdr.getContentOffset();
 
     if (!isFrag) {
-        return handlePacket(ipHdr, buffer, offset);
+        return handlePacket(ipHdr, buffer, offset, iface);
+    }
+
+    let myCache = fragmentCache.get(iface.getName());
+    if (!myCache) {
+        myCache = new Map();
+        fragmentCache.set(iface.getName(), myCache);
     }
 
     const pktId = ipHdr.id + (ipHdr.saddr.toInt() << 16);
-    let curFrag = fragmentCache.get(pktId);
+    let curFrag = myCache.get(pktId);
     if (!curFrag) {
         curFrag = {
             fragments: new Map(),
@@ -72,7 +78,7 @@ export function handleIP(buffer: ArrayBuffer, offset = 0) {
             time: Date.now(),
             validUntil: undefined,
         };
-        fragmentCache.set(pktId, curFrag);
+        myCache.set(pktId, curFrag);
     }
 
     const fragOffset = ipHdr.fragOffset << 3;
@@ -123,7 +129,7 @@ export function handleIP(buffer: ArrayBuffer, offset = 0) {
                 curPiecePos += curPiece.len;
                 curPiece = curFrag.fragments.get(curPiecePos)!;
             }
-            return handlePacket(ipHdr, fullData, 0);
+            return handlePacket(ipHdr, fullData, 0, iface);
         }
     }
 }
@@ -131,9 +137,12 @@ export function handleIP(buffer: ArrayBuffer, offset = 0) {
 function timeoutFragments() {
     const cutoff = Date.now() - 30000;
     for (const id of Array.from(fragmentCache.keys())) {
-        const frag = fragmentCache.get(id)!;
-        if (frag.time < cutoff) {
-            fragmentCache.delete(id);
+        const myCache = fragmentCache.get(id)!;
+        for (const subId of Array.from(myCache.keys())) {
+            const frag = myCache.get(subId)!;
+            if (frag.time < cutoff) {
+                fragmentCache.delete(id);
+            }
         }
     }
 }

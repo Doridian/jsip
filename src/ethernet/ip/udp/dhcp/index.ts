@@ -1,7 +1,8 @@
-import { config, configOut } from "../../../../config";
+import { configOut } from "../../../../config";
+import { IInterface } from "../../../../interface";
 import { VoidCB } from "../../../../util/index";
 import { logDebug } from "../../../../util/log";
-import { MACAddr } from "../../../address";
+import { MAC_NONE, MACAddr } from "../../../address";
 import { ARP_HLEN, ARP_HTYPE } from "../../../arp/index";
 import { IP_BROADCAST, IP_NONE, IPAddr } from "../../address";
 import { IPHdr, IPPROTO } from "../../index";
@@ -99,7 +100,7 @@ class DHCPPkt {
     public yiaddr: IPAddr = IP_NONE;
     public siaddr: IPAddr = IP_NONE;
     public giaddr: IPAddr = IP_NONE;
-    public chaddr = config.ourMac;
+    public chaddr = MAC_NONE;
     public options = new Map<DHCP_OPTION, Uint8Array>();
 
     public getFullLength() {
@@ -172,26 +173,28 @@ function addDHCPOptions(pkt: DHCPPkt, mode: DHCP_MODE) {
     ]));
 }
 
-function makeDHCPDiscover() {
+function makeDHCPDiscover(iface: IInterface) {
     const pkt = new DHCPPkt();
+    pkt.chaddr = iface.getMAC();
     addDHCPOptions(pkt, DHCP_MODE.DISCOVER);
     return makeDHCPUDP(pkt);
 }
 
-function makeDHCPRequest(ip: IPAddr, server: IPAddr) {
+function makeDHCPRequest(ip: IPAddr, server: IPAddr, iface: IInterface) {
     const pkt = new DHCPPkt();
+    pkt.chaddr = iface.getMAC();
     addDHCPOptions(pkt, DHCP_MODE.REQUEST);
     pkt.options.set(DHCP_OPTION.IP, ip.toByteArray());
     pkt.options.set(DHCP_OPTION.SERVER, server.toByteArray());
     return makeDHCPUDP(pkt);
 }
 
-function makeDHCPRequestFromOffer(offer: DHCPPkt) {
-    return makeDHCPRequest(offer.yiaddr, offer.siaddr);
+function makeDHCPRequestFromOffer(offer: DHCPPkt, iface: IInterface) {
+    return makeDHCPRequest(offer.yiaddr, offer.siaddr, iface);
 }
 
-function makeDHCPRenewRequest() {
-    return makeDHCPRequest(config.ourIp, dhcpServer);
+function makeDHCPRenewRequest(iface: IInterface) {
+    return makeDHCPRequest(iface.getIP(), dhcpServer, iface);
 }
 
 function makeDHCPUDP(dhcp: DHCPPkt) {
@@ -202,11 +205,11 @@ function makeDHCPUDP(dhcp: DHCPPkt) {
     return pkt;
 }
 
-function makeDHCPIP(unicast: boolean = false) {
+function makeDHCPIP(iface: IInterface, unicast: boolean = false) {
     const ip = new IPHdr();
     ip.protocol = IPPROTO.UDP;
     if (unicast) {
-        ip.saddr = config.ourIp;
+        ip.saddr = iface.getIP();
         ip.daddr = dhcpServer;
     } else {
         ip.saddr = IP_NONE;
@@ -224,7 +227,7 @@ function byteArrayToIpAddrs(array: Uint8Array) {
     return res;
 }
 
-udpListen(68, (data: Uint8Array) => {
+udpListen(68, (data: Uint8Array, _: IPHdr, iface: IInterface) => {
     const packet = data.buffer;
     const offset = data.byteOffset;
 
@@ -241,28 +244,30 @@ udpListen(68, (data: Uint8Array) => {
     switch (dhcp.options.get(DHCP_OPTION.MODE)![0]) {
         case DHCP_MODE.OFFER:
             logDebug("Got DHCP offer, sending DHCP request...");
-            sendIPPacket(makeDHCPIP(), makeDHCPRequestFromOffer(dhcp));
+            sendIPPacket(makeDHCPIP(iface), makeDHCPRequestFromOffer(dhcp, iface), iface);
             break;
         case DHCP_MODE.ACK:
             flushRoutes();
 
             const dhcpOptIp = dhcp.options.get(DHCP_OPTION.IP);
-            config.ourIp = dhcpOptIp ?
+            const ourIp = dhcpOptIp ?
                 IPAddr.fromByteArray(dhcpOptIp, 0) :
                 dhcp.yiaddr;
+
+            iface.setIP(ourIp);
 
             let subnet;
             const subnetDHCP = dhcp.options.get(DHCP_OPTION.SUBNET);
             if (subnetDHCP) {
                 subnet = new IPNet(
-                    config.ourIp,
+                    ourIp,
                     subnetDHCP[3] + (subnetDHCP[2] << 8) + (subnetDHCP[1] << 16) + (subnetDHCP[0] << 24),
                 );
             } else {
-                subnet = IPNet.fromString(`${config.ourIp}/32`);
+                subnet = IPNet.fromString(`${ourIp}/32`);
             }
 
-            addRoute(subnet, IP_NONE);
+            addRoute(subnet, IP_NONE, iface);
 
             const dhcpServerRaw = dhcp.options.get(DHCP_OPTION.SERVER);
             dhcpServer = dhcpServerRaw ?
@@ -271,7 +276,7 @@ udpListen(68, (data: Uint8Array) => {
 
             const dhcpRouterRaw = dhcp.options.get(DHCP_OPTION.ROUTER);
             if (dhcpRouterRaw) {
-                addRoute(IPNET_ALL, IPAddr.fromByteArray(dhcpRouterRaw, 0));
+                addRoute(IPNET_ALL, IPAddr.fromByteArray(dhcpRouterRaw, 0), iface);
             }
 
             const routesRaw = dhcp.options.get(DHCP_OPTION.CLASSLESS_STATIC_ROUTE);
@@ -286,7 +291,7 @@ udpListen(68, (data: Uint8Array) => {
                     const ip = IPAddr.fromByteArray(routesRaw, i);
                     i += 3;
 
-                    addRoute(route, ip);
+                    addRoute(route, ip, iface);
                 }
             }
 
@@ -310,7 +315,7 @@ udpListen(68, (data: Uint8Array) => {
 
             logDebug(`DHCP TTL: ${ttl}`);
             const ttlHalftime = ((ttl * 1000) / 2) + 1000;
-            dhcpRenewTimer = setTimeout(dhcpRenew, ttlHalftime, (ttl * 1000) - ttlHalftime);
+            dhcpRenewTimer = setTimeout(dhcpRenew, ttlHalftime, iface, (ttl * 1000) - ttlHalftime);
 
             if (dhcpDoneCB) {
                 dhcpDoneCB();
@@ -318,12 +323,12 @@ udpListen(68, (data: Uint8Array) => {
             }
             break;
         case DHCP_MODE.NACK:
-            setTimeout(() => dhcpNegotiate(), 0);
+            setTimeout(() => dhcpNegotiate(iface), 0);
             break;
     }
 });
 
-export function dhcpNegotiate(cb?: VoidCB, secs = 0) {
+export function dhcpNegotiate(iface: IInterface, cb?: VoidCB, secs = 0) {
     if (cb) {
         dhcpDoneCB = cb;
     }
@@ -342,17 +347,17 @@ export function dhcpNegotiate(cb?: VoidCB, secs = 0) {
     }
     ourDHCPSecs = secs;
 
-    dhcpRenewTimer = setTimeout(() => dhcpNegotiate(undefined, secs + 5), 5000);
-    sendIPPacket(makeDHCPIP(), makeDHCPDiscover());
+    dhcpRenewTimer = setTimeout(() => dhcpNegotiate(iface, undefined, secs + 5), 5000);
+    sendIPPacket(makeDHCPIP(iface), makeDHCPDiscover(iface), iface);
 }
 
-function dhcpRenew(renegotiateAfter: number = 0) {
+function dhcpRenew(iface: IInterface, renegotiateAfter: number = 0) {
     if (renegotiateAfter) {
-        dhcpRenewTimer = setTimeout(() => dhcpNegotiate(), renegotiateAfter);
+        dhcpRenewTimer = setTimeout(() => dhcpNegotiate(iface), renegotiateAfter);
     }
 
     ourDHCPSecs = 0;
     ourDHCPXID = Math.floor(Math.random() * 0xFFFFFFFF) | 0;
     logDebug(`DHCP Renew XID ${(ourDHCPXID >>> 0).toString(16)}`);
-    sendIPPacket(makeDHCPIP(true), makeDHCPRenewRequest());
+    sendIPPacket(makeDHCPIP(iface, true), makeDHCPRenewRequest(iface), iface);
 }

@@ -1,4 +1,3 @@
-import { config } from "../../../config";
 import { IPacket } from "../../../ipacket";
 import { BitArray } from "../../../util/bitfield";
 import { computeChecksum, computeChecksumPseudo } from "../../../util/checksum";
@@ -79,12 +78,11 @@ export class TCPPkt implements IPacket {
     public windowSize = 0;
     public mss = -1;
 
-    public fillMSS() {
+    public fillMSS(mss: number) {
         this.options = new Uint8Array(4);
         const o8 = this.options;
         o8[0] = 2;
         o8[1] = 4;
-        const mss = config.mtu - 40;
         o8[2] = (mss >>> 8) & 0xFF;
         o8[3] = mss & 0xFF;
     }

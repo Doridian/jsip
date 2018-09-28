@@ -1,11 +1,14 @@
-import { config } from "../config";
+import { EthHdr } from "../ethernet/index";
 import { handleIP } from "../ethernet/ip/stack";
 import { handleEthernet } from "../ethernet/stack";
+import { IInterface } from "../interface";
 
-export function handlePacket(data: ArrayBuffer) {
-    if (config.enableEthernet) {
-        handleEthernet(data);
+const ethDummy = new EthHdr();
+
+export function handlePacket(data: ArrayBuffer, iface: IInterface) {
+    if (iface.useEthernet()) {
+        handleEthernet(data, iface);
     } else {
-        handleIP(data);
+        handleIP(data, 0, ethDummy, iface);
     }
 }
