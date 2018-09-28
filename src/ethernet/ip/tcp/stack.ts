@@ -1,4 +1,5 @@
 import { config } from "../../../config";
+import { logError } from "../../../util/log";
 import { IP_NONE, IPAddr } from "../address";
 import { IPHdr, IPPROTO } from "../index";
 import { sendIPPacket } from "../send";
@@ -90,6 +91,17 @@ export class TCPConn {
         this.handler = handler;
     }
 
+    public _handleSafe(data: Uint8Array) {
+        if (!this.handler || data.byteLength < 1) {
+            return;
+        }
+        try {
+            this.handler(data, this);
+        } catch (e) {
+            logError(e.stack || e);
+        }
+    }
+
     public _makeIp(df = false) {
         const ip = new IPHdr();
         ip.protocol = IPPROTO.TCP;
@@ -128,7 +140,11 @@ export class TCPConn {
         this.wbuffers = [];
         this.rbuffers = [];
         if (this.disconnectCb) {
-            this.disconnectCb(this);
+            try {
+                this.disconnectCb(this);
+            } catch (e) {
+                logError(e.stack || e);
+            }
             this.disconnectCb = undefined;
         }
         this._connectCB(false);
@@ -243,7 +259,11 @@ export class TCPConn {
 
     public _connectCB(res: boolean) {
         if (this.connectCb) {
-            this.connectCb(res, this);
+            try {
+                this.connectCb(res, this);
+            } catch (e) {
+                logError(e.stack || e);
+            }
             this.connectCb = undefined;
         }
     }
@@ -337,12 +357,10 @@ export class TCPConn {
                             pos += b8.length;
                         }
                         this.rbuffers = [];
-                        if (this.handler) {
-                            this.handler(new Uint8Array(all), this);
-                        }
+                        this._handleSafe(new Uint8Array(all));
                     }
-                } else if (this.handler) {
-                    this.handler(tcpPkt.data, this);
+                } else {
+                    this._handleSafe(tcpPkt.data);
                 }
             }
 

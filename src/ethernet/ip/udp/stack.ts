@@ -1,3 +1,4 @@
+import { logError } from "../../../util/log";
 import { IPHdr, IPPROTO } from "../index";
 import { sendIPPacket } from "../send";
 import { registerIpHandler } from "../stack";
@@ -22,14 +23,18 @@ function udpGotPacket(data: ArrayBuffer, offset: number, len: number, ipHdr: IPH
 
     const listener = udpListeners.get(udpPkt.dport);
     if (listener && udpPkt.data) {
-        return listener(udpPkt.data, ipHdr, (sendData) => {
-            const ip = ipHdr.makeReply();
-            const udp = new UDPPkt();
-            udp.sport = udpPkt.dport;
-            udp.dport = udpPkt.sport;
-            udp.data = sendData;
-            return sendIPPacket(ip, udp);
-        });
+        try {
+            listener(udpPkt.data, ipHdr, (sendData) => {
+                const ip = ipHdr.makeReply();
+                const udp = new UDPPkt();
+                udp.sport = udpPkt.dport;
+                udp.dport = udpPkt.sport;
+                udp.data = sendData;
+                return sendIPPacket(ip, udp);
+            });
+        } catch (e) {
+            logError(e.stack || e);
+        }
     }
 }
 
