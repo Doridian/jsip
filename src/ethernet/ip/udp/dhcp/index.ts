@@ -64,8 +64,7 @@ class DHCPPkt {
             data[DHCP_MAGIC_OFFSET + 1] !== DHCP_MAGIC[1] ||
             data[DHCP_MAGIC_OFFSET + 2] !== DHCP_MAGIC[2] ||
             data[DHCP_MAGIC_OFFSET + 3] !== DHCP_MAGIC[3]) {
-            logDebug("Invalid DHCP magic");
-            return null;
+            throw new Error("Invalid DHCP magic");
         }
 
         let i = DHCP_MAGIC_OFFSET + 4;
@@ -83,8 +82,7 @@ class DHCPPkt {
         }
 
         if (!gotEnd) {
-            logDebug("Invalid DHCP end");
-            return null;
+            throw new Error("Invalid DHCP end");
         }
 
         return dhcp;
@@ -231,11 +229,7 @@ udpListen(68, (data: Uint8Array) => {
     const offset = data.byteOffset;
 
     const dhcp = DHCPPkt.fromPacket(packet, offset);
-    if (!dhcp || dhcp.op !== 2) {
-        return;
-    }
-
-    if (dhcp.xid !== ourDHCPXID) {
+    if (dhcp.op !== 2 || dhcp.xid !== ourDHCPXID) {
         return;
     }
 
