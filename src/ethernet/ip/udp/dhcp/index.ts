@@ -68,8 +68,6 @@ class DHCPPkt {
             return null;
         }
 
-        dhcp.options = new Map<DHCP_OPTION, Uint8Array>();
-
         let i = DHCP_MAGIC_OFFSET + 4;
         let gotEnd = false;
         while (i < data.byteLength) {
