@@ -1,6 +1,7 @@
 import { config } from "../../../../config";
 import { BitArray } from "../../../../util/bitfield";
 import { boolToBit } from "../../../../util/index";
+import { logError } from "../../../../util/log";
 import { bufferToString } from "../../../../util/string";
 import { IPAddr } from "../../address";
 import { IPHdr, IPPROTO } from "../../index";
@@ -271,7 +272,7 @@ function domainCB(domain: string, type: number, result: DNSResult) {
 
     const queue = dnsQueue.get(cacheKey);
     if (queue) {
-        queue.forEach((cb) => cb(result));
+        queue.forEach((cb) => { try { cb(result); } catch (e) { logError(e.stack || e); } });
         dnsQueue.delete(cacheKey);
     }
 

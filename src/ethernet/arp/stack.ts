@@ -1,4 +1,5 @@
 import { config } from "../../config";
+import { logError } from "../../util/log";
 import { sendRaw } from "../../wsvpn";
 import { MAC_BROADCAST, MACAddr } from "../address";
 import { ETH_LEN, ETH_TYPE, EthHdr } from "../index";
@@ -68,7 +69,7 @@ export function makeEthIPHdr(destIp: IPAddr, cb: (ethHdr?: EthHdr) => void) {
         arpTimeouts.delete(destIpKey);
         const timeoutQueue = arpQueue.get(destIpKey);
         if (timeoutQueue) {
-            timeoutQueue.forEach((queueCb) => queueCb());
+            timeoutQueue.forEach((queueCb) => { try { queueCb(); } catch (e) { logError(e.stack || e); } });
             arpQueue.delete(destIpKey);
         }
     }, 10000));
@@ -112,7 +113,7 @@ function handleARP(buffer: ArrayBuffer, offset: number, ethHdr: EthHdr) {
 
             const queue = arpQueue.get(ip);
             if (queue) {
-                queue.forEach((cb) => cb(mac));
+                queue.forEach((cb) => { try { cb(mac); } catch (e) { logError(e.stack || e); } });
                 arpQueue.delete(ip);
             }
             const timeout = arpTimeouts.get(ip);
