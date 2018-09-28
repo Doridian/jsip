@@ -378,14 +378,14 @@ export function dnsResolveOrIp(domain: string, cb: DNSCallback) {
 }
 
 export function addDNSServer(ip: IPAddr) {
-    if (dnsServerIps.indexOf(ip) >= 0) {
+    if (dnsServerIps.findIndex((sIp) => sIp.equals(ip)) >= 0) {
         return;
     }
     dnsServerIps.push(ip);
 }
 
 export function removeDNSServer(ip: IPAddr) {
-    const idx = dnsServerIps.indexOf(ip);
+    const idx = dnsServerIps.findIndex((sIp) => sIp.equals(ip));
     if (idx >= 0) {
         dnsServerIps = dnsServerIps.splice(idx, 1);
     }
