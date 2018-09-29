@@ -14,8 +14,8 @@ interface IHTTPResult {
 
 interface IHTTPOptions {
     url: URL;
-    method: string;
-    body: Uint8Array;
+    method?: string;
+    body?: Uint8Array;
     headers?: IHTTPHeaderMap;
 }
 
@@ -80,13 +80,19 @@ function httpParse(datas: Uint8Array[]): IHTTPResult {
 }
 
 export function httpGet(options: IHTTPOptions, cb: HTTPCallback) {
+    const body = options.body;
     const url = options.url;
+    const method = options.method || "GET";
+
     const headers = options.headers || {};
     headers.connection = "close";
     headers["user-agent"] = "jsip";
     headers.host = url.host;
     if (!headers.authorization && (url.username || url.password)) {
         headers.authorization = `Basic ${btoa(`${url.username}:${url.password}`)}`;
+    }
+    if (body) {
+        headers["content-length"] = body.byteLength.toString();
     }
 
     const datas: Uint8Array[] = [];
@@ -104,11 +110,14 @@ export function httpGet(options: IHTTPOptions, cb: HTTPCallback) {
             return;
         }
 
-        const data = [`GET ${url.pathname}${url.search} HTTP/1.1`];
+        const data = [`${method.toUpperCase()} ${url.pathname}${url.search} HTTP/1.1`];
         for (const headerName of Object.keys(headers)) {
             data.push(`${headerName}: ${headers[headerName]}`);
         }
         conn.send(new Uint8Array(stringToBuffer(data.join("\r\n") + "\r\n\r\n")));
+        if (body) {
+            conn.send(body);
+        }
     }, () => {
         // Disconnect
         let res: IHTTPResult | undefined;
