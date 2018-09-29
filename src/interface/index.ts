@@ -50,10 +50,6 @@ export abstract class Interface implements IInterface {
     }
 
     public isLocalDest(ip: IPAddr): boolean {
-        if (!ip.isUnicast()) {
-            return true;
-        }
-
         const thisIp = this.getIP();
         if (thisIp === IP_NONE) {
             return true;

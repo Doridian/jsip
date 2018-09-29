@@ -112,6 +112,10 @@ export class IPAddr {
     public isLoopback() {
         return this.a === 127;
     }
+
+    public isLinkLocal() {
+        return this.a === 169 && this.b === 254;
+    }
 }
 
 export const IP_BROADCAST = IPAddr.fromString("255.255.255.255");

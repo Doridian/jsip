@@ -47,7 +47,8 @@ export function handleIP(buffer: ArrayBuffer, offset = 0, _: EthHdr, iface: IInt
         return;
     }
 
-    if (!iface.isLocalDest(ipHdr.daddr)) {
+    if (ipHdr.daddr.isUnicast() &&
+        !iface.isLocalDest(ipHdr.daddr)) {
         logDebug(`Discarding packet not meant for us, but for ${ipHdr.daddr.toString()}`);
         return;
     }
