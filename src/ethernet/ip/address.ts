@@ -116,3 +116,4 @@ export class IPAddr {
 
 export const IP_BROADCAST = IPAddr.fromString("255.255.255.255");
 export const IP_NONE = IPAddr.fromString("0.0.0.0");
+export const IP_LOOPBACK = IPAddr.fromString("127.0.0.1");

@@ -1,4 +1,5 @@
-import { IInterface, INTERFACE_NONE } from "../../../interface";
+import { IInterface } from "../../../interface/index";
+import { INTERFACE_NONE } from "../../../interface/none";
 import { logError } from "../../../util/log";
 import { IP_NONE, IPAddr } from "../address";
 import { IPHdr, IPPROTO } from "../index";

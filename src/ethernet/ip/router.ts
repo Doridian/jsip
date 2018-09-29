@@ -1,6 +1,8 @@
-import { IInterface, INTERFACE_LOOPBACK, INTERFACE_NONE } from "../../interface";
+import { IInterface } from "../../interface/index";
+import { INTERFACE_NONE } from "../../interface/none";
+import { getInterfaces } from "../../interface/stack";
 import { IP_NONE, IPAddr } from "./address";
-import { IPNet, IPNET_BROADCAST, IPNET_LINK_LOCAL, IPNET_LOOPBACK, IPNET_NONE } from "./subnet";
+import { IPNet, IPNET_BROADCAST, IPNET_LINK_LOCAL, IPNET_NONE } from "./subnet";
 
 interface IPRoute {
     router: IPAddr;
@@ -8,7 +10,7 @@ interface IPRoute {
     subnet: IPNet;
 }
 
-const staticRoutes: IPRoute[] = [
+const staticRoutes: IPRoute[] = sortRoutes([
     {
         iface: INTERFACE_NONE,
         router: IP_NONE,
@@ -24,12 +26,7 @@ const staticRoutes: IPRoute[] = [
         router: IP_NONE,
         subnet: IPNET_BROADCAST,
     },
-    {
-        iface: INTERFACE_LOOPBACK,
-        router: IP_NONE,
-        subnet: IPNET_LOOPBACK,
-    },
-];
+]);
 
 function sortRoutes(toSort: IPRoute[]): IPRoute[] {
     return toSort.sort((a, b) => {
@@ -63,24 +60,42 @@ export function getRoutes() {
     return routes.slice(0);
 }
 
-export function flushRoutes() {
-    routes = sortRoutes(staticRoutes.slice(0));
-    routeCache.clear();
+export function flushRoutes(iface: IInterface) {
+    let needCompute = false;
+    for (const key of Array.from(staticRoutes.keys())) {
+        if (routes[key].iface === iface) {
+            needCompute = true;
+            staticRoutes.splice(key, 1);
+        }
+    }
+
+    if (!needCompute) {
+        return;
+    }
+    recomputeRoutes();
 }
 
 export function addRoute(subnet: IPNet, router: IPAddr, iface: IInterface) {
     removeRoute(subnet);
-    routes.push({ router, subnet, iface });
+    staticRoutes.push({ router, subnet, iface });
+    recomputeRoutes();
+}
+
+export function removeRoute(subnet: IPNet) {
+    const idx = staticRoutes.findIndex((value) => value.subnet.equals(subnet));
+    if (idx >= 0) {
+        staticRoutes.splice(idx, 1);
+        recomputeRoutes();
+    }
+}
+
+export function recomputeRoutes() {
+    routes = staticRoutes.slice(0);
+    for (const iface of getInterfaces()) {
+        routes.push({ router: IP_NONE, iface, subnet: iface.getSubnet() });
+    }
     routes = sortRoutes(routes);
     routeCache.clear();
 }
 
-export function removeRoute(subnet: IPNet) {
-    const idx = routes.findIndex((value) => value.subnet.equals(subnet));
-    if (idx >= 0) {
-        routes.splice(idx, 1);
-        routeCache.clear();
-    }
-}
-
-flushRoutes();
+routes = staticRoutes.slice(0);

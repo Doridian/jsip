@@ -1,10 +1,9 @@
-import { configOut } from "./config";
 import { IP_NONE, IPAddr } from "./ethernet/ip/address";
 import { addRoute, flushRoutes } from "./ethernet/ip/router";
 import { IPNet, IPNET_ALL } from "./ethernet/ip/subnet";
-import { dhcpNegotiate } from "./ethernet/ip/udp/dhcp/index";
+import { addDHCP } from "./ethernet/ip/udp/dhcp/stack";
 import { addDNSServer, flushDNSServers } from "./ethernet/ip/udp/dns/index";
-import { Interface } from "./interface";
+import { Interface } from "./interface/index";
 import { VoidCB } from "./util/index";
 import { logDebug } from "./util/log";
 import { handlePacket } from "./util/packet";
@@ -52,7 +51,7 @@ export class WSVPN extends Interface {
         // 1|init|TUN|192.168.3.1/24|1280
         const spl = data.split("|");
 
-        flushRoutes();
+        flushRoutes(this);
         flushDNSServers();
 
         switch (spl[2]) {
@@ -73,15 +72,11 @@ export class WSVPN extends Interface {
 
         this.mtu = parseInt(spl[4], 10);
 
-        logDebug(`Mode: ${spl[2]}`);
-        logDebug(`Link-MTU: ${this.mtu}`);
-        logDebug(`Our MAC: ${this.getMAC()}`);
-
-        configOut();
+        logDebug(`${this.getName()} mode: ${spl[2]}`);
 
         if (needDHCP) {
-            logDebug("Starting DHCP procedure...");
-            dhcpNegotiate(this, cb);
+            logDebug(`${this.getName()} starting DHCP procedure...`);
+            addDHCP(this, cb).negotiate();
         } else if (cb) {
             setTimeout(cb, 0);
         }

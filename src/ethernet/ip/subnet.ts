@@ -1,4 +1,4 @@
-import { IP_BROADCAST, IP_NONE, IPAddr } from "./address";
+import { IP_BROADCAST, IP_LOOPBACK, IP_NONE, IPAddr } from "./address";
 
 function makeSubnetBitmask(subnetLen: number) {
     if (subnetLen <= 0) {
@@ -64,7 +64,7 @@ export const IPNETS_MULTICAST = [
 
 export const IPNET_NONE = IPNet.fromIPAndSubnet(IP_NONE, 8);
 export const IPNET_ALL = IPNet.fromIPAndSubnet(IP_NONE, 0);
-export const IPNET_LOOPBACK = IPNet.fromString("127.0.0.0/8");
+export const IPNET_LOOPBACK = IPNet.fromIPAndSubnet(IP_LOOPBACK, 8);
 export const IPNET_BROADCAST = IPNet.fromIPAndSubnet(IP_BROADCAST, 32);
 export const IPNET_LINK_LOCAL = IPNet.fromString("169.254.0.0/16");
 

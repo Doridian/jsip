@@ -1,4 +1,4 @@
-import { INTERFACE_NONE } from "../../../../interface";
+import { INTERFACE_NONE } from "../../../../interface/none";
 import { BitArray } from "../../../../util/bitfield";
 import { boolToBit } from "../../../../util/index";
 import { logError } from "../../../../util/log";

@@ -1,20 +1,31 @@
+import { configOut } from "./config";
+import { recomputeRoutes } from "./ethernet/ip/router";
 import { httpGet } from "./ethernet/ip/tcp/http/index";
+import { addLoopbackInterface } from "./interface/loopback";
+import { addInterface } from "./interface/stack";
 import { VoidCB } from "./util/index";
 import { WSVPN } from "./wsvpn";
 
 export function workerMain(cb: VoidCB) {
+    const myCB = () => {
+        configOut();
+        cb();
+    };
+
     if (document.location.protocol === "file:") {
-        _workerMain("wss://doridian.net/ws", cb);
+        _workerMain("wss://doridian.net/ws", myCB);
         return;
     }
 
     const proto = (document.location.protocol === "http:") ? "ws:" : "wss:";
-    _workerMain(`${proto}//${document.location.host}/ws`, cb);
+    _workerMain(`${proto}//${document.location.host}/ws`, myCB);
 }
 
 function _workerMain(url: string, cb: VoidCB) {
-    // tslint:disable-next-line:no-unused-expression
-    new WSVPN(url, cb);
+    const wsvpn = new WSVPN(url, cb);
+    addLoopbackInterface();
+    addInterface(wsvpn);
+    recomputeRoutes();
 }
 
 onmessage = (e) => {

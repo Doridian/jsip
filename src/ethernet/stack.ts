@@ -1,4 +1,4 @@
-import { IInterface } from "../interface";
+import { IInterface } from "../interface/index";
 import { logDebug } from "../util/log";
 import { ETH_TYPE, EthHdr } from "./index";
 

@@ -1,4 +1,5 @@
-import { IInterface, INTERFACE_NONE } from "../../interface";
+import { IInterface } from "../../interface/index";
+import { INTERFACE_NONE } from "../../interface/none";
 import { logError } from "../../util/log";
 import { MAC_BROADCAST, MACAddr } from "../address";
 import { ETH_LEN, ETH_TYPE, EthHdr } from "../index";

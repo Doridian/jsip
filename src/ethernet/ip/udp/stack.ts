@@ -1,4 +1,4 @@
-import { IInterface } from "../../../interface";
+import { IInterface } from "../../../interface/index";
 import { logError } from "../../../util/log";
 import { IPHdr, IPPROTO } from "../index";
 import { sendIPPacket } from "../send";

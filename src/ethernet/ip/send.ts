@@ -1,4 +1,5 @@
-import { IInterface, INTERFACE_NONE } from "../../interface";
+import { IInterface } from "../../interface/index";
+import { INTERFACE_NONE } from "../../interface/none";
 import { IPacket } from "../../ipacket";
 import { makeEthIPHdr } from "../arp/stack";
 import { ETH_LEN, EthHdr } from "../index";
