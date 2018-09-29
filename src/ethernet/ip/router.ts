@@ -8,6 +8,7 @@ import { IPNet, IPNET_BROADCAST, IPNET_LINK_LOCAL, IPNET_NONE } from "./subnet";
 interface IPRoute {
     router: IPAddr;
     iface: IInterface;
+    src: IPAddr;
     subnet: IPNet;
 }
 
@@ -15,16 +16,19 @@ const staticRoutes: IPRoute[] = sortRoutes([
     {
         iface: INTERFACE_NONE,
         router: IP_NONE,
+        src: IP_NONE,
         subnet: IPNET_NONE,
     },
     {
         iface: INTERFACE_NONE,
         router: IP_NONE,
+        src: IP_NONE,
         subnet: IPNET_LINK_LOCAL,
     },
     {
         iface: INTERFACE_NONE,
         router: IP_NONE,
+        src: IP_NONE,
         subnet: IPNET_BROADCAST,
     },
 ]);
@@ -76,9 +80,9 @@ export function flushRoutes(iface: IInterface) {
     recomputeRoutes();
 }
 
-export function addRoute(subnet: IPNet, router: IPAddr, iface: IInterface) {
+export function addRoute(subnet: IPNet, router: IPAddr, iface: IInterface, src: IPAddr = IP_NONE) {
     removeRoute(subnet);
-    staticRoutes.push({ router, subnet, iface });
+    staticRoutes.push({ router, subnet, iface, src });
     recomputeRoutes();
 }
 
@@ -93,8 +97,9 @@ export function removeRoute(subnet: IPNet) {
 export function recomputeRoutes() {
     routes = staticRoutes.slice(0);
     for (const iface of getInterfaces()) {
-        routes.push({ router: IP_NONE, iface, subnet: iface.getSubnet() });
-        routes.push({ router: IP_NONE, iface: INTERFACE_LOOPBACK, subnet: IPNet.fromIPAndSubnet(iface.getIP(), 32) });
+        routes.push({ router: IP_NONE, iface, subnet: iface.getSubnet(), src: IP_NONE });
+        const ip = iface.getIP();
+        routes.push({ router: IP_NONE, iface: INTERFACE_LOOPBACK, subnet: IPNet.fromIPAndSubnet(ip, 32), src: ip });
     }
     routes = sortRoutes(routes);
     routeCache.clear();

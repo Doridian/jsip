@@ -18,6 +18,9 @@ export function configOut() {
             routeStr += ` on ${route.iface.getName()}`;
             validRoute = true;
         }
+        if (route.src !== IP_NONE) {
+            routeStr += ` src ${route.src}`;
+        }
         if (route.router !== IP_NONE) {
             routeStr += ` gw ${route.router}`;
             validRoute = true;

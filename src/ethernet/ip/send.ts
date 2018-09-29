@@ -15,6 +15,7 @@ export function sendIPPacket(ipHdr: IPHdr, payload: IPacket, iface: IInterface) 
         return;
     }
 
+    let srcIp = route.src;
     if (route.router !== IP_NONE) {
         routeDestIp = route.router;
         if (route.iface === INTERFACE_NONE) {
@@ -22,17 +23,21 @@ export function sendIPPacket(ipHdr: IPHdr, payload: IPacket, iface: IInterface) 
             if (!route) {
                 return;
             }
+            if (route.src !== IP_NONE) {
+                srcIp = route.src;
+            }
         }
     }
 
-    if (iface === INTERFACE_NONE) {
-        if (route.iface === INTERFACE_NONE) {
-            return;
-        }
+    if (route.iface !== INTERFACE_NONE) {
         iface = route.iface;
+    } else if (iface === INTERFACE_NONE) {
+        return;
     }
 
-    if (ipHdr.saddr === IP_NONE) {
+    if (srcIp !== IP_NONE) {
+        ipHdr.saddr = srcIp;
+    } else if (ipHdr.saddr === IP_NONE) {
         ipHdr.saddr = iface.getIP();
     }
 
