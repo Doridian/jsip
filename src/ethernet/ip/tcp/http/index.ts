@@ -85,6 +85,9 @@ export function httpGet(options: IHTTPOptions, cb: HTTPCallback) {
     headers.connection = "close";
     headers["user-agent"] = "jsip";
     headers.host = url.host;
+    if (!headers.authorization && (url.username || url.password)) {
+        headers.authorization = `Basic ${btoa(`${url.username}:${url.password}`)}`;
+    }
 
     const datas: Uint8Array[] = [];
     dnsTcpConnect(url.hostname, url.port ? parseInt(url.port, 10) : 80, (data) => {
