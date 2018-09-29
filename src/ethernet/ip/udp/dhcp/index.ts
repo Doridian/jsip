@@ -2,8 +2,6 @@ import { MAC_NONE, MACAddr } from "../../../address";
 import { ARP_HLEN, ARP_HTYPE } from "../../../arp/index";
 import { IP_NONE, IPAddr } from "../../address";
 
-// TODO: Actually multi-interface this (make a DHCP negotiator a class)
-
 const DHCP_MAGIC = new Uint8Array([0x63, 0x82, 0x53, 0x63]);
 const DHCP_MAGIC_OFFSET = 236;
 
