@@ -65,7 +65,7 @@ export class TCPConn {
     private daddr: IPAddr = IP_NONE;
     private sport = 0;
     private dport = 0;
-    private lseqno?: number;
+    private wseqno?: number;
     private rseqno?: number;
     private wnd = 65535;
     // private lastack?: number;
@@ -119,15 +119,15 @@ export class TCPConn {
         tcp.dport = this.dport;
         tcp.sport = this.sport;
         let incSeq = false;
-        if (this.lseqno === undefined) {
-            this.lseqno = Math.floor(Math.random() * (1 << 30));
+        if (this.wseqno === undefined) {
+            this.wseqno = Math.floor(Math.random() * (1 << 30));
             tcp.setFlag(TCP_FLAGS.SYN);
             incSeq = true;
             tcp.fillMSS(this.mss);
         }
-        tcp.seqno = this.lseqno;
+        tcp.seqno = this.wseqno;
         if (incSeq) {
-            this.incLSeq(1);
+            this.incWSeq(1);
         }
         if (this.rseqno !== undefined) {
             tcp.ackno = this.rseqno;
@@ -173,7 +173,7 @@ export class TCPConn {
             logError(e.stack || e);
         }
 
-        const ack = this.lseqno!;
+        const ack = this.wseqno!;
         const onack = this.onack.get(ack);
         if (!onack) {
             this.onack.set(ack, [cb]);
@@ -192,7 +192,7 @@ export class TCPConn {
         const tcp = this._makeTcp();
         tcp.setFlag(TCP_FLAGS.FIN);
         this.sendPacket(ip, tcp);
-        this.incLSeq(1);
+        this.incWSeq(1);
 
         this.addOnAck(cb);
     }
@@ -209,8 +209,8 @@ export class TCPConn {
         this.rseqno = (this.rseqno! + inc) & 0xFFFFFFFF;
     }
 
-    public incLSeq(inc: number) {
-        this.lseqno = (this.lseqno! + inc) & 0xFFFFFFFF;
+    public incWSeq(inc: number) {
+        this.wseqno = (this.wseqno! + inc) & 0xFFFFFFFF;
     }
 
     public cycle() {
@@ -282,7 +282,7 @@ export class TCPConn {
             tcp.setFlag(TCP_FLAGS.PSH);
         }
         this.sendPacket(ip, tcp);
-        this.incLSeq(data ? data.byteLength : 0);
+        this.incWSeq(data ? data.byteLength : 0);
         this.addOnAck(cb);
     }
 
@@ -298,7 +298,7 @@ export class TCPConn {
             return;
         }
 
-        let lseqno = this.lseqno;
+        let lseqno = this.wseqno;
         let rseqno = this.rseqno;
 
         if (tcpPkt.hasFlag(TCP_FLAGS.SYN)) {
@@ -316,7 +316,7 @@ export class TCPConn {
                 }
 
                 rseqno = this.rseqno;
-                lseqno = this.lseqno;
+                lseqno = this.wseqno;
 
                 this.state = TCP_STATE.ESTABLISHED;
                 this._connectCB(true);
@@ -420,13 +420,13 @@ export class TCPConn {
                 case TCP_STATE.LAST_ACK:
                     this.delete();
                     sendIPPacket(ip, tcp, this.iface);
-                    this.incLSeq(1);
+                    this.incWSeq(1);
                     break;
                 default:
                     this.state = TCP_STATE.LAST_ACK;
                     tcp.setFlag(TCP_FLAGS.FIN);
                     sendIPPacket(ip, tcp, this.iface);
-                    this.incLSeq(1);
+                    this.incWSeq(1);
                     break;
             }
         }
