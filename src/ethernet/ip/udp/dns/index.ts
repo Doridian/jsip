@@ -11,10 +11,7 @@ import { UDPPkt } from "../index";
 import { udpListen } from "../stack";
 import { DNSAnswer } from "./answer";
 import { DNSQuestion } from "./question";
-
-type DNSResult = IPAddr | string | undefined;
-interface IDNSParseState { pos: number; data: Uint8Array; packet: ArrayBuffer; offset: number; }
-type DNSCallback = (result: DNSResult) => void;
+import { DNSCallback, DNSResult, IDNSParseState } from "./util";
 
 const dnsCache = new Map<string, DNSResult>();
 const dnsQueue = new Map<string, DNSCallback[]>();
@@ -29,7 +26,7 @@ const dnsServerIpsByIface = new Map<IInterface, IPAddr[]>();
 export const enum DNS_TYPE {
     A = 0x0001,
     CNAME = 0x0005,
-    MX = 0x000F,
+    // MX = 0x000F,
     NS = 0x0002,
 }
 
@@ -97,8 +94,18 @@ function parseAnswerSection(count: number, state: IDNSParseState) {
         const rdlength = data[state.pos + 9] + (data[state.pos + 8] << 8);
         state.pos += 10;
 
-        a.datapos = state.pos;
-        a.data = new Uint8Array(state.packet, state.offset + state.pos, rdlength);
+        const dataRaw = new Uint8Array(state.packet, state.offset + state.pos, rdlength);
+        if (a.class === DNS_CLASS.IN) {
+            switch (a.type) {
+                case DNS_TYPE.A:
+                    a.setData(IPAddr.fromByteArray(dataRaw));
+                    break;
+                case DNS_TYPE.CNAME:
+                case DNS_TYPE.NS:
+                    a.setData(parseDNSLabel(state));
+                    break;
+            }
+        }
         state.pos += rdlength;
 
         answers.push(a);
@@ -169,13 +176,13 @@ export class DNSPkt {
             len += (q.name.length + 2) + 4;
         });
         this.answers.forEach((a) => {
-            len += (a.name.length + 2) + 10 + (a.data ? a.data.byteLength : 0);
+            len += (a.name.length + 2) + 10 + a.getDataLen();
         });
         this.authority.forEach((a) => {
-            len += (a.name.length + 2) + 10 + (a.data ? a.data.byteLength : 0);
+            len += (a.name.length + 2) + 10 + a.getDataLen();
         });
         this.additional.forEach((a) => {
-            len += (a.name.length + 2) + 10 + (a.data ? a.data.byteLength : 0);
+            len += (a.name.length + 2) + 10 + a.getDataLen();
         });
         return len;
     }
@@ -294,10 +301,6 @@ udpListen(53, (data: Uint8Array) => {
         return;
     }
 
-    const subParseDNSLabel = (pos: number) => {
-        return parseDNSLabel({ offset: 0, packet, data, pos });
-    };
-
     // This could clash if asked for ANY, but ANY is deprecated
     const answerMap = new Map<string, DNSAnswer>();
     dns.answers.forEach((a) => {
@@ -316,8 +319,7 @@ udpListen(53, (data: Uint8Array) => {
         const domain = q.name;
         let answer = answerMap.get(domain);
         while (answer && answer.type === DNS_TYPE.CNAME && q.type !== DNS_TYPE.CNAME) {
-            const cnameTarget = subParseDNSLabel(answer.datapos);
-            answer = answerMap.get(cnameTarget);
+            answer = answerMap.get(answer.getData()! as string);
         }
 
         if (!answer || answer.type !== q.type) {
@@ -325,17 +327,7 @@ udpListen(53, (data: Uint8Array) => {
             return;
         }
 
-        let cbAnswer;
-        switch (q.type) {
-            case DNS_TYPE.CNAME:
-            case DNS_TYPE.NS:
-                cbAnswer = subParseDNSLabel(answer.datapos);
-                break;
-            case DNS_TYPE.A:
-                cbAnswer = IPAddr.fromByteArray(answer.data!);
-                break;
-        }
-        domainCB(domain, q.type, cbAnswer);
+        domainCB(domain, q.type, answer.getData()!);
     });
 });
 

@@ -1,4 +1,9 @@
 import { stringIntoBuffer } from "../../../../util/string";
+import { IPAddr } from "../../address";
+
+export type DNSResult = IPAddr | string | undefined;
+export interface IDNSParseState { pos: number; data: Uint8Array; packet: ArrayBuffer; offset: number; }
+export type DNSCallback = (result: DNSResult) => void;
 
 export function makeDNSLabel(str: string) {
     const spl = str.split(".");

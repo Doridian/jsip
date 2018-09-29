@@ -1,16 +1,41 @@
+import { stringToBuffer } from "../../../../util/string";
+import { IPAddr } from "../../address";
 import { DNS_CLASS, DNS_TYPE } from "./index";
-import { makeDNSLabel } from "./util";
+import { DNSResult, makeDNSLabel } from "./util";
 
 export class DNSAnswer {
     public name: string = "";
     public type = DNS_TYPE.A;
     public class = DNS_CLASS.IN;
     public ttl = 0;
-    public data?: Uint8Array;
-    public datapos = 0;
+    private data?: DNSResult;
+    private dataRaw?: Uint8Array;
 
     public getTTL() {
         return this.ttl >>> 0;
+    }
+
+    public setData(data: DNSResult) {
+        this.data = data;
+        if (data instanceof IPAddr) {
+            this.dataRaw = data.toByteArray();
+        } else if (typeof data === "string") {
+            this.dataRaw = new Uint8Array(stringToBuffer(data));
+        } else {
+            this.dataRaw = undefined;
+        }
+    }
+
+    public getData() {
+        return this.data;
+    }
+
+    public getDataRaw() {
+        return this.dataRaw;
+    }
+
+    public getDataLen() {
+        return this.dataRaw ? this.dataRaw.byteLength : 0;
     }
 
     public write(packet: Uint8Array, pos: number) {
@@ -30,11 +55,11 @@ export class DNSAnswer {
         packet[pos++] = (this.ttl >>> 8) & 0xFF;
         packet[pos++] = this.ttl & 0xFF;
 
-        if (this.data) {
-            for (let i = 0; i  < this.data.byteLength; i++) {
-                packet[pos + i] = this.data[i];
+        if (this.dataRaw) {
+            for (let i = 0; i  < this.dataRaw.byteLength; i++) {
+                packet[pos + i] = this.dataRaw[i];
             }
-            pos += this.data.byteLength;
+            pos += this.dataRaw.byteLength;
         }
 
         return pos;
