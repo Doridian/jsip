@@ -68,11 +68,9 @@ export class TCPConn {
     private wseqno?: number;
     private rseqno?: number;
     private wnd = 65535;
-    // private lastack?: number;
     private wbuffers: IWBufferEntry[] = [];
     private rbuffers: Uint8Array[] = [];
     private rbufferlen = 0;
-    // private rlastack = false;
     private wlastack = false;
     private wlastsend = 0;
     private wretrycount = 0;
@@ -132,7 +130,6 @@ export class TCPConn {
         if (this.rseqno !== undefined) {
             tcp.ackno = this.rseqno;
             tcp.setFlag(TCP_FLAGS.ACK);
-            // this.rlastack = true;
         }
         return tcp;
     }
@@ -302,7 +299,6 @@ export class TCPConn {
         let rseqno = this.rseqno;
 
         if (tcpPkt.hasFlag(TCP_FLAGS.SYN)) {
-            // this.rlastack = false;
             if (this.state === TCP_STATE.SYN_SENT || this.state === TCP_STATE.SYN_RECEIVED) {
                 this.rseqno = tcpPkt.seqno;
 
@@ -333,14 +329,12 @@ export class TCPConn {
             }
 
             if (tcpPkt.hasFlag(TCP_FLAGS.RST)) {
-                // this.rlastack = false;
                 this.delete();
                 return;
             }
 
             if (tcpPkt.data && tcpPkt.data.byteLength > 0) {
                 this.rlastseqno = rseqno;
-                // this.rlastack = false;
                 this.incRSeq(tcpPkt.data.byteLength);
                 const ip = this._makeIp(true);
                 const tcp = this._makeTcp();
@@ -403,7 +397,6 @@ export class TCPConn {
         }
 
         if (tcpPkt.hasFlag(TCP_FLAGS.FIN)) {
-            // this.rlastack = false;
             const ip = this._makeIp(true);
             const tcp = this._makeTcp();
             switch (this.state) {
