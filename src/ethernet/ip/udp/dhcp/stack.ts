@@ -247,7 +247,7 @@ udpListen(68, (data: Uint8Array, _: IPHdr, iface: IInterface) => {
     const packet = data.buffer;
     const offset = data.byteOffset;
 
-    const dhcp = DHCPPkt.fromPacket(packet, offset);
+    const dhcp = DHCPPkt.fromPacket(packet as ArrayBuffer, offset);
     negotiator._handlePacket(dhcp);
 });
 

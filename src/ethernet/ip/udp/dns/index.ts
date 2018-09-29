@@ -296,7 +296,7 @@ udpListen(53, (data: Uint8Array) => {
     const packet = data.buffer;
     const offset = data.byteOffset;
 
-    const dns = DNSPkt.fromPacket(packet, offset);
+    const dns = DNSPkt.fromPacket(packet as ArrayBuffer, offset);
     if (!dns || !dns.qr) {
         return;
     }
