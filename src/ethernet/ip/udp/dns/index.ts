@@ -415,6 +415,9 @@ export function getDNSServer(): IPAddr {
     return dnsServerIps[Math.floor(Math.random() * dnsServerIps.length)];
 }
 
-export function getDNSServers(): IPAddr[] {
+export function getDNSServers(iface?: IInterface): IPAddr[] {
+    if (iface) {
+        return dnsServerIpsByIface.get(iface) || [];
+    }
     return dnsServerIps.slice(0);
 }
