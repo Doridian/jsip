@@ -12,13 +12,15 @@ export function workerMain(cb: VoidCB) {
         cb();
     };
 
-    if (document.location.protocol === "file:") {
+    const location = document.location!;
+
+    if (location.protocol === "file:") {
         _workerMain("wss://doridian.net/ws", myCB);
         return;
     }
 
-    const proto = (document.location.protocol === "http:") ? "ws:" : "wss:";
-    _workerMain(`${proto}//${document.location.host}/ws`, myCB);
+    const proto = (location.protocol === "http:") ? "ws:" : "wss:";
+    _workerMain(`${proto}//${location.host}/ws`, myCB);
 }
 
 function _workerMain(url: string, cb: VoidCB) {

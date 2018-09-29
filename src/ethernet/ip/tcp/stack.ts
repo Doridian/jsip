@@ -526,8 +526,8 @@ export function tcpConnect(
     return conn;
 }
 
-setInterval(1000, () => {
+setInterval(() => {
     tcpConns.forEach((conn) => conn.cycle());
-});
+}, 1000);
 
 registerIpHandler(IPPROTO.TCP, tcpGotPacket);
