@@ -60,14 +60,15 @@ export function handleIP(buffer: ArrayBuffer, offset = 0, _: EthHdr, iface: IInt
         return handlePacket(ipHdr, buffer, offset, iface);
     }
 
-    let myCache = fragmentCache.get(iface.getName());
-    if (!myCache) {
-        myCache = new Map();
-        fragmentCache.set(iface.getName(), myCache);
+    const ifaceName = iface.getName();
+    let ifaceFragmentCache = fragmentCache.get(ifaceName);
+    if (!ifaceFragmentCache) {
+        ifaceFragmentCache = new Map();
+        fragmentCache.set(ifaceName, ifaceFragmentCache);
     }
 
     const pktId = ipHdr.id + (ipHdr.saddr.toInt() << 16);
-    let curFrag = myCache.get(pktId);
+    let curFrag = ifaceFragmentCache.get(pktId);
     if (!curFrag) {
         curFrag = {
             fragments: new Map(),
@@ -75,7 +76,7 @@ export function handleIP(buffer: ArrayBuffer, offset = 0, _: EthHdr, iface: IInt
             time: Date.now(),
             validUntil: undefined,
         };
-        myCache.set(pktId, curFrag);
+        ifaceFragmentCache.set(pktId, curFrag);
     }
 
     const fragOffset = ipHdr.fragOffset << 3;
