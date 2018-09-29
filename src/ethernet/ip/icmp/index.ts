@@ -1,4 +1,4 @@
-import { computeChecksum } from "../../../util/checksum";
+import { computeChecksum } from "../../../util/checksum.js";
 
 export class ICMPPkt {
     public static fromPacket(packet: ArrayBuffer, offset: number, len: number) {

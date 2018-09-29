@@ -1,4 +1,4 @@
-import { IPNet } from "./subnet";
+import { IPNet } from "./subnet.js";
 
 let multicastNets: IPNet[] = [];
 

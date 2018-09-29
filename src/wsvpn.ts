@@ -1,12 +1,12 @@
-import { IP_NONE, IPAddr } from "./ethernet/ip/address";
-import { addRoute, flushRoutes } from "./ethernet/ip/router";
-import { IPNet, IPNET_ALL } from "./ethernet/ip/subnet";
-import { addDHCP } from "./ethernet/ip/udp/dhcp/stack";
-import { addDNSServer, flushDNSServers } from "./ethernet/ip/udp/dns/index";
-import { Interface } from "./interface/index";
-import { VoidCB } from "./util/index";
-import { logDebug } from "./util/log";
-import { handlePacket } from "./util/packet";
+import { IP_NONE, IPAddr } from "./ethernet/ip/address.js";
+import { addRoute, flushRoutes } from "./ethernet/ip/router.js";
+import { IPNet, IPNET_ALL } from "./ethernet/ip/subnet.js";
+import { addDHCP } from "./ethernet/ip/udp/dhcp/stack.js";
+import { addDNSServer, flushDNSServers } from "./ethernet/ip/udp/dns/index.js";
+import { Interface } from "./interface/index.js";
+import { VoidCB } from "./util/index.js";
+import { logDebug } from "./util/log.js";
+import { handlePacket } from "./util/packet.js";
 
 let maxNumber = 0;
 

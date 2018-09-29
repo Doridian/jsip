@@ -1,6 +1,6 @@
-import { logError } from "../../../../util/log";
-import { buffersToBuffer, bufferToString, stringToBuffer } from "../../../../util/string";
-import { dnsTcpConnect } from "../../udp/dns/tcp_util";
+import { logError } from "../../../../util/log.js";
+import { buffersToBuffer, bufferToString, stringToBuffer } from "../../../../util/string.js";
+import { dnsTcpConnect } from "../../udp/dns/tcp_util.js";
 
 interface IHTTPHeaderMap { [key: string]: string; }
 

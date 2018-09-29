@@ -1,11 +1,11 @@
-import { IInterface } from "../../interface/index";
-import { INTERFACE_NONE } from "../../interface/none";
-import { IPacket } from "../../ipacket";
-import { makeEthIPHdr } from "../arp/stack";
-import { ETH_LEN, EthHdr } from "../index";
-import { IP_NONE } from "./address";
-import { IPHdr } from "./index";
-import { getRoute } from "./router";
+import { IInterface } from "../../interface/index.js";
+import { INTERFACE_NONE } from "../../interface/none.js";
+import { IPacket } from "../../ipacket.js";
+import { makeEthIPHdr } from "../arp/stack.js";
+import { ETH_LEN, EthHdr } from "../index.js";
+import { IP_NONE } from "./address.js";
+import { IPHdr } from "./index.js";
+import { getRoute } from "./router.js";
 
 export function sendIPPacket(ipHdr: IPHdr, payload: IPacket, iface: IInterface) {
     let routeDestIp = ipHdr.daddr;

@@ -1,7 +1,7 @@
-import { IPacket } from "../../../ipacket";
-import { BitArray } from "../../../util/bitfield";
-import { computeChecksum, computeChecksumPseudo } from "../../../util/checksum";
-import { IPHdr, IPPROTO } from "../index";
+import { IPacket } from "../../../ipacket.js";
+import { BitArray } from "../../../util/bitfield.js";
+import { computeChecksum, computeChecksumPseudo } from "../../../util/checksum.js";
+import { IPHdr, IPPROTO } from "../index.js";
 
 export const enum TCP_FLAGS {
     NS = 0x100,

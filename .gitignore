@@ -1,5 +1,6 @@
 node_modules
 
+/dist
 /jsip.js
 /jsip.js.map
 /base64js.min.js

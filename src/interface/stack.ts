@@ -1,4 +1,4 @@
-import { IInterface } from "./index";
+import { IInterface } from "./index.js";
 
 const interfaceTable = new Map<string, IInterface>();
 

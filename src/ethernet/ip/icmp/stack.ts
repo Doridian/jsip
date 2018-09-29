@@ -1,8 +1,8 @@
-import { IInterface } from "../../../interface/index";
-import { IPHdr, IPPROTO } from "../index";
-import { sendIPPacket } from "../send";
-import { registerIpHandler } from "../stack";
-import { ICMPPkt } from "./index";
+import { IInterface } from "../../../interface/index.js";
+import { IPHdr, IPPROTO } from "../index.js";
+import { sendIPPacket } from "../send.js";
+import { registerIpHandler } from "../stack.js";
+import { ICMPPkt } from "./index.js";
 
 type ICMPHandler = (icmpPkt: ICMPPkt, ipHdr: IPHdr, iface: IInterface) => void;
 

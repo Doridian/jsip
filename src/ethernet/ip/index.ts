@@ -1,7 +1,7 @@
-import { BitArray } from "../../util/bitfield";
-import { computeChecksum } from "../../util/checksum";
-import { logDebug } from "../../util/log";
-import { IP_NONE, IPAddr } from "./address";
+import { BitArray } from "../../util/bitfield.js";
+import { computeChecksum } from "../../util/checksum.js";
+import { logDebug } from "../../util/log.js";
+import { IP_NONE, IPAddr } from "./address.js";
 
 export const enum IPPROTO {
     NONE = 0,

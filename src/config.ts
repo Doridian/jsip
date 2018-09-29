@@ -1,9 +1,9 @@
-import { IP_NONE } from "./ethernet/ip/address";
-import { getRoutes } from "./ethernet/ip/router";
-import { getDNSServers } from "./ethernet/ip/udp/dns/index";
-import { INTERFACE_NONE } from "./interface/none";
-import { getInterfaces } from "./interface/stack";
-import { logDebug } from "./util/log";
+import { IP_NONE } from "./ethernet/ip/address.js";
+import { getRoutes } from "./ethernet/ip/router.js";
+import { getDNSServers } from "./ethernet/ip/udp/dns/index.js";
+import { INTERFACE_NONE } from "./interface/none.js";
+import { getInterfaces } from "./interface/stack.js";
+import { logDebug } from "./util/log.js";
 
 export function configOut() {
     const ifaces = getInterfaces();

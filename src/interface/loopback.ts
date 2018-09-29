@@ -1,8 +1,8 @@
-import { IP_LOOPBACK, IPAddr } from "../ethernet/ip/address";
-import { IPNET_LOOPBACK } from "../ethernet/ip/subnet";
-import { handlePacket } from "../util/packet";
-import { Interface } from "./index";
-import { addInterface } from "./stack";
+import { IP_LOOPBACK, IPAddr } from "../ethernet/ip/address.js";
+import { IPNET_LOOPBACK } from "../ethernet/ip/subnet.js";
+import { handlePacket } from "../util/packet.js";
+import { Interface } from "./index.js";
+import { addInterface } from "./stack.js";
 
 export class InterfaceLoopback extends Interface {
     public sendRaw(msg: ArrayBuffer): void {

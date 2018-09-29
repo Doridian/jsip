@@ -1,9 +1,9 @@
-import { IInterface } from "../../interface/index";
-import { logDebug, logError } from "../../util/log";
-import { ETH_TYPE, EthHdr } from "../index";
-import { registerEthHandler } from "../stack";
-import { IPHdr } from "./index";
-import { reversePathCheck } from "./router";
+import { IInterface } from "../../interface/index.js";
+import { logDebug, logError } from "../../util/log.js";
+import { ETH_TYPE, EthHdr } from "../index.js";
+import { registerEthHandler } from "../stack.js";
+import { IPHdr } from "./index.js";
+import { reversePathCheck } from "./router.js";
 
 type IPHandler = (data: ArrayBuffer, offset: number, len: number, ipHdr: IPHdr, iface: IInterface) => void;
 

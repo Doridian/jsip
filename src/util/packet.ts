@@ -1,7 +1,7 @@
-import { EthHdr } from "../ethernet/index";
-import { handleIP } from "../ethernet/ip/stack";
-import { handleEthernet } from "../ethernet/stack";
-import { IInterface } from "../interface/index";
+import { EthHdr } from "../ethernet/index.js";
+import { handleIP } from "../ethernet/ip/stack.js";
+import { handleEthernet } from "../ethernet/stack.js";
+import { IInterface } from "../interface/index.js";
 
 const ethDummy = new EthHdr();
 

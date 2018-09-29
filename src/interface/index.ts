@@ -1,6 +1,6 @@
-import { MACAddr } from "../ethernet/address";
-import { IP_NONE, IPAddr } from "../ethernet/ip/address";
-import { IPNet, IPNET_NONE } from "../ethernet/ip/subnet";
+import { MACAddr } from "../ethernet/address.js";
+import { IP_NONE, IPAddr } from "../ethernet/ip/address.js";
+import { IPNet, IPNET_NONE } from "../ethernet/ip/subnet.js";
 
 export interface IInterface {
     getName(): string;

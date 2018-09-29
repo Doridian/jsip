@@ -1,9 +1,9 @@
-import { IInterface } from "../../../interface/index";
-import { logError } from "../../../util/log";
-import { IPHdr, IPPROTO } from "../index";
-import { sendIPPacket } from "../send";
-import { registerIpHandler } from "../stack";
-import { UDPPkt } from "./index";
+import { IInterface } from "../../../interface/index.js";
+import { logError } from "../../../util/log.js";
+import { IPHdr, IPPROTO } from "../index.js";
+import { sendIPPacket } from "../send.js";
+import { registerIpHandler } from "../stack.js";
+import { UDPPkt } from "./index.js";
 
 type UDPReplyFunc = (data: Uint8Array) => void;
 type UDPListener = (data: Uint8Array, ipHdr: IPHdr, iface: IInterface, reply: UDPReplyFunc) => void;

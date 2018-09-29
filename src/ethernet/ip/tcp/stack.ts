@@ -1,11 +1,11 @@
-import { IInterface } from "../../../interface/index";
-import { INTERFACE_NONE } from "../../../interface/none";
-import { logError } from "../../../util/log";
-import { IP_NONE, IPAddr } from "../address";
-import { IPHdr, IPPROTO } from "../index";
-import { sendIPPacket } from "../send";
-import { registerIpHandler } from "../stack";
-import { TCP_FLAGS, TCPPkt } from "./index";
+import { IInterface } from "../../../interface/index.js";
+import { INTERFACE_NONE } from "../../../interface/none.js";
+import { logError } from "../../../util/log.js";
+import { IP_NONE, IPAddr } from "../address.js";
+import { IPHdr, IPPROTO } from "../index.js";
+import { sendIPPacket } from "../send.js";
+import { registerIpHandler } from "../stack.js";
+import { TCP_FLAGS, TCPPkt } from "./index.js";
 
 export type TCPListener = (data: Uint8Array, tcpConn: TCPConn) => void;
 
