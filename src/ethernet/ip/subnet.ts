@@ -1,10 +1,15 @@
 import { IP_BROADCAST, IP_LOOPBACK, IP_NONE, IPAddr } from "./address";
 
-function makeSubnetBitmask(subnetLen: number) {
-    if (subnetLen <= 0) {
-        return 0;
-    }
-    return ~((1 << (32 - subnetLen)) - 1);
+const subnetLenToBitmask: number[] = [];
+const bitmaskToSubnetLen = new Map<number, number>();
+
+subnetLenToBitmask[0] = 0;
+bitmaskToSubnetLen.set(0, 0);
+
+for (let subnetLen = 1; subnetLen <= 32; subnetLen++) {
+    const bitmask = ~((1 << (32 - subnetLen)) - 1);
+    subnetLenToBitmask[subnetLen] = bitmask;
+    bitmaskToSubnetLen.set(bitmask, subnetLen);
 }
 
 export class IPNet {
@@ -16,19 +21,23 @@ export class IPNet {
     }
 
     public static fromIPAndSubnet(ip: IPAddr, subnetLen: number) {
-        return new IPNet(ip, makeSubnetBitmask(subnetLen));
+        return new IPNet(ip, subnetLenToBitmask[subnetLen]);
     }
 
     private bitmask: number;
-    private mask?: IPAddr;
+    private mask: IPAddr;
+    private baseIp: IPAddr;
     private baseIpInt: number;
     private sortmask: number;
+    private subnetLen: number | undefined;
 
     constructor(ip: IPAddr, bitmask: number) {
         this.bitmask = bitmask;
         this.sortmask = bitmask >>> 0;
         this.mask = IPAddr.fromInt32(bitmask);
         this.baseIpInt = ip.toInt() & bitmask;
+        this.baseIp = IPAddr.fromInt32(this.baseIpInt);
+        this.subnetLen = bitmaskToSubnetLen.get(bitmask);
     }
 
     public equals(ipNet: IPNet) {
@@ -39,7 +48,10 @@ export class IPNet {
     }
 
     public toString() {
-        return `${IPAddr.fromInt32(this.baseIpInt)}/${this.mask}`;
+        if (this.subnetLen !== undefined) {
+            return `${this.baseIp}/${this.subnetLen}`;
+        }
+        return `${this.baseIp}/${this.mask}`;
     }
 
     public contains(ip?: IPAddr) {

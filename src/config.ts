@@ -21,9 +21,11 @@ export function configOut() {
         if (route.router !== IP_NONE) {
             routeStr += ` gw ${route.router}`;
             validRoute = true;
+        } else {
+            routeStr += " link-local";
         }
         if (!validRoute) {
-            routeStr += " link-local";
+            routeStr += " virtual";
         }
         return routeStr;
     });
