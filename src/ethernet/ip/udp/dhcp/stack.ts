@@ -117,11 +117,11 @@ export class DHCPNegotiator {
                     }
                 }
 
-                flushDNSServers();
+                flushDNSServers(this.iface);
                 const dnsServersRaw = dhcp.options.get(DHCP_OPTION.DNS);
                 if (dnsServersRaw) {
                     const dnsServers = byteArrayToIpAddrs(dnsServersRaw);
-                    dnsServers.forEach((server) => addDNSServer(server));
+                    dnsServers.forEach((server) => addDNSServer(server, this.iface));
                 }
 
                 const rawTtl = dhcp.options.get(DHCP_OPTION.LEASETIME);

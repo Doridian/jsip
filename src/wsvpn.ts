@@ -52,7 +52,7 @@ export class WSVPN extends Interface {
         const spl = data.split("|");
 
         flushRoutes(this);
-        flushDNSServers();
+        flushDNSServers(this);
 
         switch (spl[2]) {
             case "TAP":
@@ -62,7 +62,7 @@ export class WSVPN extends Interface {
                 this.setIP(IPAddr.fromString(spl[3].split("/")[0]));
                 addRoute(subnet, IP_NONE, this);
                 addRoute(IPNET_ALL, subnet.getAddress(0), this);
-                addDNSServer(subnet.getAddress(0));
+                addDNSServer(subnet.getAddress(0), this);
                 break;
             case "TAP_NOCONF":
                 this.ethernet = true;

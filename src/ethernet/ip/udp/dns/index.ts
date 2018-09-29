@@ -1,3 +1,4 @@
+import { IInterface } from "../../../../interface/index";
 import { INTERFACE_NONE } from "../../../../interface/none";
 import { BitArray } from "../../../../util/bitfield";
 import { boolToBit } from "../../../../util/index";
@@ -23,6 +24,7 @@ const DNS_SEG_PTR = 0b11000000;
 const DNS_SEG_MAX = 0b00111111;
 
 let dnsServerIps: IPAddr[] = [];
+const dnsServerIpsByIface = new Map<IInterface, IPAddr[]>();
 
 export const enum DNS_TYPE {
     A = 0x0001,
@@ -378,22 +380,35 @@ export function dnsResolveOrIp(domain: string, cb: DNSCallback) {
     dnsResolve(domain, DNS_TYPE.A, cb);
 }
 
-export function addDNSServer(ip: IPAddr) {
-    if (dnsServerIps.findIndex((sIp) => sIp.equals(ip)) >= 0) {
+function recomputeDNSServers() {
+    dnsServerIps = [];
+    dnsServerIpsByIface.forEach((ips) => {
+        ips.forEach((ip) => {
+            if (dnsServerIps.findIndex((sIp) => sIp.equals(ip)) >= 0) {
+                return;
+            }
+            dnsServerIps.push(ip);
+        });
+    });
+}
+
+export function addDNSServer(ip: IPAddr, iface: IInterface) {
+    let ifaceIps = dnsServerIpsByIface.get(iface);
+    if (!ifaceIps) {
+        ifaceIps = [];
+        dnsServerIpsByIface.set(iface, ifaceIps);
+    }
+
+    if (ifaceIps.findIndex((sIp) => sIp.equals(ip)) >= 0) {
         return;
     }
-    dnsServerIps.push(ip);
+    ifaceIps.push(ip);
+    recomputeDNSServers();
 }
 
-export function removeDNSServer(ip: IPAddr) {
-    const idx = dnsServerIps.findIndex((sIp) => sIp.equals(ip));
-    if (idx >= 0) {
-        dnsServerIps = dnsServerIps.splice(idx, 1);
-    }
-}
-
-export function flushDNSServers() {
-    dnsServerIps = [];
+export function flushDNSServers(iface: IInterface) {
+    dnsServerIpsByIface.delete(iface);
+    recomputeDNSServers();
 }
 
 export function getDNSServer(): IPAddr {
