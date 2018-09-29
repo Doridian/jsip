@@ -1,6 +1,13 @@
 node_modules
+
 /jsip.js
 /jsip.js.map
 /base64js.min.js
 /main.js
 /index.html
+
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
