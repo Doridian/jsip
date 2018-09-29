@@ -1,8 +1,6 @@
 import { configOut } from "./config";
-import { recomputeRoutes } from "./ethernet/ip/router";
 import { httpGet } from "./ethernet/ip/tcp/http/index";
-import { addLoopbackInterface } from "./interface/loopback";
-import { addInterface } from "./interface/stack";
+import { addInterfaceEasy } from "./interface/util";
 import { VoidCB } from "./util/index";
 import { WSVPN } from "./wsvpn";
 
@@ -25,9 +23,7 @@ export function workerMain(cb: VoidCB) {
 
 function _workerMain(url: string, cb: VoidCB) {
     const wsvpn = new WSVPN(url, cb);
-    addLoopbackInterface();
-    addInterface(wsvpn);
-    recomputeRoutes();
+    addInterfaceEasy(wsvpn);
 }
 
 onmessage = (e) => {

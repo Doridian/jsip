@@ -114,3 +114,5 @@ export function reversePathCheck(iface: IInterface, src: IPAddr): boolean {
 }
 
 routes = staticRoutes.slice(0);
+
+recomputeRoutes();

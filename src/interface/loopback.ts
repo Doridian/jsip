@@ -26,6 +26,4 @@ export const INTERFACE_LOOPBACK = new InterfaceLoopback("lo");
 INTERFACE_LOOPBACK.setIP(IP_LOOPBACK);
 INTERFACE_LOOPBACK.setSubnet(IPNET_LOOPBACK);
 
-export function addLoopbackInterface() {
-    addInterface(INTERFACE_LOOPBACK);
-}
+addInterface(INTERFACE_LOOPBACK);
