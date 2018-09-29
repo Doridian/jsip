@@ -2,7 +2,6 @@ import { IInterface } from "../../interface/index";
 import { logDebug, logError } from "../../util/log";
 import { ETH_TYPE, EthHdr } from "../index";
 import { registerEthHandler } from "../stack";
-import { IP_NONE } from "./address";
 import { IPHdr } from "./index";
 
 type IPHandler = (data: ArrayBuffer, offset: number, len: number, ipHdr: IPHdr, iface: IInterface) => void;
@@ -44,14 +43,11 @@ const fragmentCache = new Map<string, Map<number, IPFragmentContainer>>();
 
 export function handleIP(buffer: ArrayBuffer, offset = 0, _: EthHdr, iface: IInterface) {
     const ipHdr = IPHdr.fromPacket(buffer, offset);
-    if (!ipHdr || !ipHdr.daddr) {
+    if (!ipHdr) {
         return;
     }
 
-    if (iface.getIP() !== IP_NONE &&
-        ipHdr.daddr.isUnicast() &&
-        !ipHdr.daddr.isLoopback() &&
-        !ipHdr.daddr.equals(iface.getIP())) {
+    if (!iface.isLocalDest(ipHdr.daddr)) {
         logDebug(`Discarding packet not meant for us, but for ${ipHdr.daddr.toString()}`);
         return;
     }

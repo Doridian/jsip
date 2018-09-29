@@ -1,4 +1,4 @@
-import { IP_LOOPBACK } from "../ethernet/ip/address";
+import { IP_LOOPBACK, IPAddr } from "../ethernet/ip/address";
 import { IPNET_LOOPBACK } from "../ethernet/ip/subnet";
 import { handlePacket } from "../util/packet";
 import { Interface } from "./index";
@@ -23,6 +23,10 @@ export class InterfaceLoopback extends Interface {
 
     public getMTU(): number {
         return 65535;
+    }
+
+    public isLocalDest(ip: IPAddr): boolean {
+        return ip.isLoopback();
     }
 }
 
