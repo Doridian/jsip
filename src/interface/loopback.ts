@@ -9,14 +9,6 @@ export class InterfaceLoopback extends Interface {
         handlePacket(msg, this);
     }
 
-    public getIP() {
-        return IP_LOOPBACK;
-    }
-
-    public getSubnet() {
-        return IPNET_LOOPBACK;
-    }
-
     public useEthernet(): boolean {
         return false;
     }
@@ -25,12 +17,14 @@ export class InterfaceLoopback extends Interface {
         return 65535;
     }
 
-    public isLocalDest(ip: IPAddr): boolean {
-        return ip.isLoopback();
+    public isLocalDest(_: IPAddr): boolean {
+        return true;
     }
 }
 
 export const INTERFACE_LOOPBACK = new InterfaceLoopback("lo");
+INTERFACE_LOOPBACK.setIP(IP_LOOPBACK);
+INTERFACE_LOOPBACK.setSubnet(IPNET_LOOPBACK);
 
 export function addLoopbackInterface() {
     addInterface(INTERFACE_LOOPBACK);

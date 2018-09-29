@@ -3,6 +3,7 @@ import { logDebug, logError } from "../../util/log";
 import { ETH_TYPE, EthHdr } from "../index";
 import { registerEthHandler } from "../stack";
 import { IPHdr } from "./index";
+import { reversePathCheck } from "./router";
 
 type IPHandler = (data: ArrayBuffer, offset: number, len: number, ipHdr: IPHdr, iface: IInterface) => void;
 
@@ -47,10 +48,17 @@ export function handleIP(buffer: ArrayBuffer, offset = 0, _: EthHdr, iface: IInt
         return;
     }
 
-    if (ipHdr.daddr.isUnicast() &&
-        !iface.isLocalDest(ipHdr.daddr)) {
-        logDebug(`Discarding packet not meant for us, but for ${ipHdr.daddr.toString()}`);
-        return;
+    if (iface.isConfigured()) {
+        if (!reversePathCheck(iface, ipHdr.saddr)) {
+            logDebug(`Reverse path check failed for src ${ipHdr.saddr} on ${iface.getName()}`);
+            return;
+        }
+
+        if (ipHdr.daddr.isUnicast() &&
+            !iface.isLocalDest(ipHdr.daddr)) {
+            logDebug(`${iface.getName()} Discarding packet not meant for us, but for ${ipHdr.daddr}`);
+            return;
+        }
     }
 
     const isFrag = ipHdr.mf || ipHdr.fragOffset > 0;
