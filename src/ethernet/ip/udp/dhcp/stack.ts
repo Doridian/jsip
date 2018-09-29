@@ -35,9 +35,9 @@ export class DHCPNegotiator {
 
         if (secs === 0) {
             this.xid = Math.floor(Math.random() * 0xFFFFFFFF) | 0;
-            logDebug(`DHCP Initial XID ${(this.xid >>> 0).toString(16)}`);
+            logDebug(`${this.iface.getName()} DHCP Initial XID ${(this.xid >>> 0).toString(16)}`);
         } else {
-            logDebug(`DHCP Initial retry: secs = ${secs}`);
+            logDebug(`${this.iface.getName()} DHCP Initial retry: secs = ${secs}`);
         }
         this.secs = secs;
 
@@ -59,7 +59,7 @@ export class DHCPNegotiator {
 
         switch (dhcp.options.get(DHCP_OPTION.MODE)![0]) {
             case DHCP_MODE.OFFER:
-                logDebug("Got DHCP offer, sending DHCP request...");
+                logDebug(`${this.iface.getName()} Got DHCP offer, sending DHCP request...`);
                 sendIPPacket(this.makeDHCPIP(), this.makeDHCPRequestFromOffer(dhcp), this.iface);
                 break;
             case DHCP_MODE.ACK:
@@ -131,7 +131,7 @@ export class DHCPNegotiator {
 
                 this.xid = undefined;
 
-                logDebug(`DHCP TTL: ${ttl}`);
+                logDebug(`${this.iface.getName()} DHCP ACK. TTL: ${ttl}`);
                 const ttlHalftime = ((ttl * 1000) / 2) + 1000;
                 this.renewTimer = setTimeout(() => this._renew((ttl * 1000) - ttlHalftime), ttlHalftime);
 
@@ -141,6 +141,7 @@ export class DHCPNegotiator {
                 }
                 break;
             case DHCP_MODE.NACK:
+                logDebug(`${this.iface.getName()} DHCP NACK. Restarting negotiation`);
                 setTimeout(() => this.negotiate(), 0);
                 break;
         }
@@ -160,7 +161,7 @@ export class DHCPNegotiator {
 
         this.secs = 0;
         this.xid = Math.floor(Math.random() * 0xFFFFFFFF) | 0;
-        logDebug(`DHCP Renew XID ${(this.xid >>> 0).toString(16)}`);
+        logDebug(`${this.iface.getName()} DHCP Renew XID ${(this.xid >>> 0).toString(16)}`);
         sendIPPacket(this.makeDHCPIP(true), this.makeDHCPRenewRequest(), this.iface);
     }
 
