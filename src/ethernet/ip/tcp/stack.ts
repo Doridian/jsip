@@ -1,7 +1,6 @@
 import { IInterface } from "../../../interface/index.js";
 import { INTERFACE_NONE } from "../../../interface/none.js";
 import { EventEmitter } from "../../../util/emitter.js";
-import { logError } from "../../../util/log.js";
 import { IP_NONE, IPAddr } from "../address.js";
 import { IPHdr, IPPROTO } from "../index.js";
 import { sendIPPacket } from "../send.js";
@@ -28,11 +27,6 @@ tcpListeners.set(
 // Public API:
 // *connect / *listen / send / close / kill
 
-export const enum TCP_CBTYPE {
-    SENT = 0,
-    ACKD = 1,
-}
-
 const enum TCP_STATE {
     CLOSED = 0,
     SYN_SENT = 1,
@@ -50,13 +44,10 @@ const TCP_ONLY_SEND_ON_PSH = false;
 
 const TCP_FLAG_INCSEQ = ~(TCP_FLAGS.PSH | TCP_FLAGS.ACK);
 
-type TCPOnAckHandler = (type: TCP_CBTYPE) => void;
-
 interface IWBufferEntry {
     close?: boolean;
     data?: Uint8Array;
     psh?: boolean;
-    cb?: TCPOnAckHandler;
 }
 
 export class TCPConn extends EventEmitter {
@@ -74,7 +65,6 @@ export class TCPConn extends EventEmitter {
     private wlastsend = 0;
     private wretrycount = 0;
     private rlastseqno?: number;
-    private onack = new Map<number, TCPOnAckHandler[]>();
     private mss = -1;
     private connId: string = "";
     private iface: IInterface = INTERFACE_NONE;
@@ -137,29 +127,9 @@ export class TCPConn extends EventEmitter {
         this.delete();
     }
 
-    public addOnAck(cb?: TCPOnAckHandler) {
-        if (!cb) {
-            return;
-        }
-
-        try {
-            cb(TCP_CBTYPE.SENT);
-        } catch (e) {
-            logError(e.stack || e);
-        }
-
-        const ack = this.wseqno!;
-        const onack = this.onack.get(ack);
-        if (!onack) {
-            this.onack.set(ack, [cb]);
-            return;
-        }
-        onack.push(cb);
-    }
-
-    public close(cb?: TCPOnAckHandler) {
+    public close() {
         if (!this.wlastack || this.state !== TCP_STATE.ESTABLISHED) {
-            this.wbuffers.push({ close: true, cb });
+            this.wbuffers.push({ close: true });
             return;
         }
 
@@ -168,8 +138,6 @@ export class TCPConn extends EventEmitter {
         tcp.setFlag(TCP_FLAGS.FIN);
         this.sendPacket(ip, tcp);
         this.incWSeq(1);
-
-        this.addOnAck(cb);
     }
 
     public sendPacket(ipHdr: IPHdr, tcpPkt: TCPPkt) {
@@ -201,7 +169,7 @@ export class TCPConn extends EventEmitter {
         }
     }
 
-    public send(data: Uint8Array, cb?: TCPOnAckHandler) {
+    public send(data: Uint8Array) {
         if (!data || !data.byteLength) {
             return;
         }
@@ -218,27 +186,23 @@ export class TCPConn extends EventEmitter {
                 this.wbuffers.push({ data: data.slice(i, i + this.mss), psh: false });
             }
             const last = this.wbuffers[this.wbuffers.length - 1];
-            if (cb) {
-                last.cb = cb;
-            }
             last.psh = true;
             if (!isReady) {
                 return;
             }
             data = first;
-            cb = undefined;
             psh = false;
         }
 
         if (!isReady) {
-            this.wbuffers.push({ data, cb, psh: true });
+            this.wbuffers.push({ data, psh: true });
             return;
         }
 
-        this._send(data, psh, cb);
+        this._send(data, psh);
     }
 
-    public _send(data?: Uint8Array, psh?: boolean, cb?: TCPOnAckHandler) {
+    public _send(data?: Uint8Array, psh?: boolean) {
         const ip = this._makeIp();
         const tcp = this._makeTcp();
         tcp.data = data;
@@ -247,7 +211,6 @@ export class TCPConn extends EventEmitter {
         }
         this.sendPacket(ip, tcp);
         this.incWSeq(data ? data.byteLength : 0);
-        this.addOnAck(cb);
     }
 
     public gotPacket(_: IPHdr, tcpPkt: TCPPkt) {
@@ -342,12 +305,6 @@ export class TCPConn extends EventEmitter {
 
         if (tcpPkt.hasFlag(TCP_FLAGS.ACK)) {
             if (tcpPkt.ackno === lseqno) {
-                const onack = this.onack.get(tcpPkt.ackno);
-                if (onack) {
-                    onack.forEach((cb) => { try { cb(TCP_CBTYPE.ACKD); } catch (e) { logError(e.stack || e); } });
-                    this.onack.delete(tcpPkt.ackno);
-                }
-
                 this.wlastack = true;
                 this.wretrycount = 0;
                 if (this.state === TCP_STATE.CLOSING || this.state === TCP_STATE.LAST_ACK) {
@@ -355,7 +312,7 @@ export class TCPConn extends EventEmitter {
                 } else {
                     const next = this.wbuffers.shift();
                     if (next) {
-                        this._send(next.data, next.psh ? next.psh : false, next.cb);
+                        this._send(next.data, next.psh ? next.psh : false);
                     }
                 }
             } else {
