@@ -9,7 +9,7 @@ export function dnsTcpConnect(
     cb: TCPConnectHandler,
     dccb: TCPDisconnectHandler,
 ) {
-    dnsResolveOrIp(domainOrIp, (ip) => {
+    dnsResolveOrIp(domainOrIp).then((ip) => {
         if (!ip) {
             cb(false, undefined);
             return;

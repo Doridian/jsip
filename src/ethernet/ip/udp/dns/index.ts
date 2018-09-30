@@ -2,7 +2,6 @@ import { IInterface } from "../../../../interface/index.js";
 import { INTERFACE_NONE } from "../../../../interface/none.js";
 import { BitArray } from "../../../../util/bitfield.js";
 import { boolToBit } from "../../../../util/index.js";
-import { logError } from "../../../../util/log.js";
 import { bufferToString } from "../../../../util/string.js";
 import { IP_NONE, IPAddr } from "../../address.js";
 import { IPHdr, IPPROTO } from "../../index.js";
@@ -11,10 +10,11 @@ import { UDPPkt } from "../index.js";
 import { udpListen } from "../stack.js";
 import { DNSAnswer } from "./answer.js";
 import { DNSQuestion } from "./question.js";
-import { DNSCallback, DNSResult, IDNSParseState } from "./util.js";
+import { DNSResult, IDNSParseState } from "./util.js";
 
 const dnsCache = new Map<string, DNSResult>();
-const dnsQueue = new Map<string, DNSCallback[]>();
+const dnsResolveQueue = new Map<string, (result?: DNSResult) => void>();
+const dnsQueue = new Map<string, Promise<DNSResult | undefined>>();
 const dnsQueueTimeout = new Map<string, number>();
 
 const DNS_SEG_PTR = 0b11000000;
@@ -279,10 +279,11 @@ function domainCB(domain: string, type: number, result: DNSResult) {
         dnsCache.delete(cacheKey);
     }
 
-    const queue = dnsQueue.get(cacheKey);
+    const queue = dnsResolveQueue.get(cacheKey);
     if (queue) {
-        queue.forEach((cb) => { try { cb(result); } catch (e) { logError(e.stack || e); } });
+        queue(result);
         dnsQueue.delete(cacheKey);
+        dnsResolveQueue.delete(cacheKey);
     }
 
     const timeout = dnsQueueTimeout.get(cacheKey);
@@ -331,45 +332,47 @@ udpListen(53, (data: Uint8Array) => {
     });
 });
 
-export function dnsResolve(domain: string, type: DNS_TYPE, cb: DNSCallback) {
+export async function dnsResolve(domain: string, type: DNS_TYPE): Promise<DNSResult | undefined> {
     domain = domain.toLowerCase();
     const cacheKey = _makeDNSCacheKey(domain, type);
 
     if (dnsServerIps.length < 1) {
-        cb(undefined);
-        return;
+        return undefined;
     }
 
     const cache = dnsCache.get(cacheKey);
     if (cache) {
-        cb(cache);
-        return;
+        return cache;
     }
 
     const queue = dnsQueue.get(cacheKey);
     if (queue) {
-        queue.push(cb);
-        return;
+        return queue;
     }
 
-    dnsQueue.set(cacheKey, [cb]);
-    dnsQueueTimeout.set(cacheKey, setTimeout(() => {
-        dnsQueueTimeout.delete(cacheKey);
-        domainCB(domain, type, undefined);
-    }, 10000));
+    const promise = new Promise<DNSResult | undefined>((resolve, _) => {
+        dnsResolveQueue.set(cacheKey, resolve);
+        dnsQueueTimeout.set(cacheKey, setTimeout(() => {
+            dnsQueueTimeout.delete(cacheKey);
+            domainCB(domain, type, undefined);
+        }, 10000));
 
-    sendIPPacket(makeDNSIP(), makeDNSRequest(domain, type), INTERFACE_NONE);
+        sendIPPacket(makeDNSIP(), makeDNSRequest(domain, type), INTERFACE_NONE);
+    });
+
+    dnsQueue.set(cacheKey, promise);
+
+    return promise;
 }
 
 const IP_REGEX = /^\d+\.\d+\.\d+\.\d+$/;
 
-export function dnsResolveOrIp(domain: string, cb: DNSCallback) {
+export async function dnsResolveOrIp(domain: string) {
     if (IP_REGEX.test(domain)) {
-        cb(IPAddr.fromString(domain));
-        return;
+        return IPAddr.fromString(domain);
     }
 
-    dnsResolve(domain, DNS_TYPE.A, cb);
+    return dnsResolve(domain, DNS_TYPE.A);
 }
 
 function recomputeDNSServers() {

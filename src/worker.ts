@@ -1,29 +1,23 @@
 import { configOut } from "./config.js";
 import { httpGet } from "./ethernet/ip/tcp/http/index.js";
 import { addInterfaceEasy } from "./interface/util.js";
-import { VoidCB } from "./util/index.js";
 import { WSVPN } from "./wsvpn.js";
 
-export function workerMain(cb: VoidCB) {
-    const myCB = () => {
-        configOut();
-        cb();
-    };
-
+export function workerMain() {
     const location = document.location!;
 
     if (location.protocol === "file:" || location.hostname === "localhost") {
-        _workerMain("wss://doridian.net/ws", myCB);
-        return;
+        return _workerMain("wss://doridian.net/ws").then(configOut);
     }
 
     const proto = (location.protocol === "http:") ? "ws:" : "wss:";
-    _workerMain(`${proto}//${location.host}/ws`, myCB);
+    return _workerMain(`${proto}//${location.host}/ws`).then(configOut);
 }
 
-function _workerMain(url: string, cb: VoidCB) {
-    const wsvpn = new WSVPN(url, cb);
+function _workerMain(url: string) {
+    const wsvpn = new WSVPN(url);
     addInterfaceEasy(wsvpn);
+    return wsvpn.waitForInit();
 }
 
 onmessage = (e) => {
@@ -31,7 +25,7 @@ onmessage = (e) => {
     const msgId = e.data[1];
     switch (cmd) {
         case "connect":
-            _workerMain(e.data[2], () => {
+            _workerMain(e.data[2]).then(() => {
                 postMessage(["connect", msgId], "");
             });
             break;

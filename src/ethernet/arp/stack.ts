@@ -1,32 +1,28 @@
 import { IInterface } from "../../interface/index.js";
 import { INTERFACE_NONE } from "../../interface/none.js";
-import { logError } from "../../util/log.js";
 import { MAC_BROADCAST, MACAddr } from "../address.js";
 import { ETH_LEN, ETH_TYPE, EthHdr } from "../index.js";
 import { IPAddr } from "../ip/address.js";
 import { registerEthHandler } from "../stack.js";
 import { ARP_LEN, ARP_REPLY, ARP_REQUEST, ARPPkt } from "./index.js";
 
-type ARPCallback = (ethHdr?: MACAddr) => void;
-
 const arpCache = new Map<number, MACAddr>();
-const arpQueue = new Map<number, ARPCallback[]>();
+const arpQueue = new Map<number, Promise<EthHdr | undefined>>();
+const arpResolveQueue = new Map<number, (mac?: MACAddr) => void>();
 const arpTimeouts = new Map<number, number>();
 
-export function makeEthIPHdr(destIp: IPAddr, cb: (ethHdr?: EthHdr) => void, iface: IInterface = INTERFACE_NONE) {
+export async function makeEthIPHdr(destIp: IPAddr, iface: IInterface = INTERFACE_NONE): Promise<EthHdr | undefined> {
     const ethHdr = new EthHdr();
     ethHdr.ethtype = ETH_TYPE.IP;
     ethHdr.saddr = iface.getMAC();
 
     if (!destIp.isUnicast()) {
         ethHdr.daddr = MAC_BROADCAST;
-        cb(ethHdr);
-        return;
+        return ethHdr;
     }
 
     if (iface === INTERFACE_NONE) {
-        cb();
-        return;
+        return undefined;
     }
 
     const destIpKey = destIp.toInt();
@@ -34,39 +30,37 @@ export function makeEthIPHdr(destIp: IPAddr, cb: (ethHdr?: EthHdr) => void, ifac
     const cacheValue = arpCache.get(destIpKey);
     if (cacheValue) {
         ethHdr.daddr = cacheValue;
-        cb(ethHdr);
-        return;
+        return ethHdr;
     }
 
     const ourIp = iface.getIP();
 
     if (destIp.isLoopback() || destIp.equals(ourIp)) {
         ethHdr.daddr = ethHdr.saddr;
-        cb(ethHdr);
-        return;
+        return ethHdr;
     }
 
-    const cbTmp = (addr?: MACAddr) => {
-        if (!addr) {
-            cb();
-            return;
+    let promise = arpQueue.get(destIpKey);
+    if (promise) {
+        return promise;
+    }
+
+    promise = new Promise<MACAddr | undefined>((resolve, _) => {
+        arpResolveQueue.set(destIpKey, resolve);
+    }).then((macAddr) => {
+        if (!macAddr) {
+            return undefined;
         }
-        ethHdr.daddr = addr;
-        cb(ethHdr);
-    };
+        ethHdr.daddr = macAddr;
+        return ethHdr;
+    });
 
-    const queue = arpQueue.get(destIpKey);
-    if (queue) {
-        queue.push(cbTmp);
-        return;
-    }
-
-    arpQueue.set(destIpKey, [cbTmp]);
     arpTimeouts.set(destIpKey, setTimeout(() => {
         arpTimeouts.delete(destIpKey);
-        const timeoutQueue = arpQueue.get(destIpKey);
+        const timeoutQueue = arpResolveQueue.get(destIpKey);
         if (timeoutQueue) {
-            timeoutQueue.forEach((queueCb) => { try { queueCb(); } catch (e) { logError(e.stack || e); } });
+            timeoutQueue();
+            arpResolveQueue.delete(destIpKey);
             arpQueue.delete(destIpKey);
         }
     }, 10000));
@@ -78,6 +72,8 @@ export function makeEthIPHdr(destIp: IPAddr, cb: (ethHdr?: EthHdr) => void, ifac
     arpReq.tha = MAC_BROADCAST;
     arpReq.tpa = destIp;
     sendARPPkt(arpReq, MAC_BROADCAST, iface);
+
+    return promise;
 }
 
 function sendARPPkt(arpPkt: ARPPkt, fromAddr: MACAddr, iface: IInterface) {
@@ -108,9 +104,10 @@ function handleARP(buffer: ArrayBuffer, offset: number, ethHdr: EthHdr, iface: I
 
             arpCache.set(ip, mac);
 
-            const queue = arpQueue.get(ip);
+            const queue = arpResolveQueue.get(ip);
             if (queue) {
-                queue.forEach((cb) => { try { cb(mac); } catch (e) { logError(e.stack || e); } });
+                queue(mac);
+                arpResolveQueue.delete(ip);
                 arpQueue.delete(ip);
             }
             const timeout = arpTimeouts.get(ip);

@@ -14,15 +14,15 @@ import { DHCP_MODE, DHCP_OPTION, DHCPPkt } from "./index.js";
 const dhcpNegotiators = new Map<IInterface, DHCPNegotiator>();
 
 export class DHCPNegotiator {
-    private xid: number | undefined;
+    private xid?: number;
     private secs: number = 0;
     private iface: IInterface;
-    private renewTimer: number | undefined;
+    private renewTimer?: number;
     private server: IPAddr = IP_BROADCAST;
-    private doneCB: VoidCB | undefined;
+    private doneCB?: VoidCB;
+    private donePromise?: Promise<void>;
 
-    constructor(iface: IInterface, cb?: VoidCB) {
-        this.doneCB = cb;
+    constructor(iface: IInterface) {
         this.iface = iface;
     }
 
@@ -30,24 +30,17 @@ export class DHCPNegotiator {
         this.stopTimer();
     }
 
-    public negotiate(secs = 0) {
-        this.stopTimer();
-
-        if (secs === 0) {
-            this.xid = Math.floor(Math.random() * 0xFFFFFFFF) | 0;
-            logDebug(`${this.iface.getName()} DHCP Initial XID ${(this.xid >>> 0).toString(16)}`);
-        } else {
-            logDebug(`${this.iface.getName()} DHCP Initial retry: secs = ${secs}`);
-        }
-        this.secs = secs;
-
-        this.renewTimer = setTimeout(() => this.negotiate(secs + 5), 5000);
-        sendIPPacket(this.makeDHCPIP(), this.makeDHCPDiscover(), this.iface);
+    public async negotiate() {
+        return this._mkPromise(() => {
+            this._negotiate();
+        });
     }
 
-    public renew() {
-        this.stopTimer();
-        this._renew(0);
+    public async renew() {
+        return this._mkPromise(() => {
+            this.stopTimer();
+            this._renew(0);
+        });
     }
 
     public _handlePacket(dhcp: DHCPPkt) {
@@ -138,6 +131,7 @@ export class DHCPNegotiator {
                 if (this.doneCB) {
                     this.doneCB();
                     this.doneCB = undefined;
+                    this.donePromise = undefined;
                 }
                 break;
             case DHCP_MODE.NACK:
@@ -145,6 +139,33 @@ export class DHCPNegotiator {
                 setTimeout(() => this.negotiate(), 0);
                 break;
         }
+    }
+
+    private _mkPromise(cb: VoidCB) {
+        if (this.donePromise) {
+            cb();
+        } else {
+            this.donePromise = new Promise((resolve, _) => {
+                this.doneCB = resolve;
+                cb();
+            });
+        }
+        return this.donePromise;
+    }
+
+    private _negotiate(secs = 0) {
+        this.stopTimer();
+
+        if (secs === 0) {
+            this.xid = Math.floor(Math.random() * 0xFFFFFFFF) | 0;
+            logDebug(`${this.iface.getName()} DHCP Initial XID ${(this.xid >>> 0).toString(16)}`);
+        } else {
+            logDebug(`${this.iface.getName()} DHCP Initial retry: secs = ${secs}`);
+        }
+        this.secs = secs;
+
+        this.renewTimer = setTimeout(() => this._negotiate(secs + 5), 5000);
+        sendIPPacket(this.makeDHCPIP(), this.makeDHCPDiscover(), this.iface);
     }
 
     private stopTimer() {
@@ -251,9 +272,9 @@ udpListen(68, (data: Uint8Array, _: IPHdr, iface: IInterface) => {
     negotiator._handlePacket(dhcp);
 });
 
-export function addDHCP(iface: IInterface, cb?: VoidCB): DHCPNegotiator {
+export function addDHCP(iface: IInterface): DHCPNegotiator {
     removeDHCP(iface);
-    const negotiator = new DHCPNegotiator(iface, cb);
+    const negotiator = new DHCPNegotiator(iface);
     dhcpNegotiators.set(iface, negotiator);
     return negotiator;
 }

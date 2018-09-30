@@ -14,9 +14,15 @@ export class WSVPN extends Interface {
     private ws: WebSocket;
     private ethernet: boolean = false;
     private mtu: number = 0;
+    private donePromise: Promise<void>;
+    private doneResolve?: VoidCB;
 
-    public constructor(url: string, cb: VoidCB) {
+    public constructor(url: string) {
         super(`wsvpn${maxNumber++}`);
+
+        this.donePromise = new Promise<void>((resolve, _) => {
+            this.doneResolve = resolve;
+        });
 
         logDebug(`Connecting to ${this.getName()}: ${url}`);
 
@@ -30,8 +36,12 @@ export class WSVPN extends Interface {
                 return;
             }
 
-            this.handleInit(data, cb);
+            this.handleInit(data).then(this.doneResolve!);
         };
+    }
+
+    public waitForInit() {
+        return this.donePromise;
     }
 
     public sendRaw(msg: ArrayBuffer) {
@@ -46,7 +56,7 @@ export class WSVPN extends Interface {
         return this.ethernet;
     }
 
-    private handleInit(data: string, cb: VoidCB) {
+    private handleInit(data: string) {
         let needDHCP = false;
         // 1|init|TUN|192.168.3.1/24|1280
         const spl = data.split("|");
@@ -76,9 +86,9 @@ export class WSVPN extends Interface {
 
         if (needDHCP) {
             logDebug(`${this.getName()} starting DHCP procedure...`);
-            addDHCP(this, cb).negotiate();
-        } else if (cb) {
-            setTimeout(cb, 0);
+            return addDHCP(this).negotiate().then();
+        } else {
+            return Promise.resolve();
         }
     }
 }

@@ -46,12 +46,12 @@ export function sendIPPacket(ipHdr: IPHdr, payload: IPacket, iface: IInterface) 
         return;
     }
 
-    makeEthIPHdr(routeDestIp, (ethHdr) => {
+    makeEthIPHdr(routeDestIp, iface).then((ethHdr) => {
         if (!ethHdr) {
             return;
         }
         _sendIPPacket(ipHdr, payload, iface, ethHdr);
-    }, iface);
+    });
 }
 
 function _sendIPPacket(ipHdr: IPHdr, payload: IPacket, iface: IInterface, ethIPHdr?: EthHdr) {
