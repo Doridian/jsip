@@ -12,9 +12,14 @@ import { DNSAnswer } from "./answer.js";
 import { DNSQuestion } from "./question.js";
 import { DNSResult, IDNSParseState } from "./util.js";
 
+interface IDNSResolve {
+    resolve: (result?: DNSResult) => void;
+    reject: (err?: Error) => void;
+}
+
 const dnsCache = new Map<string, DNSResult>();
-const dnsResolveQueue = new Map<string, (result?: DNSResult) => void>();
-const dnsQueue = new Map<string, Promise<DNSResult | undefined>>();
+const dnsResolveQueue = new Map<string, IDNSResolve>();
+const dnsQueue = new Map<string, Promise<DNSResult>>();
 const dnsQueueTimeout = new Map<string, number>();
 
 const DNS_SEG_PTR = 0b11000000;
@@ -271,7 +276,7 @@ function _makeDNSCacheKey(domain: string, type: DNS_TYPE) {
     return `${type},${domain}`;
 }
 
-function domainCB(domain: string, type: number, result: DNSResult) {
+function domainCB(domain: string, type: number, result: DNSResult, err?: Error) {
     const cacheKey = _makeDNSCacheKey(domain, type);
     if (result) {
         dnsCache.set(cacheKey, result);
@@ -281,7 +286,11 @@ function domainCB(domain: string, type: number, result: DNSResult) {
 
     const queue = dnsResolveQueue.get(cacheKey);
     if (queue) {
-        queue(result);
+        if (result) {
+            queue.resolve(result);
+        } else {
+            queue.reject(err || new Error("Unknown DNS error"));
+        }
         dnsQueue.delete(cacheKey);
         dnsResolveQueue.delete(cacheKey);
     }
@@ -324,11 +333,11 @@ udpListen(53, (data: Uint8Array) => {
         }
 
         if (!answer || answer.type !== q.type) {
-            domainCB(domain, q.type, undefined);
+            domainCB(domain, q.type, undefined, new Error("Invalid DNS answer"));
             return;
         }
 
-        domainCB(domain, q.type, answer.getData()!);
+        domainCB(domain, q.type, answer.getData());
     });
 });
 
@@ -350,11 +359,11 @@ export async function dnsResolve(domain: string, type: DNS_TYPE): Promise<DNSRes
         return queue;
     }
 
-    const promise = new Promise<DNSResult | undefined>((resolve, _) => {
-        dnsResolveQueue.set(cacheKey, resolve);
+    const promise = new Promise<DNSResult | undefined>((resolve, reject) => {
+        dnsResolveQueue.set(cacheKey, { resolve, reject });
         dnsQueueTimeout.set(cacheKey, setTimeout(() => {
             dnsQueueTimeout.delete(cacheKey);
-            domainCB(domain, type, undefined);
+            domainCB(domain, type, undefined, new Error("Timeout"));
         }, 10000));
 
         sendIPPacket(makeDNSIP(), makeDNSRequest(domain, type), INTERFACE_NONE);

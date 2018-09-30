@@ -6,9 +6,14 @@ import { IPAddr } from "../ip/address.js";
 import { registerEthHandler } from "../stack.js";
 import { ARP_LEN, ARP_REPLY, ARP_REQUEST, ARPPkt } from "./index.js";
 
+interface IARPResolve {
+    resolve: (mac: MACAddr) => void;
+    reject: (err: Error) => void;
+}
+
 const arpCache = new Map<number, MACAddr>();
-const arpQueue = new Map<number, Promise<EthHdr | undefined>>();
-const arpResolveQueue = new Map<number, (mac?: MACAddr) => void>();
+const arpQueue = new Map<number, Promise<EthHdr>>();
+const arpResolveQueue = new Map<number, IARPResolve>();
 const arpTimeouts = new Map<number, number>();
 
 export async function makeEthIPHdr(destIp: IPAddr, iface: IInterface = INTERFACE_NONE): Promise<EthHdr | undefined> {
@@ -45,12 +50,9 @@ export async function makeEthIPHdr(destIp: IPAddr, iface: IInterface = INTERFACE
         return promise;
     }
 
-    promise = new Promise<MACAddr | undefined>((resolve, _) => {
-        arpResolveQueue.set(destIpKey, resolve);
+    promise = new Promise<MACAddr>((resolve, reject) => {
+        arpResolveQueue.set(destIpKey, { resolve, reject });
     }).then((macAddr) => {
-        if (!macAddr) {
-            return undefined;
-        }
         ethHdr.daddr = macAddr;
         return ethHdr;
     });
@@ -59,7 +61,7 @@ export async function makeEthIPHdr(destIp: IPAddr, iface: IInterface = INTERFACE
         arpTimeouts.delete(destIpKey);
         const timeoutQueue = arpResolveQueue.get(destIpKey);
         if (timeoutQueue) {
-            timeoutQueue();
+            timeoutQueue.reject(new Error("Timeout"));
             arpResolveQueue.delete(destIpKey);
             arpQueue.delete(destIpKey);
         }
@@ -106,7 +108,7 @@ function handleARP(buffer: ArrayBuffer, offset: number, ethHdr: EthHdr, iface: I
 
             const queue = arpResolveQueue.get(ip);
             if (queue) {
-                queue(mac);
+                queue.resolve(mac);
                 arpResolveQueue.delete(ip);
                 arpQueue.delete(ip);
             }

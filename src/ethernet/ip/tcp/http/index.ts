@@ -116,7 +116,8 @@ function _httpPromise(options: IHTTPOptions, resolve: (res: IHTTPResult) => void
                 reject(e);
             }
         });
-    });
+    })
+    .catch(reject);
 }
 
 export function httpGet(options: IHTTPOptions) {

@@ -1,6 +1,7 @@
 import { IInterface } from "../../interface/index.js";
 import { INTERFACE_NONE } from "../../interface/none.js";
 import { IPacket } from "../../ipacket.js";
+import { logError } from "../../util/log.js";
 import { makeEthIPHdr } from "../arp/stack.js";
 import { ETH_LEN, EthHdr } from "../index.js";
 import { IP_NONE } from "./address.js";
@@ -47,10 +48,9 @@ export function sendIPPacket(ipHdr: IPHdr, payload: IPacket, iface: IInterface) 
     }
 
     makeEthIPHdr(routeDestIp, iface).then((ethHdr) => {
-        if (!ethHdr) {
-            return;
-        }
         _sendIPPacket(ipHdr, payload, iface, ethHdr);
+    }).catch((err) => {
+        logError(err.stack || err);
     });
 }
 
