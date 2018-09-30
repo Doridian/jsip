@@ -16,7 +16,7 @@ const arpQueue = new Map<number, Promise<EthHdr>>();
 const arpResolveQueue = new Map<number, IARPResolve>();
 const arpTimeouts = new Map<number, number>();
 
-export async function makeEthIPHdr(destIp: IPAddr, iface: IInterface = INTERFACE_NONE): Promise<EthHdr | undefined> {
+export async function makeEthIPHdr(destIp: IPAddr, iface: IInterface = INTERFACE_NONE): Promise<EthHdr> {
     const ethHdr = new EthHdr();
     ethHdr.ethtype = ETH_TYPE.IP;
     ethHdr.saddr = iface.getMAC();
@@ -27,7 +27,7 @@ export async function makeEthIPHdr(destIp: IPAddr, iface: IInterface = INTERFACE
     }
 
     if (iface === INTERFACE_NONE) {
-        return undefined;
+        throw new Error("Cannot make ETH header for none interface");
     }
 
     const destIpKey = destIp.toInt();

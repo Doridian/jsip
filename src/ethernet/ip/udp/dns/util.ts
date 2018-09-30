@@ -1,7 +1,7 @@
 import { stringIntoBuffer } from "../../../../util/string.js";
 import { IPAddr } from "../../address.js";
 
-export type DNSResult = IPAddr | string | undefined;
+export type DNSResult = IPAddr | string;
 export interface IDNSParseState { pos: number; data: Uint8Array; packet: ArrayBuffer; offset: number; }
 export type DNSCallback = (result: DNSResult) => void;
 

@@ -276,7 +276,7 @@ function _makeDNSCacheKey(domain: string, type: DNS_TYPE) {
     return `${type},${domain}`;
 }
 
-function domainCB(domain: string, type: number, result: DNSResult, err?: Error) {
+function domainCB(domain: string, type: number, result: DNSResult | undefined, err?: Error) {
     const cacheKey = _makeDNSCacheKey(domain, type);
     if (result) {
         dnsCache.set(cacheKey, result);
@@ -341,12 +341,12 @@ udpListen(53, (data: Uint8Array) => {
     });
 });
 
-export async function dnsResolve(domain: string, type: DNS_TYPE): Promise<DNSResult | undefined> {
+export async function dnsResolve(domain: string, type: DNS_TYPE): Promise<DNSResult> {
     domain = domain.toLowerCase();
     const cacheKey = _makeDNSCacheKey(domain, type);
 
     if (dnsServerIps.length < 1) {
-        return undefined;
+        throw new Error("Cannot run DNS query without DNS servers");
     }
 
     const cache = dnsCache.get(cacheKey);
@@ -359,7 +359,7 @@ export async function dnsResolve(domain: string, type: DNS_TYPE): Promise<DNSRes
         return queue;
     }
 
-    const promise = new Promise<DNSResult | undefined>((resolve, reject) => {
+    const promise = new Promise<DNSResult>((resolve, reject) => {
         dnsResolveQueue.set(cacheKey, { resolve, reject });
         dnsQueueTimeout.set(cacheKey, setTimeout(() => {
             dnsQueueTimeout.delete(cacheKey);
