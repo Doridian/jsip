@@ -1,7 +1,6 @@
 node_modules
 
 /dist
-/base64js.min.js
 /src/main.ts
 /index.html
 
