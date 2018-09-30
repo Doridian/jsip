@@ -1,7 +1,7 @@
 import { buffersToBuffer, bufferToString, stringToBuffer } from "../../../../util/string.js";
 import { dnsTcpConnect } from "../../udp/dns/tcp_util.js";
 
-export interface IHTTPHeaderMap { [key: string]: string; }
+export interface IHTTPHeaderMap { [key: string]: string[]; }
 
 export interface IHTTPResult {
     statusCode: number;
@@ -54,7 +54,13 @@ function httpParse(datas: Uint8Array[]): IHTTPResult {
         if (colonPos < 0) {
             return;
         }
-        headers[headerStr.substr(0, colonPos).trim().toLowerCase()] = headerStr.substr(colonPos + 1).trim();
+        const headerKey = headerStr.substr(0, colonPos).trim().toLowerCase();
+        const headerValue = headerStr.substr(colonPos + 1).trim();
+        if (headers[headerKey]) {
+            headers[headerKey].push(headerValue);
+        } else {
+            headers[headerKey] = [headerValue];
+        }
     });
 
     const statusI = statusLine.indexOf(" ");
@@ -82,14 +88,14 @@ function _httpPromise(options: IHTTPOptions, resolve: (res: IHTTPResult) => void
     const method = options.method || "GET";
 
     const headers = options.headers || {};
-    headers.connection = "close";
-    headers["user-agent"] = "jsip";
-    headers.host = url.host;
+    headers.connection = ["close"];
+    headers["user-agent"] = ["jsip"];
+    headers.host = [url.host];
     if (!headers.authorization && (url.username || url.password)) {
-        headers.authorization = `Basic ${btoa(`${url.username}:${url.password}`)}`;
+        headers.authorization = [`Basic ${btoa(`${url.username}:${url.password}`)}`];
     }
     if (body) {
-        headers["content-length"] = body.byteLength.toString();
+        headers["content-length"] = [body.byteLength.toString()];
     }
 
     const datas: Uint8Array[] = [];
@@ -100,7 +106,9 @@ function _httpPromise(options: IHTTPOptions, resolve: (res: IHTTPResult) => void
         tcpConn.once("connect", () => {
             const data = [`${method.toUpperCase()} ${url.pathname}${url.search} HTTP/1.1`];
             for (const headerName of Object.keys(headers)) {
-                data.push(`${headerName}: ${headers[headerName]}`);
+                for (const header of headers[headerName]) {
+                    data.push(`${headerName}: ${header}`);
+                }
             }
             tcpConn.send(new Uint8Array(stringToBuffer(data.join("\r\n") + "\r\n\r\n")));
             if (body) {
