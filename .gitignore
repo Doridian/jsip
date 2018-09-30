@@ -2,7 +2,7 @@ node_modules
 
 /dist
 /base64js.min.js
-/main.js
+/src/main.ts
 /index.html
 
 .vscode/*

@@ -1,9 +1,9 @@
 import { buffersToBuffer, bufferToString, stringToBuffer } from "../../../../util/string.js";
 import { dnsTcpConnect } from "../../udp/dns/tcp_util.js";
 
-interface IHTTPHeaderMap { [key: string]: string; }
+export interface IHTTPHeaderMap { [key: string]: string; }
 
-interface IHTTPResult {
+export interface IHTTPResult {
     statusCode: number;
     statusText: string;
     headers: IHTTPHeaderMap;
@@ -11,7 +11,7 @@ interface IHTTPResult {
     url?: URL;
 }
 
-interface IHTTPOptions {
+export interface IHTTPOptions {
     url: URL;
     method?: string;
     body?: Uint8Array;
@@ -121,7 +121,7 @@ function _httpPromise(options: IHTTPOptions, resolve: (res: IHTTPResult) => void
 }
 
 export function httpGet(options: IHTTPOptions) {
-    return new Promise((resolve, reject) => {
+    return new Promise<IHTTPResult>((resolve, reject) => {
         _httpPromise(options, resolve, reject);
     });
 }
