@@ -1,11 +1,9 @@
 import { IInterface } from "../../../../interface/index.js";
-import { INTERFACE_NONE } from "../../../../interface/none.js";
 import { BitArray } from "../../../../util/bitfield.js";
 import { boolToBit } from "../../../../util/index.js";
 import { bufferToString } from "../../../../util/string.js";
-import { IP_NONE, IPAddr } from "../../address.js";
-import { IPHdr, IPPROTO } from "../../index.js";
-import { sendIPPacket } from "../../send.js";
+import { IPAddr } from "../../address.js";
+import { sendPacketTo } from "../../send.js";
 import { UDPPkt } from "../index.js";
 import { udpListen } from "../stack.js";
 import { DNSAnswer } from "./answer.js";
@@ -263,15 +261,6 @@ function makeDNSUDP(dns: DNSPkt) {
     return pkt;
 }
 
-function makeDNSIP() {
-    const ip = new IPHdr();
-    ip.protocol = IPPROTO.UDP;
-    ip.saddr = IP_NONE;
-    ip.daddr = getDNSServer();
-    ip.df = false;
-    return ip;
-}
-
 function _makeDNSCacheKey(domain: string, type: DNS_TYPE) {
     return `${type},${domain}`;
 }
@@ -366,7 +355,7 @@ export async function dnsResolve(domain: string, type: DNS_TYPE): Promise<DNSRes
             domainCB(domain, type, undefined, new Error("Timeout"));
         }, 10000));
 
-        sendIPPacket(makeDNSIP(), makeDNSRequest(domain, type), INTERFACE_NONE);
+        sendPacketTo(getDNSServer(), makeDNSRequest(domain, type));
     });
 
     dnsQueue.set(cacheKey, promise);

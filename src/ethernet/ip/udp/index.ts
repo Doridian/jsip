@@ -31,6 +31,10 @@ export class UDPPkt implements IPacket {
     public data?: Uint8Array;
     private checksum = 0;
 
+    public getProto() {
+        return IPPROTO.UDP;
+    }
+
     public getFullLength() {
         if (!this.data) {
             return 8;

@@ -78,6 +78,10 @@ export class TCPPkt implements IPacket {
     public windowSize = 0;
     public mss = -1;
 
+    public getProto() {
+        return IPPROTO.TCP;
+    }
+
     public fillMSS(mss: number) {
         this.options = new Uint8Array(4);
         const o8 = this.options;

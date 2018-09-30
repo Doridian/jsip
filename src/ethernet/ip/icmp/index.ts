@@ -1,4 +1,5 @@
 import { computeChecksum } from "../../../util/checksum.js";
+import { IPPROTO } from "../index.js";
 
 export class ICMPPkt {
     public static fromPacket(packet: ArrayBuffer, offset: number, len: number) {
@@ -22,6 +23,10 @@ export class ICMPPkt {
     public rest = 0;
     public data?: Uint8Array;
     private checksum = 0;
+
+    public getProto() {
+        return IPPROTO.ICMP;
+    }
 
     public toPacket(array: ArrayBuffer, offset: number) {
         const packet = new Uint8Array(array, offset, this.getFullLength());

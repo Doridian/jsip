@@ -4,9 +4,16 @@ import { IPacket } from "../../ipacket.js";
 import { logError } from "../../util/log.js";
 import { makeEthIPHdr } from "../arp/stack.js";
 import { ETH_LEN, EthHdr } from "../index.js";
-import { IP_NONE } from "./address.js";
+import { IP_NONE, IPAddr } from "./address.js";
 import { IPHdr } from "./index.js";
 import { getRoute } from "./router.js";
+
+export function sendPacketTo(dest: IPAddr, payload: IPacket) {
+    const hdr = new IPHdr();
+    hdr.daddr = dest;
+    hdr.protocol = payload.getProto();
+    return sendIPPacket(hdr, payload, INTERFACE_NONE);
+}
 
 export function sendIPPacket(ipHdr: IPHdr, payload: IPacket, iface: IInterface) {
     let routeDestIp = ipHdr.daddr;
