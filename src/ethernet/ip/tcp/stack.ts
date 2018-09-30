@@ -16,7 +16,7 @@ tcpListeners.set(
     7,
     (tcpConn) => { // ECHO
         tcpConn.on("data", (data: Uint8Array) => {
-            if (data.byteLength === 1 && (data[0] === 10 || data[0] === 13)) {
+            if (data.byteLength <= 2 && (data[0] === 10 || data[0] === 13)) {
                 tcpConn.close();
             } else {
                 tcpConn.send(data);
