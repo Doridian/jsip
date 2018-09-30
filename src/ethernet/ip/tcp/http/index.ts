@@ -1,4 +1,3 @@
-import { logError } from "../../../../util/log.js";
 import { buffersToBuffer, bufferToString, stringToBuffer } from "../../../../util/string.js";
 import { dnsTcpConnect } from "../../udp/dns/tcp_util.js";
 
@@ -18,8 +17,6 @@ interface IHTTPOptions {
     body?: Uint8Array;
     headers?: IHTTPHeaderMap;
 }
-
-type HTTPCallback = (err?: Error, res?: IHTTPResult) => void;
 
 function _isHeaderEnd(ele: number, idx: number, arr: Uint8Array) {
     if (arr.byteLength < idx + 4) {
@@ -79,7 +76,7 @@ function httpParse(datas: Uint8Array[]): IHTTPResult {
     };
 }
 
-export function httpGet(options: IHTTPOptions, cb: HTTPCallback) {
+function _httpPromise(options: IHTTPOptions, resolve: (res: IHTTPResult) => void, reject: (err: Error) => void) {
     const body = options.body;
     const url = options.url;
     const method = options.method || "GET";
@@ -102,11 +99,7 @@ export function httpGet(options: IHTTPOptions, cb: HTTPCallback) {
     }, (res, conn) => {
         // Connect
         if (res === false || !conn) {
-            try {
-                cb(new Error("Could not connect"), undefined);
-            } catch (e) {
-                logError(e.stack || e);
-            }
+            reject(new Error("Could not connect"));
             return;
         }
 
@@ -120,21 +113,18 @@ export function httpGet(options: IHTTPOptions, cb: HTTPCallback) {
         }
     }, () => {
         // Disconnect
-        let res: IHTTPResult | undefined;
-        let err: Error | undefined;
         try {
-            res = httpParse(datas);
+            const res = httpParse(datas);
             res.url = url;
-            err = undefined;
+            resolve(res);
         } catch (e) {
-            res = undefined;
-            err = e;
+            reject(e);
         }
+    });
+}
 
-        try {
-            cb(err, res);
-        } catch (e) {
-            logError(e.stack || e);
-        }
+export function httpGet(options: IHTTPOptions) {
+    return new Promise((resolve, reject) => {
+        _httpPromise(options, resolve, reject);
     });
 }

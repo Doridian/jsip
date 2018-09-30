@@ -30,8 +30,10 @@ onmessage = (e) => {
             });
             break;
         case "httpGet":
-            httpGet(e.data[2], (err, res) => {
-                postMessage(["httpGet", msgId, err, res], "");
+            httpGet(e.data[2]).then((res) => {
+                postMessage(["httpGet", msgId, undefined, res], "");
+            }).catch((err) => {
+                postMessage(["httpGet", msgId, err, undefined], "");
             });
             break;
     }
