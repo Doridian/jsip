@@ -1,19 +1,15 @@
 import { IPAddr } from "../../address.js";
-import { tcpConnect, TCPConnectHandler, TCPDisconnectHandler, TCPListener } from "../../tcp/stack.js";
+import { tcpConnect } from "../../tcp/stack.js";
 import { dnsResolveOrIp } from "./index.js";
 
 export function dnsTcpConnect(
     domainOrIp: string,
     port: number,
-    func: TCPListener,
-    cb: TCPConnectHandler,
-    dccb: TCPDisconnectHandler,
 ) {
-    dnsResolveOrIp(domainOrIp).then((ip) => {
+    return dnsResolveOrIp(domainOrIp).then((ip) => {
         if (!ip) {
-            cb(false, undefined);
-            return;
+            throw new Error("Can't resolve domain");
         }
-        tcpConnect(ip as IPAddr, port, func, cb, dccb);
+        return tcpConnect(ip as IPAddr, port);
     });
 }

@@ -93,33 +93,29 @@ function _httpPromise(options: IHTTPOptions, resolve: (res: IHTTPResult) => void
     }
 
     const datas: Uint8Array[] = [];
-    dnsTcpConnect(url.hostname, url.port ? parseInt(url.port, 10) : 80, (data) => {
-        // Data
-        datas.push(data);
-    }, (res, conn) => {
-        // Connect
-        if (res === false || !conn) {
-            reject(new Error("Could not connect"));
-            return;
-        }
 
-        const data = [`${method.toUpperCase()} ${url.pathname}${url.search} HTTP/1.1`];
-        for (const headerName of Object.keys(headers)) {
-            data.push(`${headerName}: ${headers[headerName]}`);
-        }
-        conn.send(new Uint8Array(stringToBuffer(data.join("\r\n") + "\r\n\r\n")));
-        if (body) {
-            conn.send(body);
-        }
-    }, () => {
-        // Disconnect
-        try {
-            const res = httpParse(datas);
-            res.url = url;
-            resolve(res);
-        } catch (e) {
-            reject(e);
-        }
+    dnsTcpConnect(url.hostname, url.port ? parseInt(url.port, 10) : 80)
+    .then((tcpConn) => {
+        tcpConn.on("data", (data) => datas.push(data));
+        tcpConn.once("connect", () => {
+            const data = [`${method.toUpperCase()} ${url.pathname}${url.search} HTTP/1.1`];
+            for (const headerName of Object.keys(headers)) {
+                data.push(`${headerName}: ${headers[headerName]}`);
+            }
+            tcpConn.send(new Uint8Array(stringToBuffer(data.join("\r\n") + "\r\n\r\n")));
+            if (body) {
+                tcpConn.send(body);
+            }
+        });
+        tcpConn.once("close", () => {
+            try {
+                const res = httpParse(datas);
+                res.url = url;
+                resolve(res);
+            } catch (e) {
+                reject(e);
+            }
+        });
     });
 }
 

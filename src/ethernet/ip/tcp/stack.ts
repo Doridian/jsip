@@ -1,5 +1,6 @@
 import { IInterface } from "../../../interface/index.js";
 import { INTERFACE_NONE } from "../../../interface/none.js";
+import { EventEmitter } from "../../../util/emitter.js";
 import { logError } from "../../../util/log.js";
 import { IP_NONE, IPAddr } from "../address.js";
 import { IPHdr, IPPROTO } from "../index.js";
@@ -7,19 +8,20 @@ import { sendIPPacket } from "../send.js";
 import { registerIpHandler } from "../stack.js";
 import { TCP_FLAGS, TCPPkt } from "./index.js";
 
-export type TCPListener = (data: Uint8Array, tcpConn: TCPConn) => void;
+export type TCPListener = (tcpConn: TCPConn) => void;
 
 const tcpConns = new Map<string, TCPConn>();
 const tcpListeners = new Map<number, TCPListener>();
 tcpListeners.set(
     7,
-    (data, tcpConn) => { // ECHO
-        const d = new Uint8Array(data);
-        if (data.byteLength === 1 && d[0] === 10) {
-            tcpConn.close();
-        } else {
-            tcpConn.send(d);
-        }
+    (tcpConn) => { // ECHO
+        tcpConn.on("data", (data: Uint8Array) => {
+            if (data.byteLength === 1 && data[0] === 10) {
+                tcpConn.close();
+            } else {
+                tcpConn.send(data);
+            }
+    });
     },
 );
 
@@ -48,9 +50,7 @@ const TCP_ONLY_SEND_ON_PSH = false;
 
 const TCP_FLAG_INCSEQ = ~(TCP_FLAGS.PSH | TCP_FLAGS.ACK);
 
-export type TCPOnAckHandler = (type: TCP_CBTYPE) => void;
-export type TCPConnectHandler = (res: boolean, conn?: TCPConn) => void;
-export type TCPDisconnectHandler = (conn: TCPConn) => void;
+type TCPOnAckHandler = (type: TCP_CBTYPE) => void;
 
 interface IWBufferEntry {
     close?: boolean;
@@ -59,8 +59,7 @@ interface IWBufferEntry {
     cb?: TCPOnAckHandler;
 }
 
-export class TCPConn {
-    public disconnectCb?: TCPDisconnectHandler;
+export class TCPConn extends EventEmitter {
     private state = TCP_STATE.CLOSED;
     private daddr: IPAddr = IP_NONE;
     private sport = 0;
@@ -77,8 +76,6 @@ export class TCPConn {
     private rlastseqno?: number;
     private onack = new Map<number, TCPOnAckHandler[]>();
     private mss = -1;
-    private connectCb?: TCPConnectHandler;
-    private handler?: TCPListener;
     private connId: string = "";
     private iface: IInterface = INTERFACE_NONE;
 
@@ -87,19 +84,8 @@ export class TCPConn {
     private lastAckIp?: IPHdr;
     private lastAckTcp?: TCPPkt;
 
-    constructor(handler?: TCPListener) {
-        this.handler = handler;
-    }
-
-    public _handleSafe(data: Uint8Array) {
-        if (!this.handler || data.byteLength < 1) {
-            return;
-        }
-        try {
-            this.handler(data, this);
-        } catch (e) {
-            logError(e.stack || e);
-        }
+    constructor() {
+        super();
     }
 
     public _makeIp(df = false) {
@@ -138,15 +124,7 @@ export class TCPConn {
         this.state = TCP_STATE.CLOSED;
         this.wbuffers = [];
         this.rbuffers = [];
-        if (this.disconnectCb) {
-            try {
-                this.disconnectCb(this);
-            } catch (e) {
-                logError(e.stack || e);
-            }
-            this.disconnectCb = undefined;
-        }
-        this._connectCB(false);
+        this.emit("close", undefined);
         tcpConns.delete(this.connId);
     }
 
@@ -260,17 +238,6 @@ export class TCPConn {
         this._send(data, psh, cb);
     }
 
-    public _connectCB(res: boolean) {
-        if (this.connectCb) {
-            try {
-                this.connectCb(res, this);
-            } catch (e) {
-                logError(e.stack || e);
-            }
-            this.connectCb = undefined;
-        }
-    }
-
     public _send(data?: Uint8Array, psh?: boolean, cb?: TCPOnAckHandler) {
         const ip = this._makeIp();
         const tcp = this._makeTcp();
@@ -315,7 +282,7 @@ export class TCPConn {
                 lseqno = this.wseqno;
 
                 this.state = TCP_STATE.ESTABLISHED;
-                this._connectCB(true);
+                this.emit("connect", undefined);
             } else {
                 throw new Error("Unexpected SYN");
             }
@@ -357,10 +324,10 @@ export class TCPConn {
                             pos += b8.length;
                         }
                         this.rbuffers = [];
-                        this._handleSafe(new Uint8Array(all));
+                        this.emit("data", new Uint8Array(all));
                     }
                 } else {
-                    this._handleSafe(tcpPkt.data);
+                    this.emit("data", tcpPkt.data);
                 }
             }
 
@@ -437,15 +404,12 @@ export class TCPConn {
         this.gotPacket(ipHdr, tcpPkt);
     }
 
-    public connect(dport: number, daddr: IPAddr, iface: IInterface,
-                   cb: TCPConnectHandler, dccb?: TCPDisconnectHandler) {
+    public connect(dport: number, daddr: IPAddr, iface: IInterface) {
         this.state = TCP_STATE.SYN_SENT;
         this.daddr = daddr;
         this.dport = dport;
         this.iface = iface;
         this.mss = iface.getMTU() - 40;
-        this.connectCb = cb;
-        this.disconnectCb = dccb;
         do {
             this.sport = 4097 + Math.floor(Math.random() * 61347);
             this.connId = this.toString();
@@ -474,8 +438,10 @@ function tcpGotPacket(data: ArrayBuffer, offset: number, len: number, ipHdr: IPH
     if (tcpPkt.hasFlag(TCP_FLAGS.SYN) && !tcpPkt.hasFlag(TCP_FLAGS.ACK)) {
         const listener = tcpListeners.get(tcpPkt.dport);
         if (listener) {
-            const conn = new TCPConn(listener);
-            return conn.accept(ipHdr, tcpPkt, iface);
+            const conn = new TCPConn();
+            conn.accept(ipHdr, tcpPkt, iface);
+            listener(conn);
+            return;
         }
     }
 }
@@ -508,14 +474,13 @@ export function tcpCloseListener(port: number) {
 
 export function tcpConnect(
     ip: IPAddr, port: number,
-    func: TCPListener, cb: TCPConnectHandler, dccb?: TCPDisconnectHandler,
     iface?: IInterface) {
     if (port < 1 || port > 65535) {
-        return false;
+        throw new Error("Port out of range");
     }
 
-    const conn = new TCPConn(func);
-    conn.connect(port, ip, iface || INTERFACE_NONE, cb, dccb);
+    const conn = new TCPConn();
+    conn.connect(port, ip, iface || INTERFACE_NONE);
     return conn;
 }
 
