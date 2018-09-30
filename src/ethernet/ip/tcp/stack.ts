@@ -313,6 +313,8 @@ export class TCPConn extends EventEmitter {
                     const next = this.wbuffers.shift();
                     if (next) {
                         this._send(next.data, next.psh ? next.psh : false);
+                    } else {
+                        this.emit("drain", undefined);
                     }
                 }
             } else {
