@@ -202,7 +202,7 @@ export class TCPConn extends EventEmitter {
         this._send(data, psh);
     }
 
-    public _send(data?: Uint8Array, psh?: boolean) {
+    public _send(data?: Uint8Array, psh: boolean = false) {
         const ip = this._makeIp();
         const tcp = this._makeTcp();
         tcp.data = data;
@@ -312,7 +312,7 @@ export class TCPConn extends EventEmitter {
                 } else {
                     const next = this.wbuffers.shift();
                     if (next) {
-                        this._send(next.data, next.psh ? next.psh : false);
+                        this._send(next.data, next.psh);
                     } else {
                         this.emit("drain", undefined);
                     }
