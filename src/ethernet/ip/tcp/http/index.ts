@@ -1,12 +1,11 @@
 import { buffersToBuffer, bufferToString, stringToBuffer } from "../../../../util/string.js";
 import { dnsTcpConnect } from "../../udp/dns/tcp_util.js";
-
-export interface IHTTPHeaderMap { [key: string]: string[]; }
+import { HTTPHeaders } from "./headers.js";
 
 export interface IHTTPResult {
     statusCode: number;
     statusText: string;
-    headers: IHTTPHeaderMap;
+    headers: HTTPHeaders;
     body: Uint8Array;
     url?: URL;
 }
@@ -15,10 +14,10 @@ export interface IHTTPOptions {
     url: URL;
     method?: string;
     body?: Uint8Array;
-    headers?: IHTTPHeaderMap;
+    headers?: HTTPHeaders;
 }
 
-function _isHeaderEnd(ele: number, idx: number, arr: Uint8Array) {
+function isHeaderEnd(ele: number, idx: number, arr: Uint8Array) {
     if (arr.byteLength < idx + 4) {
         return false;
     }
@@ -29,7 +28,7 @@ function httpParse(datas: Uint8Array[]): IHTTPResult {
     const data = buffersToBuffer(datas);
     const data8 = new Uint8Array(data);
 
-    const headerEnd = data8.findIndex(_isHeaderEnd);
+    const headerEnd = data8.findIndex(isHeaderEnd);
 
     let headersStr: string;
     let body: Uint8Array;
@@ -41,7 +40,7 @@ function httpParse(datas: Uint8Array[]): IHTTPResult {
         body = new Uint8Array(data, headerEnd + 4);
     }
 
-    const headers: IHTTPHeaderMap = {};
+    const headers = new HTTPHeaders();
 
     const headerSplit = headersStr.split("\r\n");
     const statusLine = headerSplit.shift();
@@ -54,13 +53,9 @@ function httpParse(datas: Uint8Array[]): IHTTPResult {
         if (colonPos < 0) {
             return;
         }
-        const headerKey = headerStr.substr(0, colonPos).trim().toLowerCase();
+        const headerKey = headerStr.substr(0, colonPos).trim();
         const headerValue = headerStr.substr(colonPos + 1).trim();
-        if (headers[headerKey]) {
-            headers[headerKey].push(headerValue);
-        } else {
-            headers[headerKey] = [headerValue];
-        }
+        headers.add(headerKey, headerValue);
     });
 
     const statusI = statusLine.indexOf(" ");
@@ -87,15 +82,15 @@ function _httpPromise(options: IHTTPOptions, resolve: (res: IHTTPResult) => void
     const url = options.url;
     const method = options.method || "GET";
 
-    const headers = options.headers || {};
-    headers.connection = ["close"];
-    headers["user-agent"] = ["jsip"];
-    headers.host = [url.host];
-    if (!headers.authorization && (url.username || url.password)) {
-        headers.authorization = [`Basic ${btoa(`${url.username}:${url.password}`)}`];
+    const headers = options.headers || new HTTPHeaders();
+    headers.set("connection", "close");
+    headers.set("user-agent", "jsip");
+    headers.set("host", url.host);
+    if ((url.username || url.password) && !headers.has("authorization")) {
+        headers.set("authorization", `Basic ${btoa(`${url.username}:${url.password}`)}`);
     }
     if (body) {
-        headers["content-length"] = [body.byteLength.toString()];
+        headers.set("content-length", body.byteLength.toString());
     }
 
     const datas: Uint8Array[] = [];
@@ -105,8 +100,9 @@ function _httpPromise(options: IHTTPOptions, resolve: (res: IHTTPResult) => void
         tcpConn.on("data", (data) => datas.push(data));
         tcpConn.once("connect", () => {
             const data = [`${method.toUpperCase()} ${url.pathname}${url.search} HTTP/1.1`];
-            for (const headerName of Object.keys(headers)) {
-                for (const header of headers[headerName]) {
+            const headersMap = headers.getAll();
+            for (const headerName of Object.keys(headersMap)) {
+                for (const header of headersMap[headerName]) {
                     data.push(`${headerName}: ${header}`);
                 }
             }
