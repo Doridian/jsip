@@ -1,6 +1,7 @@
 type ParseFunction<T> = (self: CheckpointStream<T>, state?: T) => T | undefined;
 
 export class CheckpointStream<T> {
+    public parseOnAdd = false;
     private data: Uint8Array[] = [];
     private len: number = 0;
     private state: T;
@@ -18,9 +19,22 @@ export class CheckpointStream<T> {
         this.data.push(data);
         this.len += data.length;
 
-        const res = this.parseFunc(this, this.state);
-        if (res !== undefined) {
-            this.state = res;
+        if (this.parseOnAdd) {
+            this.parse();
+        }
+    }
+
+    public parse() {
+        try {
+            const res = this.parseFunc(this, this.state);
+            if (res !== undefined) {
+                this.state = res;
+            }
+        } catch (e) {
+            if (e instanceof StreamNotEnoughDataError) {
+                return;
+            }
+            throw e;
         }
     }
 
