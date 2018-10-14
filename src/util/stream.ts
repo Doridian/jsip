@@ -1,19 +1,15 @@
-type ParseFunction<T> = (self: CheckpointStream<T>, state?: T) => boolean; // Return true to run again
-
 const NEWLINE = "\n".charCodeAt(0);
 
-export class CheckpointStream<T> {
+export abstract class CheckpointStream<T> {
     public parseOnAdd = true;
     private data: Uint8Array[] = [];
     private len: number = 0;
     private state: T;
-    private parseFunc: ParseFunction<T>;
     private lastReadDelim = -1;
     private lastReadEnd = 0;
     private lastStartPosOffset = 0;
 
-    constructor(parseFunc: ParseFunction<T>, defaultState: T) {
-        this.parseFunc = parseFunc;
+    constructor(defaultState: T) {
         this.state = defaultState;
     }
 
@@ -30,13 +26,9 @@ export class CheckpointStream<T> {
         return this.state;
     }
 
-    public setState(state: T) {
-        this.state = state;
-    }
-
     public parse() {
         try {
-            while (this.parseFunc(this, this.state)) {
+            while (this.parseFunc(this.state)) {
                 // Repeat
             }
         } catch (e) {
@@ -47,11 +39,17 @@ export class CheckpointStream<T> {
         }
     }
 
-    public readLine() {
+    protected abstract parseFunc(state?: T): boolean;  // Return true to run again
+
+    protected setState(state: T) {
+        this.state = state;
+    }
+
+    protected readLine() {
         return this.readUntil(NEWLINE);
     }
 
-    public readUntil(delim: number) {
+    protected readUntil(delim: number) {
         if (delim < 0) {
             throw new Error("Delim must be >= 0");
         }
@@ -81,7 +79,7 @@ export class CheckpointStream<T> {
         throw new StreamNotEnoughDataError();
     }
 
-    public read(len: number) {
+    protected read(len: number) {
         if (!isFinite(len)) {
             throw new Error(`Invalid length: ${len}`);
         }

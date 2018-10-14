@@ -56,6 +56,107 @@ const enum HttpTransferEncoding {
 class HttpInvalidException extends Error {
 }
 
+// tslint:disable-next-line:max-classes-per-file
+class HttpCheckpointStream extends CheckpointStream<HttpParseState> {
+    private statusLine: string = "";
+    private resHeaders: HTTPHeaders = new HTTPHeaders();
+    private method: string;
+    private nextChunkLen: number = 0;
+    private bodyChunks: Uint8Array[] = [];
+    private resolve: (res: IHTTPResult) => void;
+
+    constructor(method: string, resolve: (res: IHTTPResult) => void) {
+        super(HttpParseState.StatusLine);
+        this.method = method;
+        this.resolve = resolve;
+    }
+
+    public close() {
+        this.setState(HttpParseState.Done);
+    }
+
+    protected parseFunc(state?: HttpParseState) {
+        switch (state) {
+            case HttpParseState.StatusLine:
+                this.statusLine = arrayToString(this.readLine()).trim();
+                if (this.statusLine.length < 1) {
+                    throw new HttpInvalidException("Empty status line");
+                }
+                this.setState(HttpParseState.HeaderLine);
+            case HttpParseState.HeaderLine:
+                while (true) {
+                    const curHeader = arrayToString(this.readLine()).trim();
+                    if (curHeader.length > 0) {
+                        const colonPos = curHeader.indexOf(":");
+                        if (colonPos < 0) {
+                            throw new HttpInvalidException("Header without :");
+                        }
+                        const headerKey = curHeader.substr(0, colonPos).trim();
+                        const headerValue = curHeader.substr(colonPos + 1).trim();
+                        this.resHeaders.add(headerKey, headerValue);
+                    } else {
+                        if (this.method === "HEAD") {
+                            return this.done(new Uint8Array(0));
+                        }
+
+                        const transferEncoding = this.resHeaders.first("Transfer-Encoding") ||
+                            HttpTransferEncoding.Identity;
+
+                        switch (transferEncoding) {
+                            case HttpTransferEncoding.Chunked:
+                                this.setState(HttpParseState.BodyChunkLen);
+                                break;
+                            case HttpTransferEncoding.Identity:
+                                this.setState(HttpParseState.Body);
+                                break;
+                            default:
+                                throw new HttpInvalidException(`Invalid Transfer-Encoding: ${transferEncoding}`);
+                        }
+
+                        return true;
+                    }
+                }
+
+            case HttpParseState.Body:
+                const contentLength = parseInt(this.resHeaders.first("Content-Length")!, 10);
+                if (contentLength < 0) {
+                    throw new HttpInvalidException("Invalid Content-Length");
+                }
+                const content = this.read(contentLength);
+                this.setState(HttpParseState.Done);
+                return this.done(content);
+
+            case HttpParseState.BodyChunkLen:
+                this.nextChunkLen = parseInt(arrayToString(this.readLine()).trim(), 16);
+                if (this.nextChunkLen === 0) {
+                    this.setState(HttpParseState.Done);
+                    return this.done(new Uint8Array(buffersToBuffer(this.bodyChunks)));
+                }
+                this.setState(HttpParseState.BodyChunkData);
+            case HttpParseState.BodyChunkData:
+                this.bodyChunks.push(this.read(this.nextChunkLen));
+                this.setState(HttpParseState.BodyChunkEnd);
+            case HttpParseState.BodyChunkEnd:
+                this.readLine();
+                this.setState(HttpParseState.BodyChunkLen);
+
+                break;
+
+            case HttpParseState.Done:
+                this.read(1);
+                throw new HttpInvalidException("Garbage data!");
+        }
+
+        return true;
+    }
+
+    private done(body: Uint8Array) {
+        this.close();
+        this.resolve(httpParse(this.statusLine, this.resHeaders, body));
+        return false;
+    }
+}
+
 function _httpPromise(options: IHTTPOptions, resolve: (res: IHTTPResult) => void, reject: (err: Error) => void) {
     const body = options.body;
     const url = options.url;
@@ -72,89 +173,7 @@ function _httpPromise(options: IHTTPOptions, resolve: (res: IHTTPResult) => void
         headers.set("content-length", body.byteLength.toString());
     }
 
-    // Response stuff here
-    let nextChunkLen: number = 0;
-    const bodyChunks: Uint8Array[] = [];
-
-    let statusLine: string;
-    const resHeaders = new HTTPHeaders();
-    const stream = new CheckpointStream<HttpParseState>((thisStream, state) => {
-        switch (state) {
-            case HttpParseState.StatusLine:
-                statusLine = arrayToString(thisStream.readLine()).trim();
-                if (statusLine.length < 1) {
-                    throw new HttpInvalidException("Empty status line");
-                }
-                thisStream.setState(HttpParseState.HeaderLine);
-            case HttpParseState.HeaderLine:
-                while (true) {
-                    const curHeader = arrayToString(thisStream.readLine()).trim();
-                    if (curHeader.length > 0) {
-                        const colonPos = curHeader.indexOf(":");
-                        if (colonPos < 0) {
-                            throw new HttpInvalidException("Header without :");
-                        }
-                        const headerKey = curHeader.substr(0, colonPos).trim();
-                        const headerValue = curHeader.substr(colonPos + 1).trim();
-                        resHeaders.add(headerKey, headerValue);
-                    } else {
-                        if (method === "HEAD") {
-                            thisStream.setState(HttpParseState.Done);
-                            resolve(httpParse(statusLine, resHeaders, new Uint8Array(0)));
-                            return false;
-                        }
-
-                        const transferEncoding = resHeaders.first("Transfer-Encoding") || HttpTransferEncoding.Identity;
-
-                        switch (transferEncoding) {
-                            case HttpTransferEncoding.Chunked:
-                                thisStream.setState(HttpParseState.BodyChunkLen);
-                                break;
-                            case HttpTransferEncoding.Identity:
-                                thisStream.setState(HttpParseState.Body);
-                                break;
-                            default:
-                                throw new HttpInvalidException(`Invalid Transfer-Encoding: ${transferEncoding}`);
-                        }
-
-                        return true;
-                    }
-                }
-
-            case HttpParseState.Body:
-                const contentLength = parseInt(resHeaders.first("Content-Length")!, 10);
-                if (contentLength < 0) {
-                    throw new HttpInvalidException("Invalid Content-Length");
-                }
-                const content = thisStream.read(contentLength);
-                thisStream.setState(HttpParseState.Done);
-                resolve(httpParse(statusLine, resHeaders, content));
-                return false;
-
-            case HttpParseState.BodyChunkLen:
-                nextChunkLen = parseInt(arrayToString(thisStream.readLine()).trim(), 16);
-                if (nextChunkLen === 0) {
-                    thisStream.setState(HttpParseState.Done);
-                    resolve(httpParse(statusLine, resHeaders, new Uint8Array(buffersToBuffer(bodyChunks))));
-                    return false;
-                }
-                thisStream.setState(HttpParseState.BodyChunkData);
-            case HttpParseState.BodyChunkData:
-                bodyChunks.push(thisStream.read(nextChunkLen));
-                thisStream.setState(HttpParseState.BodyChunkEnd);
-            case HttpParseState.BodyChunkEnd:
-                thisStream.readLine();
-                thisStream.setState(HttpParseState.BodyChunkLen);
-
-                break;
-
-            case HttpParseState.Done:
-                thisStream.read(1);
-                throw new HttpInvalidException("Garbage data!");
-        }
-
-        return true;
-    }, HttpParseState.StatusLine);
+    const stream = new HttpCheckpointStream(method, resolve);
 
     dnsTcpConnect(url.hostname, url.port ? parseInt(url.port, 10) : 80)
     .then((tcpConn) => {
@@ -162,7 +181,7 @@ function _httpPromise(options: IHTTPOptions, resolve: (res: IHTTPResult) => void
             try {
                 stream.add(data);
             } catch (e) {
-                stream.setState(HttpParseState.Done);
+                stream.close();
                 reject(e);
             }
 
