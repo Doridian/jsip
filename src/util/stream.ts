@@ -46,6 +46,10 @@ export class CheckpointStream<T> {
     }
 
     public readUntil(delim: number) {
+        if (delim < 0) {
+            throw new Error("Delim must be >= 0");
+        }
+
         let startPosOffset = (this.lastReadDelim === delim) ? this.lastStartPosOffset : 0;
 
         this.lastReadDelim = delim;
