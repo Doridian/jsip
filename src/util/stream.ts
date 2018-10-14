@@ -1,8 +1,9 @@
-type ParseFunction<T> = (self: CheckpointStream<T>, state?: T) => T | undefined;
+type ParseFunction<T> = (self: CheckpointStream<T>, state?: T) => boolean; // Return true to run again
+
+const NEWLINE = "\n".charCodeAt(0);
 
 export class CheckpointStream<T> {
-    public parseOnAdd = false;
-    public parseRepeat = false;
+    public parseOnAdd = true;
     private data: Uint8Array[] = [];
     private len: number = 0;
     private state: T;
@@ -31,18 +32,19 @@ export class CheckpointStream<T> {
 
     public parse() {
         try {
-            do {
-                const res = this.parseFunc(this, this.state);
-                if (res !== undefined) {
-                    this.state = res;
-                }
-            } while (this.parseRepeat);
+            while (this.parseFunc(this, this.state)) {
+                // Repeat
+            }
         } catch (e) {
             if (e instanceof StreamNotEnoughDataError) {
                 return;
             }
             throw e;
         }
+    }
+
+    public readLine() {
+        return this.readUntil(NEWLINE);
     }
 
     public readUntil(delim: number) {
@@ -76,6 +78,14 @@ export class CheckpointStream<T> {
     }
 
     public read(len: number) {
+        if (!isFinite(len)) {
+            throw new Error(`Invalid length: ${len}`);
+        }
+
+        if (len <= 0) {
+            return new Uint8Array(0);
+        }
+
         if (len > this.len) {
             throw new StreamNotEnoughDataError();
         }
@@ -87,15 +97,15 @@ export class CheckpointStream<T> {
         let pos = 0;
         while (dataLeft > 0) {
             const d = this.data[0];
-            if (d.byteLength > dataLeft) {
+            if (d.length > dataLeft) {
                 res.set(new Uint8Array(d.buffer, d.byteOffset, dataLeft), pos);
-                this.data[0] = new Uint8Array(d.buffer, d.byteOffset + dataLeft, d.byteLength - dataLeft);
+                this.data[0] = new Uint8Array(d.buffer, d.byteOffset + dataLeft, d.length - dataLeft);
                 break;
             }
             res.set(d, pos);
             this.data.shift();
-            dataLeft -= d.byteLength;
-            pos += d.byteLength;
+            dataLeft -= d.length;
+            pos += d.length;
         }
 
         this.len -= len;
