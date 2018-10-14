@@ -50,11 +50,15 @@ export class CheckpointStream<T> {
             throw new Error("Delim must be >= 0");
         }
 
-        let startPosOffset = (this.lastReadDelim === delim) ? this.lastStartPosOffset : 0;
+        const reuseLast = this.lastReadDelim === delim;
 
-        this.lastReadDelim = delim;
+        let startPosOffset = reuseLast ? this.lastStartPosOffset : 0;
 
-        for (let i = (this.lastReadDelim === delim) ? this.lastReadEnd : 0; i < this.data.length; i++) {
+        if (!reuseLast) {
+            this.lastReadDelim = delim;
+        }
+
+        for (let i = reuseLast ? this.lastReadEnd : 0; i < this.data.length; i++) {
             const data = this.data[i];
 
             const startPos = data.findIndex((elem) => elem === delim);
