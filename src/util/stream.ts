@@ -24,6 +24,10 @@ export class CheckpointStream<T> {
         }
     }
 
+    public setState(state: T) {
+        this.state = state;
+    }
+
     public parse() {
         try {
             const res = this.parseFunc(this, this.state);
