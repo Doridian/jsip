@@ -17,7 +17,7 @@ export class WSVPN extends Interface {
     private donePromise: Promise<void>;
     private doneResolve?: VoidCB;
 
-    public constructor(url: string) {
+    constructor(url: string) {
         super(`wsvpn${maxNumber++}`);
 
         this.donePromise = new Promise<void>((resolve, _) => {

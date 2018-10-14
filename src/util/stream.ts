@@ -67,7 +67,7 @@ export class CheckpointStream<T> {
         for (let i = reuseLast ? this.lastReadEnd : 0; i < this.data.length; i++) {
             const data = this.data[i];
 
-            const startPos = data.findIndex((elem) => elem === delim);
+            const startPos = data.indexOf(delim);
             if (startPos >= 0) {
                 return this.read(startPosOffset + startPos + 1);
             }
