@@ -1,10 +1,5 @@
-export class StreamNotEnoughDataError extends Error {
-
-}
-
 type ParseFunction<T> = (self: CheckpointStream<T>, state?: T) => T | undefined;
 
-// tslint:disable-next-line:max-classes-per-file
 export class CheckpointStream<T> {
     private data: Uint8Array[] = [];
     private len: number = 0;
@@ -78,4 +73,9 @@ export class CheckpointStream<T> {
 
         return res;
     }
+}
+
+// tslint:disable-next-line:max-classes-per-file
+export class StreamNotEnoughDataError extends Error {
+
 }
