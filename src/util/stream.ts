@@ -26,6 +26,10 @@ export class CheckpointStream<T> {
         }
     }
 
+    public getState() {
+        return this.state;
+    }
+
     public setState(state: T) {
         this.state = state;
     }

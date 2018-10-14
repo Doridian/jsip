@@ -149,7 +149,8 @@ function _httpPromise(options: IHTTPOptions, resolve: (res: IHTTPResult) => void
                 break;
 
             case HttpParseState.Done:
-                return false;
+                thisStream.read(1);
+                throw new HttpInvalidException("Garbage data!");
         }
 
         return true;
@@ -161,7 +162,12 @@ function _httpPromise(options: IHTTPOptions, resolve: (res: IHTTPResult) => void
             try {
                 stream.add(data);
             } catch (e) {
+                stream.setState(HttpParseState.Done);
                 reject(e);
+            }
+
+            if (stream.getState() === HttpParseState.Done) {
+                tcpConn.close();
             }
         });
         tcpConn.once("connect", () => {

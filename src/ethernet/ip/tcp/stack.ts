@@ -137,7 +137,6 @@ export class TCPConn extends EventEmitter {
         const tcp = this._makeTcp();
         tcp.setFlag(TCP_FLAGS.FIN);
         this.sendPacket(ip, tcp);
-        this.incWSeq(1);
     }
 
     public sendPacket(ipHdr: IPHdr, tcpPkt: TCPPkt) {
@@ -225,7 +224,7 @@ export class TCPConn extends EventEmitter {
             return;
         }
 
-        let lseqno = this.wseqno;
+        let wseqno = this.wseqno;
         let rseqno = this.rseqno;
 
         if (tcpPkt.hasFlag(TCP_FLAGS.SYN)) {
@@ -242,7 +241,7 @@ export class TCPConn extends EventEmitter {
                 }
 
                 rseqno = this.rseqno;
-                lseqno = this.wseqno;
+                wseqno = this.wseqno;
 
                 this.state = TCP_STATE.ESTABLISHED;
                 this.emit("connect", undefined);
@@ -304,7 +303,7 @@ export class TCPConn extends EventEmitter {
         }
 
         if (tcpPkt.hasFlag(TCP_FLAGS.ACK)) {
-            if (tcpPkt.ackno === lseqno) {
+            if (tcpPkt.ackno === wseqno) {
                 this.wlastack = true;
                 this.wretrycount = 0;
                 if (this.state === TCP_STATE.CLOSING || this.state === TCP_STATE.LAST_ACK) {
