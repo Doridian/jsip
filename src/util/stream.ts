@@ -8,7 +8,7 @@ export class CheckpointStream<T> {
     private state: T;
     private parseFunc: ParseFunction<T>;
     private lastReadDelim = -1;
-    private lastReadEnd = -1;
+    private lastReadEnd = 0;
     private lastStartPosOffset = 0;
 
     constructor(parseFunc: ParseFunction<T>, defaultState: T) {
