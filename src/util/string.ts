@@ -39,6 +39,10 @@ export function buffersToBuffer(bufs: ArrayBuffer[] | Uint8Array[]) {
     curPos = 0;
     for (const buf of bufs) {
         const buf8 = new Uint8Array(buf);
+        if (buf8.byteLength < 1) {
+            continue;
+        }
+
         out8.set(buf8, curPos);
         curPos += buf8.byteLength;
     }

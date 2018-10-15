@@ -138,12 +138,7 @@ class HttpCheckpointStream extends CheckpointStream<HttpParseState> {
                     throw new HttpInvalidException("Invalid chunk length");
                 }
 
-                if (this.nextReadLen === 0) {
-                    this.setState(HttpParseState.BodyChunkEnd);
-                    return true;
-                } else {
-                    this.setState(HttpParseState.BodyChunkData);
-                }
+                this.setState(HttpParseState.BodyChunkData);
             case HttpParseState.BodyChunkData:
                 this.bodyChunks.push(this.read(this.nextReadLen));
                 this.setState(HttpParseState.BodyChunkEnd);
