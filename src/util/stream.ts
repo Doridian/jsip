@@ -1,6 +1,4 @@
-import { buffersToBuffer } from "./string.js";
-
-const NEWLINE = "\n".charCodeAt(0);
+import { buffersToBuffer, CHAR_LF } from "./string.js";
 
 export abstract class CheckpointStream<T> {
     public parseOnAdd = true;
@@ -48,7 +46,7 @@ export abstract class CheckpointStream<T> {
     }
 
     protected readLine() {
-        return this.readUntil(NEWLINE);
+        return this.readUntil(CHAR_LF);
     }
 
     protected readUntil(delim: number) {

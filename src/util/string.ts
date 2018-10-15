@@ -1,3 +1,6 @@
+export const CHAR_CR = "\r".charCodeAt(0);
+export const CHAR_LF = "\n".charCodeAt(0);
+
 export function stringToBuffer(str: string) {
     const buf = new ArrayBuffer(str.length);
     const buf8 = new Uint8Array(buf);

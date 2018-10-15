@@ -1,5 +1,5 @@
 import { CheckpointStream } from "../../../../util/stream.js";
-import { arrayToString, buffersToBuffer, stringToBuffer } from "../../../../util/string.js";
+import { arrayToString, buffersToBuffer, CHAR_CR, stringToBuffer } from "../../../../util/string.js";
 import { dnsTcpConnect } from "../../udp/dns/tcp_util.js";
 import { HTTPHeaders } from "./headers.js";
 
@@ -17,8 +17,6 @@ export interface IHTTPOptions {
     body?: Uint8Array;
     headers?: HTTPHeaders;
 }
-
-const NEWLINE_CR = "\r".charCodeAt(0);
 
 const enum HttpParseState {
     StatusLine,
@@ -148,7 +146,7 @@ class HttpCheckpointStream extends CheckpointStream<HttpParseState> {
             case HttpParseState.BodyChunkEnd:
                 // Parse chunked body (chunk terminating newline)
                 const lineEnd = this.readLine();
-                if (lineEnd.length > 2 || (lineEnd.length === 2 && lineEnd[0] !== NEWLINE_CR)) {
+                if (lineEnd.length > 2 || (lineEnd.length === 2 && lineEnd[0] !== CHAR_CR)) {
                     throw new HttpInvalidException("Garbage data at end of chunk!");
                 }
 
