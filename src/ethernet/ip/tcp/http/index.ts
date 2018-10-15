@@ -20,26 +20,6 @@ export interface IHTTPOptions {
 
 const NEWLINE_CR = "\r".charCodeAt(0);
 
-function httpParse(statusLine: string, headers: HTTPHeaders, body: Uint8Array): IHTTPResult {
-    const statusI = statusLine.indexOf(" ");
-    if (statusI < 0) {
-        throw new Error("Could not parse status line");
-    }
-    const statusI2 = statusLine.indexOf(" ", statusI + 1);
-    if (statusI2 < 0) {
-        throw new Error("Could not parse status line");
-    }
-    const statusCode = parseInt(statusLine.substring(statusI + 1, statusI2), 10);
-    const statusText = statusLine.substring(statusI2 + 1);
-
-    return {
-        body,
-        headers,
-        statusCode,
-        statusText,
-    };
-}
-
 const enum HttpParseState {
     StatusLine,
     HeaderLine,
@@ -60,7 +40,8 @@ class HttpInvalidException extends Error {
 
 // tslint:disable-next-line:max-classes-per-file
 class HttpCheckpointStream extends CheckpointStream<HttpParseState> {
-    private statusLine: string = "";
+    private statusCode: number = 0;
+    private statusText: string = "";
     private resHeaders: HTTPHeaders = new HTTPHeaders();
     private method: string;
     private nextReadLen: number = 0;
@@ -81,10 +62,24 @@ class HttpCheckpointStream extends CheckpointStream<HttpParseState> {
         switch (state) {
             case HttpParseState.StatusLine:
                 // Parse HTTP status line
-                this.statusLine = this.readTrimmedLine();
-                if (this.statusLine.length < 1) {
+                const statusLine = this.readTrimmedLine();
+                if (statusLine.length < 1) {
                     throw new HttpInvalidException("Empty status line");
                 }
+
+                const statusI = statusLine.indexOf(" ");
+                if (statusI < 0) {
+                    throw new HttpInvalidException("No first space in status line");
+                }
+                const statusI2 = statusLine.indexOf(" ", statusI + 1);
+                if (statusI2 < 0) {
+                    throw new HttpInvalidException("No second space in status line");
+                }
+                this.statusCode = parseInt(statusLine.substring(statusI + 1, statusI2), 10);
+                if (!isFinite(this.statusCode) || this.statusCode <= 0) {
+                    throw new HttpInvalidException("Invalid response code in status line");
+                }
+                this.statusText = statusLine.substring(statusI2 + 1);
 
                 this.setState(HttpParseState.HeaderLine);
             case HttpParseState.HeaderLine:
@@ -183,7 +178,14 @@ class HttpCheckpointStream extends CheckpointStream<HttpParseState> {
 
     private done(body: Uint8Array) {
         this.close();
-        this.resolve(httpParse(this.statusLine, this.resHeaders, body));
+
+        this.resolve({
+            body,
+            headers: this.resHeaders,
+            statusCode: this.statusCode,
+            statusText: this.statusText,
+        });
+
         return false;
     }
 }
