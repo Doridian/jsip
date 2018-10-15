@@ -61,7 +61,7 @@ class HttpCheckpointStream extends CheckpointStream<HttpParseState> {
     private statusLine: string = "";
     private resHeaders: HTTPHeaders = new HTTPHeaders();
     private method: string;
-    private nextChunkLen: number = 0;
+    private nextReadLen: number = 0;
     private bodyChunks: Uint8Array[] = [];
     private resolve: (res: IHTTPResult) => void;
 
@@ -107,6 +107,16 @@ class HttpCheckpointStream extends CheckpointStream<HttpParseState> {
                                 this.setState(HttpParseState.BodyChunkLen);
                                 break;
                             case HttpTransferEncoding.Identity:
+                                const contentLengthStr = this.resHeaders.first("Content-Length");
+                                if (!contentLengthStr) {
+                                    return this.done(new Uint8Array(0));
+                                }
+
+                                this.nextReadLen = parseInt(contentLengthStr, 10);
+                                if (this.nextReadLen < 0 || !isFinite(this.nextReadLen)) {
+                                    throw new HttpInvalidException("Invalid Content-Length");
+                                }
+
                                 this.setState(HttpParseState.Body);
                                 break;
                             default:
@@ -118,26 +128,32 @@ class HttpCheckpointStream extends CheckpointStream<HttpParseState> {
                 }
 
             case HttpParseState.Body:
-                const contentLength = parseInt(this.resHeaders.first("Content-Length")!, 10);
-                if (contentLength < 0) {
-                    throw new HttpInvalidException("Invalid Content-Length");
-                }
-                const content = this.read(contentLength);
+                const content = this.read(this.nextReadLen);
                 this.setState(HttpParseState.Done);
                 return this.done(content);
 
             case HttpParseState.BodyChunkLen:
-                this.nextChunkLen = parseInt(arrayToString(this.readLine()).trim(), 16);
-                if (this.nextChunkLen === 0) {
-                    this.setState(HttpParseState.Done);
-                    return this.done(new Uint8Array(buffersToBuffer(this.bodyChunks)));
+                this.nextReadLen = parseInt(arrayToString(this.readLine()).trim(), 16);
+                if (!isFinite(this.nextReadLen) || this.nextReadLen < 0) {
+                    throw new HttpInvalidException("Invalid chunk length");
                 }
-                this.setState(HttpParseState.BodyChunkData);
+
+                if (this.nextReadLen === 0) {
+                    this.setState(HttpParseState.BodyChunkEnd);
+                    return true;
+                } else {
+                    this.setState(HttpParseState.BodyChunkData);
+                }
             case HttpParseState.BodyChunkData:
-                this.bodyChunks.push(this.read(this.nextChunkLen));
+                this.bodyChunks.push(this.read(this.nextReadLen));
                 this.setState(HttpParseState.BodyChunkEnd);
             case HttpParseState.BodyChunkEnd:
                 this.readLine();
+
+                if (this.nextReadLen === 0) {
+                    return this.done(new Uint8Array(buffersToBuffer(this.bodyChunks)));
+                }
+
                 this.setState(HttpParseState.BodyChunkLen);
 
                 break;
