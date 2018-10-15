@@ -42,7 +42,7 @@ class HttpInvalidException extends Error {
 class HttpCheckpointStream extends CheckpointStream<HttpParseState> {
     private statusCode: number = 0;
     private statusText: string = "";
-    private resHeaders: HTTPHeaders = new HTTPHeaders();
+    private headers: HTTPHeaders = new HTTPHeaders();
     private method: string;
     private nextReadLen: number = 0;
     private bodyChunks: Uint8Array[] = [];
@@ -92,7 +92,7 @@ class HttpCheckpointStream extends CheckpointStream<HttpParseState> {
                     }
                     const headerKey = curHeader.substr(0, colonPos).trim();
                     const headerValue = curHeader.substr(colonPos + 1).trim();
-                    this.resHeaders.add(headerKey, headerValue);
+                    this.headers.add(headerKey, headerValue);
                     return true;
                 }
 
@@ -101,7 +101,7 @@ class HttpCheckpointStream extends CheckpointStream<HttpParseState> {
                     return this.doneEmpty();
                 }
 
-                const transferEncoding = this.resHeaders.first("Transfer-Encoding") || HttpTransferEncoding.Identity;
+                const transferEncoding = this.headers.first("Transfer-Encoding") || HttpTransferEncoding.Identity;
 
                 switch (transferEncoding.toLowerCase()) {
                     case HttpTransferEncoding.Chunked:
@@ -109,7 +109,7 @@ class HttpCheckpointStream extends CheckpointStream<HttpParseState> {
                         break;
 
                     case HttpTransferEncoding.Identity:
-                        const contentLengthStr = this.resHeaders.first("Content-Length");
+                        const contentLengthStr = this.headers.first("Content-Length");
                         if (!contentLengthStr) {
                             return this.doneEmpty();
                         }
@@ -181,7 +181,7 @@ class HttpCheckpointStream extends CheckpointStream<HttpParseState> {
 
         this.resolve({
             body,
-            headers: this.resHeaders,
+            headers: this.headers,
             statusCode: this.statusCode,
             statusText: this.statusText,
         });
