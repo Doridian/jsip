@@ -1,3 +1,5 @@
+import { buffersToBuffer } from "./string";
+
 const NEWLINE = "\n".charCodeAt(0);
 
 export abstract class CheckpointStream<T> {
@@ -77,6 +79,18 @@ export abstract class CheckpointStream<T> {
         this.lastReadEnd = this.data.length;
 
         throw new StreamNotEnoughDataError();
+    }
+
+    protected readAll() {
+        if (this.len < 1) {
+            return new Uint8Array(0);
+        }
+
+        const res = new Uint8Array(buffersToBuffer(this.data));
+        this.data = [];
+        this.len = 0;
+        this.lastReadDelim = -1;
+        return res;
     }
 
     protected read(len: number) {
