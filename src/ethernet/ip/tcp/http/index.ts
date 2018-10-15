@@ -41,7 +41,7 @@ function httpParse(statusLine: string, headers: HTTPHeaders, body: Uint8Array): 
 const enum HttpParseState {
     StatusLine,
     HeaderLine,
-    Body,
+    BodyFixedLength,
     BodyChunkLen,
     BodyChunkData,
     BodyChunkEnd,
@@ -67,7 +67,7 @@ class HttpCheckpointStream extends CheckpointStream<HttpParseState> {
 
     constructor(method: string, resolve: (res: IHTTPResult) => void) {
         super(HttpParseState.StatusLine);
-        this.method = method;
+        this.method = method.toUpperCase();
         this.resolve = resolve;
     }
 
@@ -78,71 +78,78 @@ class HttpCheckpointStream extends CheckpointStream<HttpParseState> {
     protected parseFunc(state?: HttpParseState) {
         switch (state) {
             case HttpParseState.StatusLine:
-                this.statusLine = arrayToString(this.readLine()).trim();
+                // Parse HTTP status line
+                this.statusLine = this.readTrimmedLine();
                 if (this.statusLine.length < 1) {
                     throw new HttpInvalidException("Empty status line");
                 }
+
                 this.setState(HttpParseState.HeaderLine);
             case HttpParseState.HeaderLine:
-                while (true) {
-                    const curHeader = arrayToString(this.readLine()).trim();
-                    if (curHeader.length > 0) {
-                        const colonPos = curHeader.indexOf(":");
-                        if (colonPos < 0) {
-                            throw new HttpInvalidException("Header without :");
-                        }
-                        const headerKey = curHeader.substr(0, colonPos).trim();
-                        const headerValue = curHeader.substr(colonPos + 1).trim();
-                        this.resHeaders.add(headerKey, headerValue);
-                    } else {
-                        if (this.method === "HEAD") {
-                            return this.done(new Uint8Array(0));
-                        }
-
-                        const transferEncoding = this.resHeaders.first("Transfer-Encoding") ||
-                            HttpTransferEncoding.Identity;
-
-                        switch (transferEncoding) {
-                            case HttpTransferEncoding.Chunked:
-                                this.setState(HttpParseState.BodyChunkLen);
-                                break;
-                            case HttpTransferEncoding.Identity:
-                                const contentLengthStr = this.resHeaders.first("Content-Length");
-                                if (!contentLengthStr) {
-                                    return this.done(new Uint8Array(0));
-                                }
-
-                                this.nextReadLen = parseInt(contentLengthStr, 10);
-                                if (this.nextReadLen < 0 || !isFinite(this.nextReadLen)) {
-                                    throw new HttpInvalidException("Invalid Content-Length");
-                                }
-
-                                this.setState(HttpParseState.Body);
-                                break;
-                            default:
-                                throw new HttpInvalidException(`Invalid Transfer-Encoding: ${transferEncoding}`);
-                        }
-
-                        return true;
+                // Parse (next) HTTP header
+                const curHeader = this.readTrimmedLine();
+                if (curHeader.length > 0) {
+                    const colonPos = curHeader.indexOf(":");
+                    if (colonPos < 0) {
+                        throw new HttpInvalidException("Header without :");
                     }
+                    const headerKey = curHeader.substr(0, colonPos).trim();
+                    const headerValue = curHeader.substr(colonPos + 1).trim();
+                    this.resHeaders.add(headerKey, headerValue);
+                    return true;
                 }
 
-            case HttpParseState.Body:
-                const content = this.read(this.nextReadLen);
-                this.setState(HttpParseState.Done);
-                return this.done(content);
+                // Done with all headers here (empty line received), prepare for reading body
+                if (this.method === "HEAD") {
+                    return this.doneEmpty();
+                }
+
+                const transferEncoding = this.resHeaders.first("Transfer-Encoding") || HttpTransferEncoding.Identity;
+
+                switch (transferEncoding.toLowerCase()) {
+                    case HttpTransferEncoding.Chunked:
+                        this.setState(HttpParseState.BodyChunkLen);
+                        break;
+
+                    case HttpTransferEncoding.Identity:
+                        const contentLengthStr = this.resHeaders.first("Content-Length");
+                        if (!contentLengthStr) {
+                            return this.doneEmpty();
+                        }
+
+                        this.nextReadLen = parseInt(contentLengthStr, 10);
+                        if (this.nextReadLen < 0 || !isFinite(this.nextReadLen)) {
+                            throw new HttpInvalidException("Invalid Content-Length");
+                        }
+
+                        this.setState(HttpParseState.BodyFixedLength);
+                        break;
+
+                    default:
+                        throw new HttpInvalidException(`Invalid Transfer-Encoding: ${transferEncoding}`);
+                }
+
+                return true;
+
+            case HttpParseState.BodyFixedLength:
+                // Parse body with explicit length
+                return this.done(this.read(this.nextReadLen));
 
             case HttpParseState.BodyChunkLen:
-                this.nextReadLen = parseInt(arrayToString(this.readLine()).trim(), 16);
+                // Parse chunked body (chunk length)
+                this.nextReadLen = parseInt(this.readTrimmedLine(), 16);
                 if (!isFinite(this.nextReadLen) || this.nextReadLen < 0) {
                     throw new HttpInvalidException("Invalid chunk length");
                 }
 
                 this.setState(HttpParseState.BodyChunkData);
             case HttpParseState.BodyChunkData:
+                // Parse chunked body (chunk data)
                 this.bodyChunks.push(this.read(this.nextReadLen));
+
                 this.setState(HttpParseState.BodyChunkEnd);
             case HttpParseState.BodyChunkEnd:
+                // Parse chunked body (chunk terminating newline)
                 this.readLine();
 
                 if (this.nextReadLen === 0) {
@@ -151,7 +158,7 @@ class HttpCheckpointStream extends CheckpointStream<HttpParseState> {
 
                 this.setState(HttpParseState.BodyChunkLen);
 
-                break;
+                return true;
 
             case HttpParseState.Done:
                 this.read(1);
@@ -159,6 +166,14 @@ class HttpCheckpointStream extends CheckpointStream<HttpParseState> {
         }
 
         return true;
+    }
+
+    private readTrimmedLine() {
+        return arrayToString(this.readLine()).trim();
+    }
+
+    private doneEmpty() {
+        return this.done(new Uint8Array(0));
     }
 
     private done(body: Uint8Array) {
