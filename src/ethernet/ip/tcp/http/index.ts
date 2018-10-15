@@ -18,6 +18,8 @@ export interface IHTTPOptions {
     headers?: HTTPHeaders;
 }
 
+const NEWLINE_CR = "\r".charCodeAt(0);
+
 function httpParse(statusLine: string, headers: HTTPHeaders, body: Uint8Array): IHTTPResult {
     const statusI = statusLine.indexOf(" ");
     if (statusI < 0) {
@@ -150,7 +152,10 @@ class HttpCheckpointStream extends CheckpointStream<HttpParseState> {
                 this.setState(HttpParseState.BodyChunkEnd);
             case HttpParseState.BodyChunkEnd:
                 // Parse chunked body (chunk terminating newline)
-                this.readLine();
+                const lineEnd = this.readLine();
+                if (lineEnd.length > 2 || (lineEnd.length === 2 && lineEnd[0] !== NEWLINE_CR)) {
+                    throw new HttpInvalidException("Garbage data at end of chunk!");
+                }
 
                 if (this.nextReadLen === 0) {
                     return this.done(new Uint8Array(buffersToBuffer(this.bodyChunks)));

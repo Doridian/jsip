@@ -1,4 +1,4 @@
-import { buffersToBuffer } from "./string";
+import { buffersToBuffer } from "./string.js";
 
 const NEWLINE = "\n".charCodeAt(0);
 
