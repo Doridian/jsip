@@ -14,37 +14,48 @@ export class IPHdr {
     public static fromPacket(packet: ArrayBuffer, offset: number) {
         const ipv4 = new IPHdr();
         const bit = new BitArray(packet, offset);
+        const data = new Uint8Array(packet, offset);
+
+        // [0]
         ipv4.version = bit.read(4);
         if (ipv4.version !== 4) {
             logDebug(`Ignoring IP version: ${ipv4.version}`);
             return null;
         }
+
         ipv4.ihl = bit.read(4);
+        const ipHdrLen = ipv4.ihl << 2;
+
+        // [1]
         ipv4.dscp = bit.read(6);
         ipv4.ecn = bit.read(2);
-        ipv4.len = bit.read(16);
-        ipv4.id = bit.read(16);
+
+        // [2]
+        ipv4.len = data[3] + (data[2] << 8);
+        ipv4.id = data[5] + (data[4] << 8);
+        bit.skip(32);
+
+        // [6]
         const flags = bit.read(3);
         ipv4.df = (flags & 0x2) === 0x2;
         ipv4.mf = (flags & 0x1) === 0x1;
         ipv4.fragOffset = bit.read(13);
-        ipv4.ttl = bit.read(8);
-        ipv4.protocol = bit.read(8);
-        ipv4.checksum = bit.read(16);
-        ipv4.saddr = IPAddr.fromBytes(bit.read(8), bit.read(8), bit.read(8), bit.read(8));
-        ipv4.daddr = IPAddr.fromBytes(bit.read(8), bit.read(8), bit.read(8), bit.read(8));
-        const oLen = ipv4.ihl << 2;
-        if (oLen > 20) {
-            const oBeg = (bit.pos >>> 3) + offset;
-            ipv4.options = packet.slice(oBeg, oBeg + (oLen - 20));
-        } else {
-            ipv4.options = new ArrayBuffer(0);
-        }
-        const checksum = computeChecksum(new Uint8Array(packet, offset, oLen));
+
+        // [8]
+        ipv4.ttl = data[8];
+        ipv4.protocol = data[9];
+        ipv4.checksum = data[11] + (data[10] << 8);
+        ipv4.saddr = IPAddr.fromByteArray(data, 12);
+        ipv4.daddr = IPAddr.fromByteArray(data, 16);
+
+        ipv4.options = (ipHdrLen > 20) ? new Uint8Array(packet, offset + 20, ipHdrLen - 20) : new Uint8Array(0);
+
+        const checksum = computeChecksum(new Uint8Array(packet, offset, ipHdrLen));
         if (checksum !== 0) {
             logDebug(`Invalid IPv4 checksum: ${checksum} !== 0`);
             return null;
         }
+
         return ipv4;
     }
 
@@ -59,7 +70,7 @@ export class IPHdr {
     public protocol = IPPROTO.NONE;
     public saddr: IPAddr = IP_NONE;
     public daddr: IPAddr = IP_NONE;
-    public options?: ArrayBuffer;
+    public options?: Uint8Array;
     private version = 4;
     private ttl = 64;
     private checksum = 0;
