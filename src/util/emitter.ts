@@ -1,6 +1,6 @@
 import { logError } from "./log.js";
 
-type EventCB = (data: any) => void;
+type EventCB = (data: unknown) => void;
 interface IEventCBContainer { [key: string]: EventCB[]; }
 
 export class EventEmitter {
@@ -15,7 +15,7 @@ export class EventEmitter {
         this._add(this.eventsOnce, event, cb);
     }
 
-    protected emit(event: string, data: any) {
+    protected emit(event: string, data: unknown) {
         this._emit(data, this.events[event]);
         this._emit(data, this.eventsOnce[event]);
         delete this.eventsOnce[event];
@@ -30,7 +30,7 @@ export class EventEmitter {
         cbs.push(cb);
     }
 
-    private _emit(data: any, targets?: EventCB[]) {
+    private _emit(data: unknown, targets?: EventCB[]) {
         if (!targets) {
             return;
         }
@@ -38,7 +38,7 @@ export class EventEmitter {
             try {
                 target(data);
             } catch (e) {
-                logError(e.stack || e);
+                logError(e as Error);
             }
         });
     }

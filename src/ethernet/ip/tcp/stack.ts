@@ -14,7 +14,8 @@ const tcpListeners = new Map<number, TCPListener>();
 tcpListeners.set(
     7,
     (tcpConn) => { // ECHO
-        tcpConn.on("data", (data: Uint8Array) => {
+        tcpConn.on("data", (dataRaw) => {
+            const data = dataRaw as Uint8Array;
             if (data.byteLength > 0 && data.byteLength <= 2 && (data[0] === 10 || data[0] === 13)) {
                 tcpConn.close();
             } else {

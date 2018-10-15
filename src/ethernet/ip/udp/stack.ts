@@ -34,7 +34,7 @@ function udpGotPacket(data: ArrayBuffer, offset: number, len: number, ipHdr: IPH
                 return sendIPPacket(ip, udp, iface);
             });
         } catch (e) {
-            logError(e.stack || e);
+            logError(e as Error);
         }
     }
 }

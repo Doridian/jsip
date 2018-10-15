@@ -4,6 +4,8 @@
         "tslint:latest"
     ],
     "rules": {
-        "no-bitwise": false
+        "no-bitwise": false,
+        "no-unsafe-any": true,
+        "no-any": true
     }
 }

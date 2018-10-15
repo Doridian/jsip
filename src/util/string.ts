@@ -20,8 +20,8 @@ export function bufferToString(buf: ArrayBuffer, offset: number, len?: number) {
     return arrayToString(new Uint8Array(buf, offset, len));
 }
 
-export function arrayToString(buf: Uint8Array): string {
-    return String.fromCharCode.apply(null, buf);
+export function arrayToString(buf: Uint8Array) {
+    return String.fromCharCode.apply(null, buf) as string;
 }
 
 export function buffersToString(bufs: ArrayBuffer[]) {

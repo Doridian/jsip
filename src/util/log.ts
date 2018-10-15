@@ -3,7 +3,7 @@ export function logDebug(text: string) {
     console.log(text);
 }
 
-export function logError(text: string) {
+export function logError(text: Error) {
     // tslint:disable-next-line:no-console
     console.error(text);
 }

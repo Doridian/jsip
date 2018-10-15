@@ -32,7 +32,7 @@ export class WSVPN extends Interface {
         this.ws.onmessage = (msg) => {
             const data = msg.data;
             if (typeof data !== "string") {
-                handlePacket(data, this);
+                handlePacket(data as ArrayBuffer, this);
                 return;
             }
 

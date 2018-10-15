@@ -56,8 +56,8 @@ export function sendIPPacket(ipHdr: IPHdr, payload: IPacket, iface: IInterface) 
 
     makeEthIPHdr(routeDestIp, iface).then((ethHdr) => {
         _sendIPPacket(ipHdr, payload, iface, ethHdr);
-    }).catch((err) => {
-        logError(err.stack || err);
+    }).catch((err: Error) => {
+        logError(err);
     });
 }
 

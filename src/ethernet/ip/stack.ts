@@ -17,7 +17,7 @@ function handlePacket(ipHdr: IPHdr, data: ArrayBuffer, offset: number, iface: II
         try {
             handler(data, offset, len, ipHdr, iface);
         } catch (e) {
-            logError(e.stack || e);
+            logError(e as Error);
         }
     }
 }

@@ -210,10 +210,10 @@ function _httpPromise(options: IHTTPOptions, resolve: (res: IHTTPResult) => void
     .then((tcpConn) => {
         tcpConn.on("data", (data) => {
             try {
-                stream.add(data);
+                stream.add(data as Uint8Array);
             } catch (e) {
                 stream.close();
-                reject(e);
+                reject(e as Error);
             }
 
             if (stream.getState() === HttpParseState.Done) {
