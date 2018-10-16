@@ -12,29 +12,12 @@ export class BitArray {
     }
 
     public read(len: number) {
-        const ret = this.get(this.pos, len);
+        const ret = (this.data[this.pos >>> 3] >> (8 - (this.pos & 7) - len)) & ((1 << len) - 1);
         this.pos += len;
         return ret;
     }
 
     public bool() {
         return this.read(1) !== 0;
-    }
-
-    private get(pos: number, len: number) {
-        if (len < 1 || len >= 8 || !isFinite(len)) {
-            throw new RangeError("len must be between 1 and 7 inclusive");
-        }
-
-        const byteIndex = pos >>> 3;
-        const offset = pos & 7;
-        if (offset + len > 8) {
-            throw new RangeError(`Cannot read accross byte boundaries; ${offset}; ${len}; ${pos}`);
-        }
-
-        const curData = this.data[byteIndex];
-        const mask = (1 << len) - 1;
-        const shift = 8 - offset - len;
-        return (curData >> shift) & mask;
     }
 }
