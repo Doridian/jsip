@@ -86,7 +86,7 @@ export class WSVPN extends Interface {
 
         if (needDHCP) {
             logDebug(`${this.getName()} starting DHCP procedure...`);
-            return addDHCP(this).negotiate().then();
+            return addDHCP(this).negotiate();
         } else {
             return Promise.resolve();
         }
