@@ -1,5 +1,4 @@
 import { IInterface } from "../../../../interface/index.js";
-import { BitArray } from "../../../../util/bitfield.js";
 import { boolToBit } from "../../../../util/index.js";
 import { bufferToString } from "../../../../util/string.js";
 import { IPAddr } from "../../address.js";
@@ -120,22 +119,22 @@ function parseAnswerSection(count: number, state: IDNSParseState) {
 export class DNSPkt {
     public static fromPacket(packet: ArrayBuffer, offset: number) {
         const data = new Uint8Array(packet, offset);
-        const bit = new BitArray(packet, offset + 2);
 
         const dns = new DNSPkt();
         dns.id = data[1] + (data[0] << 8);
 
         // [2]
-        dns.qr = bit.bool();
-        dns.opcode = bit.read(4);
-        dns.aa = bit.bool();
-        dns.tc = bit.bool();
-        dns.rd = bit.bool();
+        const flagData = data[2];
+        dns.qr = (flagData & 0b10000000) !== 0;
+        dns.opcode = (flagData >>> 3) & 0b1111;
+        dns.aa = (flagData & 0b100) !== 0;
+        dns.tc = (flagData & 0b10) !== 0;
+        dns.rd = (flagData & 0b1) !== 0;
 
         // [3]
-        dns.ra = bit.bool();
-        bit.skip(3);
-        dns.rcode = bit.read(4);
+        const rData = data[3];
+        dns.ra = (rData & 0b10000000) !== 0;
+        dns.rcode = rData & 0b1111;
 
         const qdcount = data[5] + (data[4] << 8);
         const ancount = data[7] + (data[6] << 8);

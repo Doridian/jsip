@@ -1,4 +1,3 @@
-import { BitArray } from "../../util/bitfield.js";
 import { computeChecksum } from "../../util/checksum.js";
 import { logDebug } from "../../util/log.js";
 import { IP_NONE, IPAddr } from "./address.js";
@@ -13,34 +12,33 @@ export const enum IPPROTO {
 export class IPHdr {
     public static fromPacket(packet: ArrayBuffer, offset: number) {
         const ipv4 = new IPHdr();
-        const bit = new BitArray(packet, offset);
         const data = new Uint8Array(packet, offset);
 
         // [0]
-        ipv4.version = bit.read(4);
+        ipv4.version = (data[0] >>> 4);
         if (ipv4.version !== 4) {
             logDebug(`Ignoring IP version: ${ipv4.version}`);
             return null;
         }
 
-        ipv4.ihl = bit.read(4);
+        ipv4.ihl = data[0] & 0b1111;
         const ipHdrLen = ipv4.ihl << 2;
 
         // [1]
-        ipv4.dscp = bit.read(6);
-        ipv4.ecn = bit.read(2);
+        const flag1Data = data[1];
+        ipv4.dscp = flag1Data >>> 2;
+        ipv4.ecn = flag1Data & 0b11;
 
         // [2]
         ipv4.len = data[3] | (data[2] << 8);
         ipv4.id = data[5] | (data[4] << 8);
-        bit.skip(32);
 
         // [6]
-        const flags = bit.read(3);
+        const flags = (data[6] >>> 5);
         ipv4.df = (flags & 0x2) === 0x2;
         ipv4.mf = (flags & 0x1) === 0x1;
 
-        ipv4.fragOffset = (bit.read(5) << 8) | data[7];
+        ipv4.fragOffset = ((data[6] & 0b11111) << 8) | data[7];
 
         // [8]
         ipv4.ttl = data[8];
