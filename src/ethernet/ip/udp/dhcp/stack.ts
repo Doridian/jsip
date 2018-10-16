@@ -70,7 +70,7 @@ export class DHCPNegotiator {
                 if (subnetDHCP) {
                     subnet = new IPNet(
                         ourIp,
-                        subnetDHCP[3] + (subnetDHCP[2] << 8) + (subnetDHCP[1] << 16) + (subnetDHCP[0] << 24),
+                        subnetDHCP[3] | (subnetDHCP[2] << 8) | (subnetDHCP[1] << 16) | (subnetDHCP[0] << 24),
                     );
                 } else {
                     subnet = IPNet.fromIPAndSubnet(ourIp, 32);
@@ -119,7 +119,7 @@ export class DHCPNegotiator {
 
                 const rawTtl = dhcp.options.get(DHCP_OPTION.LEASETIME);
                 const ttl = rawTtl ?
-                    (rawTtl[3] + (rawTtl[2] << 8) + (rawTtl[1] << 16) + (rawTtl[0] << 24)) >>> 0 :
+                    (rawTtl[3] | (rawTtl[2] << 8) | (rawTtl[1] << 16) | (rawTtl[0] << 24)) >>> 0 :
                     300;
 
                 this.xid = undefined;

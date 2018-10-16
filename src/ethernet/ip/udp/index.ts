@@ -6,10 +6,10 @@ export class UDPPkt implements IPacket {
     public static fromPacket(packet: ArrayBuffer, offset: number, len: number, ipHdr: IPHdr) {
         const udp = new UDPPkt();
         const data = new Uint8Array(packet, offset, len);
-        udp.sport = data[1] + (data[0] << 8);
-        udp.dport = data[3] + (data[2] << 8);
-        const udplen = (data[5] + (data[4] << 8)) - 8;
-        udp.checksum = data[7] + (data[6] << 8);
+        udp.sport = data[1] | (data[0] << 8);
+        udp.dport = data[3] | (data[2] << 8);
+        const udplen = (data[5] | (data[4] << 8)) - 8;
+        udp.checksum = data[7] | (data[6] << 8);
         if (udplen > 0) {
             const udBeg = offset + 8;
             udp.data = new Uint8Array(packet, udBeg, udplen);

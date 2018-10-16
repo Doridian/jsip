@@ -86,10 +86,6 @@ export class MACAddr {
         array[offset + 5] = this.f;
     }
 
-    public toInt() {
-        return this.f + (this.e << 8) + (this.d << 16) + (this.c << 24) + (this.b << 32) + (this.a << 40);
-    }
-
     public toString() {
         return `${_macPaddedOut(this.a)}:${_macPaddedOut(this.b)}:${_macPaddedOut(this.c)}:` +
                 `${_macPaddedOut(this.d)}:${_macPaddedOut(this.e)}:${_macPaddedOut(this.f)}`;

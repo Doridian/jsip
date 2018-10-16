@@ -1,5 +1,4 @@
 import { IPacket } from "../../../ipacket.js";
-import { BitArray } from "../../../util/bitfield.js";
 import { computeChecksum, computeChecksumPseudo } from "../../../util/checksum.js";
 import { IPHdr, IPPROTO } from "../index.js";
 
@@ -19,17 +18,15 @@ export class TCPPkt implements IPacket {
     public static fromPacket(packet: ArrayBuffer, offset: number, len: number, ipHdr: IPHdr) {
         const tcp = new TCPPkt();
         const data = new Uint8Array(packet, offset, len);
-        const bit = new BitArray(packet, offset + 12);
         tcp.sport = data[1] + (data[0] << 8);
         tcp.dport = data[3] + (data[2] << 8);
-        tcp.seqno = data[7] + (data[6] << 8) + (data[5] << 16) + (data[4] << 24);
-        tcp.ackno = data[11] + (data[10] << 8) + (data[9] << 16) + (data[8] << 24);
-        const dataOffset = bit.read(4) << 2;
-        bit.skip(3);
-        tcp.flags = bit.read(9);
-        tcp.windowSize = data[15] + (data[14] << 8);
-        tcp.checksum = data[17] + (data[16] << 8);
-        tcp.urgptr = data[19] + (data[18] << 8);
+        tcp.seqno = data[7] + (data[6] << 8) | (data[5] << 16) | (data[4] << 24);
+        tcp.ackno = data[11] + (data[10] << 8) | (data[9] << 16) | (data[8] << 24);
+        const dataOffset = (data[12] & 0b1111) << 2;
+        tcp.flags = data[13] & 0b111111;
+        tcp.windowSize = data[15] | (data[14] << 8);
+        tcp.checksum = data[17] | (data[16] << 8);
+        tcp.urgptr = data[19] | (data[18] << 8);
         tcp.mss = -1;
 
         if (dataOffset > 20) {
@@ -50,7 +47,7 @@ export class TCPPkt implements IPacket {
                         optLen = 1;
                         break;
                     case 2:
-                        tcp.mss = o8[i + 3] + (o8[i + 2] << 8);
+                        tcp.mss = o8[i + 3] | (o8[i + 2] << 8);
                         break;
                 }
                 i += optLen;

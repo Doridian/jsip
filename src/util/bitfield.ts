@@ -8,18 +8,20 @@ export class BitArray {
     }
 
     public get(pos: number, len: number) {
-        let byteIndex = pos >>> 3;
-        if (len === 8 && (pos % 8) === 0) {
-            return this.data[byteIndex];
+        if (len < 1 || len >= 8 || !isFinite(len)) {
+            throw new RangeError("len must be between 1 and 7 inclusive");
         }
-        const shift = 24 - (pos & 7) - len;
+
+        const byteIndex = pos >>> 3;
+        const offset = pos & 7;
+        if (offset + len > 8) {
+            throw new RangeError(`Cannot read accross byte boundaries; ${offset}; ${len}; ${pos}`);
+        }
+
+        const curData = this.data[byteIndex];
         const mask = (1 << len) - 1;
-        return (
-            ((this.data[byteIndex]   << 16) |
-             (this.data[++byteIndex] <<  8) |
-              this.data[++byteIndex]
-            ) >> shift
-        ) & mask;
+        const shift = 8 - offset - len;
+        return (curData >> shift) & mask;
     }
 
     public skip(len: number) {

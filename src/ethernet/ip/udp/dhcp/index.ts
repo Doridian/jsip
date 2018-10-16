@@ -34,9 +34,9 @@ export class DHCPPkt {
         dhcp.htype = data[1];
         dhcp.hlen = data[2];
         dhcp.hops = data[3];
-        dhcp.xid = data[7] + (data[6] << 8) + (data[5] << 16) + (data[4] << 24);
-        dhcp.secs = data[9] + (data[8] << 8);
-        dhcp.flags = data[11] + (data[10] << 8);
+        dhcp.xid = data[7] | (data[6] << 8) | (data[5] << 16) | (data[4] << 24);
+        dhcp.secs = data[9] | (data[8] << 8);
+        dhcp.flags = data[11] | (data[10] << 8);
         dhcp.ciaddr = IPAddr.fromByteArray(data, 12);
         dhcp.yiaddr = IPAddr.fromByteArray(data, 16);
         dhcp.siaddr = IPAddr.fromByteArray(data, 20);

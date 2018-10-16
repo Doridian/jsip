@@ -15,7 +15,7 @@ export class EthHdr {
         const data = new Uint8Array(packet, offset);
         eth.daddr = MACAddr.fromByteArray(data, 0);
         eth.saddr = MACAddr.fromByteArray(data, 6);
-        eth.ethtype = data[13] + (data[12] << 8);
+        eth.ethtype = data[13] | (data[12] << 8);
         return eth;
     }
 

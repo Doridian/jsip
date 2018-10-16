@@ -31,20 +31,21 @@ export class IPHdr {
         ipv4.ecn = bit.read(2);
 
         // [2]
-        ipv4.len = data[3] + (data[2] << 8);
-        ipv4.id = data[5] + (data[4] << 8);
+        ipv4.len = data[3] | (data[2] << 8);
+        ipv4.id = data[5] | (data[4] << 8);
         bit.skip(32);
 
         // [6]
         const flags = bit.read(3);
         ipv4.df = (flags & 0x2) === 0x2;
         ipv4.mf = (flags & 0x1) === 0x1;
-        ipv4.fragOffset = bit.read(13);
+
+        ipv4.fragOffset = (bit.read(5) << 8) | data[7];
 
         // [8]
         ipv4.ttl = data[8];
         ipv4.protocol = data[9];
-        ipv4.checksum = data[11] + (data[10] << 8);
+        ipv4.checksum = data[11] | (data[10] << 8);
         ipv4.saddr = IPAddr.fromByteArray(data, 12);
         ipv4.daddr = IPAddr.fromByteArray(data, 16);
 
@@ -104,14 +105,14 @@ export class IPHdr {
     public toPacket(array: ArrayBuffer, offset: number) {
         const packet = new Uint8Array(array, offset, (this.options ? this.options.byteLength : 0) + 20);
         this.ihl = packet.length >>> 2;
-        packet[0] = ((this.version & 0xF) << 4) + (this.ihl & 0xF);
-        packet[1] = ((this.dscp & 0xFC) << 2) + (this.ecn & 0x3);
+        packet[0] = ((this.version & 0xF) << 4) | (this.ihl & 0xF);
+        packet[1] = ((this.dscp & 0xFC) << 2) | (this.ecn & 0x3);
         packet[2] = (this.len >>> 8) & 0xFF;
         packet[3] = this.len & 0xFF;
         packet[4] = (this.id >>> 8) & 0xFF;
         packet[5] = this.id & 0xFF;
-        const flags = (this.df ? 0x2 : 0x0) + (this.mf ? 0x1 : 0x0);
-        packet[6] = (flags << 5) + ((this.fragOffset >>> 8) & 0x1F);
+        const flags = (this.df ? 0x2 : 0x0) | (this.mf ? 0x1 : 0x0);
+        packet[6] = (flags << 5) | ((this.fragOffset >>> 8) & 0x1F);
         packet[7] = this.fragOffset & 0xFF;
         packet[8] = this.ttl & 0xFF;
         packet[9] = this.protocol & 0xFF;

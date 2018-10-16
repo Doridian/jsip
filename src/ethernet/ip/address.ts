@@ -90,7 +90,7 @@ export class IPAddr {
     }
 
     public toInt() {
-        return this.d + (this.c << 8) + (this.b << 16) + (this.a << 24);
+        return this.d | (this.c << 8) | (this.b << 16) | (this.a << 24);
     }
 
     public toString() {

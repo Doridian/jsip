@@ -2,7 +2,7 @@ import { IPHdr } from "../ethernet/ip/index.js";
 
 export function computeChecksumIntermediate(bytes: Uint8Array, csum = 0) {
     for (let i = 0; i < bytes.length; i += 2) {
-        csum += bytes[i] + ((bytes[i + 1] || 0) << 8);
+        csum += bytes[i] | ((bytes[i + 1] || 0) << 8);
     }
     return csum;
 }
