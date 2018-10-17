@@ -6,7 +6,7 @@ import { IPHdr, IPPROTO } from "../../index.js";
 import { addRoute, flushRoutes, recomputeRoutes } from "../../router.js";
 import { sendIPPacket } from "../../send.js";
 import { IPNet, IPNET_ALL } from "../../subnet.js";
-import { addDNSServer, flushDNSServers } from "../dns/index.js";
+import { addDNSServer, flushDNSServers } from "../dns/stack.js";
 import { UDPPkt } from "../index.js";
 import { udpListen } from "../stack.js";
 import { DHCP_MODE, DHCP_OPTION, DHCPPkt } from "./index.js";

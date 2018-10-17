@@ -1,6 +1,6 @@
 import { flushRoutes, recomputeRoutes } from "../ethernet/ip/router.js";
 import { removeDHCP } from "../ethernet/ip/udp/dhcp/stack.js";
-import { flushDNSServers } from "../ethernet/ip/udp/dns/index.js";
+import { flushDNSServers } from "../ethernet/ip/udp/dns/stack.js";
 import { IInterface } from "./index.js";
 import { addInterface, deleteInterface } from "./stack.js";
 

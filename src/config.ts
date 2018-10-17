@@ -1,6 +1,6 @@
 import { IP_NONE } from "./ethernet/ip/address.js";
 import { getRoutes } from "./ethernet/ip/router.js";
-import { getDNSServers } from "./ethernet/ip/udp/dns/index.js";
+import { getDNSServers } from "./ethernet/ip/udp/dns/stack.js";
 import { INTERFACE_NONE } from "./interface/none.js";
 import { getInterfaces } from "./interface/stack.js";
 import { logDebug } from "./util/log.js";

@@ -1,6 +1,6 @@
 import { IPAddr } from "../../address.js";
 import { tcpConnect } from "../../tcp/stack.js";
-import { dnsResolveOrIp } from "./index.js";
+import { dnsResolveOrIp } from "./stack.js";
 
 export function dnsTcpConnect(
     domainOrIp: string,

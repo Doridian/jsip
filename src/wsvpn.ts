@@ -2,7 +2,7 @@ import { IP_NONE, IPAddr } from "./ethernet/ip/address.js";
 import { addRoute, flushRoutes } from "./ethernet/ip/router.js";
 import { IPNet, IPNET_ALL } from "./ethernet/ip/subnet.js";
 import { addDHCP } from "./ethernet/ip/udp/dhcp/stack.js";
-import { addDNSServer, flushDNSServers } from "./ethernet/ip/udp/dns/index.js";
+import { addDNSServer, flushDNSServers } from "./ethernet/ip/udp/dns/stack.js";
 import { Interface } from "./interface/index.js";
 import { VoidCB } from "./util/index.js";
 import { logDebug } from "./util/log.js";
