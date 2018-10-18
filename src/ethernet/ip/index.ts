@@ -18,7 +18,7 @@ export class IPHdr {
         ipv4.version = (data[0] >>> 4);
         if (ipv4.version !== 4) {
             logDebug(`Ignoring IP version: ${ipv4.version}`);
-            return null;
+            return undefined;
         }
 
         ipv4.ihl = data[0] & 0b1111;
@@ -49,10 +49,12 @@ export class IPHdr {
 
         ipv4.options = (ipHdrLen > 20) ? new Uint8Array(packet, offset + 20, ipHdrLen - 20) : new Uint8Array(0);
 
-        const checksum = computeChecksum(new Uint8Array(packet, offset, ipHdrLen));
-        if (checksum !== 0) {
-            logDebug(`Invalid IPv4 checksum: ${checksum} !== 0`);
-            return null;
+        if (ipv4.checksum !== 0) {
+            const checksum = computeChecksum(new Uint8Array(packet, offset, ipHdrLen));
+            if (checksum !== 0) {
+                logDebug(`Invalid IPv4 checksum: ${checksum} !== 0`);
+                return undefined;
+            }
         }
 
         return ipv4;

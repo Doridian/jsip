@@ -7,7 +7,8 @@
     "lib": "lib"
   },
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "build": "tsc",
+    "test": "npm run build && node -r esm ./dist/test/dns.js"
   },
   "repository": {
     "type": "git",
@@ -19,8 +20,12 @@
     "url": "https://github.com/Doridian/jsip/issues"
   },
   "homepage": "https://github.com/Doridian/jsip#readme",
-  "devDependencies": {
-    "typescript": "^3.1.1",
-    "tslint": "^5.11.0"
+  "dependencies": {
+    "@types/chai": "^4.1.6",
+    "chai": "^4.2.0",
+    "esm": "^3.0.84",
+    "ts-node": "^7.0.1",
+    "tslint": "^5.11.0",
+    "typescript": "^3.1.1"
   }
 }
