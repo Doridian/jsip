@@ -3,6 +3,7 @@ import { INTERFACE_NONE } from "../../../interface/none.js";
 import { EventEmitter } from "../../../util/emitter.js";
 import { IP_NONE, IPAddr } from "../address.js";
 import { IPHdr, IPPROTO } from "../index.js";
+import { getRoute } from "../router.js";
 import { sendIPPacket } from "../send.js";
 import { registerIpHandler } from "../stack.js";
 import { TCP_FLAGS, TCPPkt } from "./index.js";
@@ -374,7 +375,14 @@ export class TCPConn extends EventEmitter {
         this.daddr = daddr;
         this.dport = dport;
         this.iface = iface;
-        this.mss = iface.getMTU() - 40;
+        if (iface === INTERFACE_NONE) {
+            const route = getRoute(daddr, iface);
+            if (route && route.iface) {
+                this.iface = route.iface;
+            }
+        }
+
+        this.mss = this.iface.getMTU() - 40;
         do {
             this.sport = 4097 + Math.floor(Math.random() * 61347);
             this.connId = this.toString();
