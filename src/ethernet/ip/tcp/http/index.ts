@@ -306,7 +306,7 @@ function _httpGet(options: IHTTPOptionsFilled): Promise<IHTTPResult> {
 
         const optionsClone = {...options};
         optionsClone.url = new URL(location, options.url);
-        optionsClone.redirectLimit!--;
+        optionsClone.redirectLimit--;
         optionsClone.errorOnNon200 = false;
         return _httpGet(optionsClone);
     });
