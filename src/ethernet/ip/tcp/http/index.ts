@@ -202,15 +202,18 @@ function _httpPromise(options: IHTTPOptionsFilled, resolve: (res: IHTTPResult) =
     const body = options.body;
     const url = options.url;
     const headers = options.headers;
-    headers.set("connection", "close");
-    headers.set("user-agent", "jsip");
-    headers.set("host", url.host);
+    headers.set("Connection", "close");
+    headers.setIfNotExists("User-Agent", "jsip");
+    headers.setIfNotExists("Host", url.host);
 
-    if ((url.username || url.password) && !headers.has("authorization")) {
-        headers.set("authorization", `Basic ${btoa(`${url.username}:${url.password}`)}`);
+    if (url.username || url.password) {
+        headers.setIfNotExists("Authorization", `Basic ${btoa(`${url.username}:${url.password}`)}`);
     }
+
     if (body) {
-        headers.set("content-length", body.byteLength.toString());
+        headers.set("Content-Length", body.byteLength.toString());
+    } else {
+        headers.delete("Content-Length");
     }
 
     const stream = new HttpCheckpointStream(options, resolve);

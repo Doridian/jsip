@@ -26,6 +26,13 @@ export class HTTPHeaders {
         }
     }
 
+    public setIfNotExists(name: string, value: string | string[]) {
+        if (this.has(name)) {
+            return;
+        }
+        this.set(name, value);
+    }
+
     public set(name: string, value: string | string[]) {
         if (typeof value === "string") {
             value = [value];
