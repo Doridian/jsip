@@ -36,6 +36,8 @@ expect(requestParts.dns!.questions[0].name).to.equal(DNS_DOMAIN);
 expect(requestParts.dns!.questions[0].class).to.equal(DNS_CLASS.IN);
 expect(requestParts.dns!.questions[0].type).to.equal(DNS_TYPE.A);
 
+requestParts.udp!.data = requestParts.dns!.toBytes();
+
 const replyParts = parsePacketParts(DNS_REPLY);
 
 expect(replyParts.eth!.saddr).to.deep.equal(MAC_SERVER);

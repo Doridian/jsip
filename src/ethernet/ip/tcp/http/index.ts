@@ -8,7 +8,7 @@ export interface IHTTPResult {
     statusText: string;
     headers: HTTPHeaders;
     body: Uint8Array;
-    url?: URL;
+    url: URL;
 }
 
 export interface IHTTPOptions {
@@ -16,6 +16,17 @@ export interface IHTTPOptions {
     method?: string;
     body?: Uint8Array;
     headers?: HTTPHeaders;
+    redirectLimit?: number;
+    errorOnNon200?: boolean;
+}
+
+export interface IHTTPOptionsFilled {
+    url: URL;
+    method: string;
+    body?: Uint8Array;
+    headers: HTTPHeaders;
+    redirectLimit: number;
+    errorOnNon200: boolean;
 }
 
 const enum HttpParseState {
@@ -33,22 +44,20 @@ const enum HttpTransferEncoding {
     Chunked = "chunked",
 }
 
-class HttpInvalidException extends Error {
-}
-
-// tslint:disable-next-line:max-classes-per-file
 class HttpCheckpointStream extends CheckpointStream<HttpParseState> {
     private statusCode: number = 0;
     private statusText: string = "";
     private headers: HTTPHeaders = new HTTPHeaders();
+    private options: IHTTPOptionsFilled;
     private method: string;
     private nextReadLen: number = 0;
     private bodyChunks: Uint8Array[] = [];
     private resolve: (res: IHTTPResult) => void;
 
-    constructor(method: string, resolve: (res: IHTTPResult) => void) {
+    constructor(options: IHTTPOptionsFilled, resolve: (res: IHTTPResult) => void) {
         super(HttpParseState.StatusLine);
-        this.method = method.toUpperCase();
+        this.options = options;
+        this.method = options.method;
         this.resolve = resolve;
     }
 
@@ -62,20 +71,20 @@ class HttpCheckpointStream extends CheckpointStream<HttpParseState> {
                 // Parse HTTP status line
                 const statusLine = this.readTrimmedLine();
                 if (statusLine.length < 1) {
-                    throw new HttpInvalidException("Empty status line");
+                    throw new HttpInvalidErrror("Empty status line");
                 }
 
                 const statusI = statusLine.indexOf(" ");
                 if (statusI < 0) {
-                    throw new HttpInvalidException("No first space in status line");
+                    throw new HttpInvalidErrror("No first space in status line");
                 }
                 const statusI2 = statusLine.indexOf(" ", statusI + 1);
                 if (statusI2 < 0) {
-                    throw new HttpInvalidException("No second space in status line");
+                    throw new HttpInvalidErrror("No second space in status line");
                 }
                 this.statusCode = parseInt(statusLine.substring(statusI + 1, statusI2), 10);
                 if (!isFinite(this.statusCode) || this.statusCode <= 0) {
-                    throw new HttpInvalidException("Invalid response code in status line");
+                    throw new HttpInvalidErrror("Invalid response code in status line");
                 }
                 this.statusText = statusLine.substring(statusI2 + 1);
 
@@ -86,7 +95,7 @@ class HttpCheckpointStream extends CheckpointStream<HttpParseState> {
                 if (curHeader.length > 0) {
                     const colonPos = curHeader.indexOf(":");
                     if (colonPos < 0) {
-                        throw new HttpInvalidException("Header without :");
+                        throw new HttpInvalidErrror("Header without :");
                     }
                     const headerKey = curHeader.substr(0, colonPos).trim();
                     const headerValue = curHeader.substr(colonPos + 1).trim();
@@ -114,14 +123,14 @@ class HttpCheckpointStream extends CheckpointStream<HttpParseState> {
 
                         this.nextReadLen = parseInt(contentLengthStr, 10);
                         if (this.nextReadLen < 0 || !isFinite(this.nextReadLen)) {
-                            throw new HttpInvalidException("Invalid Content-Length");
+                            throw new HttpInvalidErrror("Invalid Content-Length");
                         }
 
                         this.setState(HttpParseState.BodyFixedLength);
                         break;
 
                     default:
-                        throw new HttpInvalidException(`Invalid Transfer-Encoding: ${transferEncoding}`);
+                        throw new HttpInvalidErrror(`Invalid Transfer-Encoding: ${transferEncoding}`);
                 }
 
                 return true;
@@ -134,7 +143,7 @@ class HttpCheckpointStream extends CheckpointStream<HttpParseState> {
                 // Parse chunked body (chunk length)
                 this.nextReadLen = parseInt(this.readTrimmedLine(), 16);
                 if (!isFinite(this.nextReadLen) || this.nextReadLen < 0) {
-                    throw new HttpInvalidException("Invalid chunk length");
+                    throw new HttpInvalidErrror("Invalid chunk length");
                 }
 
                 this.setState(HttpParseState.BodyChunkData);
@@ -147,7 +156,7 @@ class HttpCheckpointStream extends CheckpointStream<HttpParseState> {
                 // Parse chunked body (chunk terminating newline)
                 const lineEnd = this.readLine();
                 if (lineEnd.length > 2 || (lineEnd.length === 2 && lineEnd[0] !== CHAR_CR)) {
-                    throw new HttpInvalidException("Garbage data at end of chunk!");
+                    throw new HttpInvalidErrror("Garbage data at end of chunk!");
                 }
 
                 if (this.nextReadLen === 0) {
@@ -160,7 +169,7 @@ class HttpCheckpointStream extends CheckpointStream<HttpParseState> {
 
             case HttpParseState.Done:
                 this.read(1);
-                throw new HttpInvalidException("Garbage data!");
+                throw new HttpInvalidErrror("Garbage data!");
         }
 
         return true;
@@ -182,21 +191,21 @@ class HttpCheckpointStream extends CheckpointStream<HttpParseState> {
             headers: this.headers,
             statusCode: this.statusCode,
             statusText: this.statusText,
+            url: this.options.url,
         });
 
         return false;
     }
 }
 
-function _httpPromise(options: IHTTPOptions, resolve: (res: IHTTPResult) => void, reject: (err: Error) => void) {
+function _httpPromise(options: IHTTPOptionsFilled, resolve: (res: IHTTPResult) => void, reject: (err: Error) => void) {
     const body = options.body;
     const url = options.url;
-    const method = (options.method || "GET").toUpperCase();
-
-    const headers = options.headers || new HTTPHeaders();
+    const headers = options.headers;
     headers.set("connection", "close");
     headers.set("user-agent", "jsip");
     headers.set("host", url.host);
+
     if ((url.username || url.password) && !headers.has("authorization")) {
         headers.set("authorization", `Basic ${btoa(`${url.username}:${url.password}`)}`);
     }
@@ -204,7 +213,7 @@ function _httpPromise(options: IHTTPOptions, resolve: (res: IHTTPResult) => void
         headers.set("content-length", body.byteLength.toString());
     }
 
-    const stream = new HttpCheckpointStream(method, resolve);
+    const stream = new HttpCheckpointStream(options, resolve);
 
     dnsTcpConnect(url.hostname, url.port ? parseInt(url.port, 10) : 80)
     .then((tcpConn) => {
@@ -221,7 +230,7 @@ function _httpPromise(options: IHTTPOptions, resolve: (res: IHTTPResult) => void
             }
         });
         tcpConn.once("connect", () => {
-            const data = [`${method.toUpperCase()} ${url.pathname}${url.search} HTTP/1.1`];
+            const data = [`${options.method} ${url.pathname}${url.search} HTTP/1.1`];
             const headersMap = headers.getAll();
             for (const headerName of Object.keys(headersMap)) {
                 for (const header of headersMap[headerName]) {
@@ -237,8 +246,68 @@ function _httpPromise(options: IHTTPOptions, resolve: (res: IHTTPResult) => void
     .catch(reject);
 }
 
-export function httpGet(options: IHTTPOptions) {
+// tslint:disable-next-line:max-classes-per-file
+export class HttpError extends Error {
+    public result: IHTTPResult;
+
+    constructor(result: IHTTPResult) {
+        super(`Invalid status code ${result.statusCode}`);
+        this.result = result;
+    }
+}
+
+// tslint:disable-next-line:max-classes-per-file
+export class HttpInvalidErrror extends Error {
+}
+
+export function httpGet(options: IHTTPOptions): Promise<IHTTPResult> {
+    const optionsFilled: IHTTPOptionsFilled = {
+        errorOnNon200: false,
+        headers: new HTTPHeaders(),
+        method: "GET",
+        redirectLimit: 3,
+        ...options,
+    };
+
+    optionsFilled.headers = optionsFilled.headers.clone();
+    optionsFilled.method = optionsFilled.method.toUpperCase();
+
+    return _httpGet(optionsFilled)
+    .then((result) => {
+        if (!options.errorOnNon200) {
+            return result;
+        }
+
+        if (result.statusCode < 200 || result.statusCode > 299) {
+            throw new HttpError(result);
+        }
+
+        return result;
+    });
+}
+
+function _httpGet(options: IHTTPOptionsFilled): Promise<IHTTPResult> {
     return new Promise<IHTTPResult>((resolve, reject) => {
         _httpPromise(options, resolve, reject);
+    })
+    .then((result) => {
+        if (options.redirectLimit === 0) {
+            return result;
+        }
+
+        if (result.statusCode < 300 || result.statusCode > 399) {
+            return result;
+        }
+
+        const location = result.headers.first("Location");
+        if (!location) {
+            return result;
+        }
+
+        const optionsClone = {...options};
+        optionsClone.url = new URL(location, options.url);
+        optionsClone.redirectLimit!--;
+        optionsClone.errorOnNon200 = false;
+        return _httpGet(optionsClone);
     });
 }

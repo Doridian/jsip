@@ -5,6 +5,17 @@ function processName(name: string) {
 export class HTTPHeaders {
     private headerMap: { [key: string]: string[]; } = {};
 
+    public clone() {
+        const clone = new HTTPHeaders();
+        for (const name in this.headerMap) {
+            if (!this.headerMap.hasOwnProperty(name)) {
+                continue;
+            }
+            clone.headerMap[name] = this.headerMap[name].slice(0);
+        }
+        return clone;
+    }
+
     public add(name: string, value: string) {
         name = processName(name);
         const data = this.headerMap[name];

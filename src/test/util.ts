@@ -82,7 +82,6 @@ export function parsePacketParts(packet: ArrayBuffer): IPacketParts {
                 default:
                     return { eth: ethHdr, ip: ipHdr };
             }
-            break;
         default:
             return { eth: ethHdr };
     }
