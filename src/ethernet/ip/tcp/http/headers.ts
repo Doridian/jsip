@@ -1,5 +1,5 @@
 function processName(name: string) {
-    return name.toLowerCase();
+    return name.trim().toLowerCase();
 }
 
 export class HTTPHeaders {
