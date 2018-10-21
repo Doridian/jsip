@@ -259,7 +259,12 @@ function byteArrayToIpAddrs(array: Uint8Array) {
     return res;
 }
 
-udpListen(68, (data: Uint8Array, _: IPHdr, iface: IInterface) => {
+udpListen(68, (pkt: UDPPkt, _: IPHdr, iface: IInterface) => {
+    const data = pkt.data;
+    if (!data) {
+        return;
+    }
+
     const negotiator = dhcpNegotiators.get(iface);
     if (!negotiator) {
         return;

@@ -14,6 +14,11 @@ const tcpListeners = new Map<number, TCPListener>();
 tcpListeners.set(
     7,
     (tcpConn) => { // ECHO
+        if (tcpConn.dport === 7) {
+            tcpConn.close();
+            return;
+        }
+
         tcpConn.on("data", (dataRaw) => {
             const data = dataRaw as Uint8Array;
             if (data.byteLength > 0 && data.byteLength <= 2 && (data[0] === 10 || data[0] === 13)) {
@@ -52,10 +57,11 @@ interface IWBufferEntry {
 }
 
 export class TCPConn extends EventEmitter {
+    public sport = 0;
+    public dport = 0;
+
     private state = TCP_STATE.CLOSED;
     private daddr: IPAddr = IP_NONE;
-    private sport = 0;
-    private dport = 0;
     private wseqno?: number;
     private rseqno?: number;
     private wnd = 65535;

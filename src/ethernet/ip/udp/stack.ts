@@ -6,16 +6,16 @@ import { registerIpHandler } from "../stack.js";
 import { UDPPkt } from "./index.js";
 
 type UDPReplyFunc = (data: Uint8Array) => void;
-type UDPListener = (data: Uint8Array, ipHdr: IPHdr, iface: IInterface, reply: UDPReplyFunc) => void;
+type UDPListener = (data: UDPPkt, ipHdr: IPHdr, iface: IInterface, reply: UDPReplyFunc) => void;
 
 const udpListeners = new Map<number, UDPListener>();
 udpListeners.set(
     7,
-    (data, _, __, reply) => { // ECHO
-        if (!data) {
+    (pkt, _, __, reply) => { // ECHO
+        if (!pkt.data || pkt.sport === 7) {
             return;
         }
-        reply(data);
+        reply(pkt.data);
     },
 );
 
@@ -25,7 +25,7 @@ function udpGotPacket(data: ArrayBuffer, offset: number, len: number, ipHdr: IPH
     const listener = udpListeners.get(udpPkt.dport);
     if (listener && udpPkt.data) {
         try {
-            listener(udpPkt.data, ipHdr, iface, (sendData) => {
+            listener(udpPkt, ipHdr, iface, (sendData) => {
                 const ip = ipHdr.makeReply();
                 const udp = new UDPPkt();
                 udp.sport = udpPkt.dport;

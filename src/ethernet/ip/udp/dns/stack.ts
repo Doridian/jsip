@@ -69,7 +69,12 @@ function domainCB(domain: string, type: number, result: DNSResult | undefined, e
     }
 }
 
-udpListen(53, (data: Uint8Array) => {
+udpListen(53, (pkt: UDPPkt) => {
+    const data = pkt.data;
+    if (!data) {
+        return;
+    }
+
     const packet = data.buffer;
     const offset = data.byteOffset;
 
