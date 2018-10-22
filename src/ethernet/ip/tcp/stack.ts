@@ -365,7 +365,7 @@ export class TCPConn extends EventEmitter {
         this.sport = tcpPkt.dport;
         this.iface = iface;
         this.mss = iface.getMTU() - 40;
-        this.connId = this.toString();
+        this.setId();
         tcpConns.set(this.connId, this);
         this.gotPacket(ipHdr, tcpPkt);
     }
@@ -385,7 +385,7 @@ export class TCPConn extends EventEmitter {
         this.mss = this.iface.getMTU() - 40;
         do {
             this.sport = 4097 + Math.floor(Math.random() * 61347);
-            this.connId = this.toString();
+            this.setId();
         } while (tcpConns.has(this.connId) || tcpListeners.has(this.sport));
         tcpConns.set(this.connId, this);
 
@@ -394,15 +394,27 @@ export class TCPConn extends EventEmitter {
         this.sendPacket(ip, tcp);
     }
 
-    public toString() {
-        return `${this.daddr}|${this.sport}|${this.dport}`;
+    public getId() {
+        return this.connId;
     }
+
+    public toString() {
+        return `IF=${this.iface},DADDR=${this.daddr},SPORT=${this.sport},DPORT=${this.dport},ID=${this.getId()}`;
+    }
+
+    private setId() {
+        this.connId = tcpMakeId(this.daddr, this.sport, this.dport);
+    }
+}
+
+function tcpMakeId(daddr: IPAddr, sport: number, dport: number) {
+    return `${daddr}|${sport}|${dport}`;
 }
 
 function tcpGotPacket(data: ArrayBuffer, offset: number, len: number, ipHdr: IPHdr, iface: IInterface) {
     const tcpPkt = TCPPkt.fromPacket(data, offset, len, ipHdr);
 
-    const id = `${ipHdr.saddr}|${tcpPkt.dport}|${tcpPkt.sport}`;
+    const id = tcpMakeId(ipHdr.saddr, tcpPkt.dport, tcpPkt.sport);
     const gotConn = tcpConns.get(id);
     if (gotConn) {
         return gotConn.gotPacket(ipHdr, tcpPkt);
