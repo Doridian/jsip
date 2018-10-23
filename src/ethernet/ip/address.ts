@@ -1,7 +1,3 @@
-import { IPNet } from "./subnet.js";
-
-let multicastNets: IPNet[] = [];
-
 export class IPAddr {
     public static fromString(ipStr: string) {
         const ip = new IPAddr();
@@ -12,11 +8,12 @@ export class IPAddr {
         return ip;
     }
 
-    public static fromByteArray(ipBytes: ArrayLike<number>, offset = 0, len = 4) {
+    public static fromByteArray(array: ArrayLike<number>, offset = 0) {
         const ip = new IPAddr();
-        for (let i = 0; i < len; i++) {
-            ip.raw[3 - i] = ipBytes[offset + i];
-        }
+        ip.raw[3] = array[offset];
+        ip.raw[2] = array[1 + offset];
+        ip.raw[1] = array[2 + offset];
+        ip.raw[0] = array[3 + offset];
         return ip;
     }
 
@@ -24,13 +21,6 @@ export class IPAddr {
         const ip = new IPAddr();
         ip.raw32[0] = ipInt;
         return ip;
-    }
-
-    public static setMulticastNets(nets: IPNet[]) {
-        if (multicastNets.length > 0) {
-            throw new Error("Multicast nets already initialized!");
-        }
-        multicastNets = nets.slice(0);
     }
 
     private raw: Uint8Array;
@@ -50,9 +40,10 @@ export class IPAddr {
     }
 
     public toBytes(array: Uint8Array, offset: number) {
-        for (let i = 0; i < 4; i++) {
-            array[i + offset] = this.raw[3 - i];
-        }
+        array[offset] = this.raw[3];
+        array[1 + offset] = this.raw[2];
+        array[2 + offset] = this.raw[1];
+        array[3 + offset] = this.raw[0];
     }
 
     public toByteArray() {
@@ -70,7 +61,7 @@ export class IPAddr {
     }
 
     public isMulticast() {
-        return multicastNets.some((net) => net.contains(this));
+        return this.raw[3] >= 224 && this.raw[3] <= 239;
     }
 
     public isBroadcast() {

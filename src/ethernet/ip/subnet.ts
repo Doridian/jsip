@@ -74,14 +74,9 @@ export class IPNet {
     }
 }
 
-export const IPNETS_MULTICAST = [
-    IPNet.fromString("224.0.0.0/4"),
-];
-
 export const IPNET_NONE = IPNet.fromIPAndSubnet(IP_NONE, 8);
 export const IPNET_ALL = IPNet.fromIPAndSubnet(IP_NONE, 0);
 export const IPNET_LOOPBACK = IPNet.fromIPAndSubnet(IP_LOOPBACK, 8);
-export const IPNET_BROADCAST = IPNet.fromIPAndSubnet(IP_BROADCAST, 32);
 export const IPNET_LINK_LOCAL = IPNet.fromString("169.254.0.0/16");
-
-IPAddr.setMulticastNets(IPNETS_MULTICAST);
+export const IPNET_BROADCAST = IPNet.fromIPAndSubnet(IP_BROADCAST, 32);
+export const IPNET_MULTICAST = IPNet.fromString("224.0.0.0/4");

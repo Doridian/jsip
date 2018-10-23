@@ -100,8 +100,11 @@ export class DHCPNegotiator {
                         const optLen = Math.ceil(subnetLen / 8);
 
                         i++;
-                        const route = IPNet.fromIPAndSubnet(
-                            IPAddr.fromByteArray(routesRaw, i, optLen), subnetLen);
+
+                        const fullIp = new Uint8Array([0, 0, 0, 0]);
+                        fullIp.set(new Uint8Array(routesRaw.buffer, routesRaw.byteOffset + i, optLen));
+
+                        const route = IPNet.fromIPAndSubnet(IPAddr.fromByteArray(fullIp, 0), subnetLen);
                         i += optLen;
                         const ip = IPAddr.fromByteArray(routesRaw, i);
                         i += 3;

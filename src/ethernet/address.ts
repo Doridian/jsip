@@ -19,9 +19,12 @@ export class MACAddr {
 
     public static fromByteArray(macBytes: ArrayLike<number>, offset = 0) {
         const mac = new MACAddr();
-        for (let i = 0; i < 6; i++) {
-            mac.raw[i] = macBytes[i + offset];
-        }
+        mac.raw[0] = macBytes[offset];
+        mac.raw[1] = macBytes[offset + 1];
+        mac.raw[2] = macBytes[offset + 2];
+        mac.raw[3] = macBytes[offset + 3];
+        mac.raw[4] = macBytes[offset + 4];
+        mac.raw[5] = macBytes[offset + 5];
         return mac;
     }
 
@@ -51,8 +54,12 @@ export class MACAddr {
     }
 
     public toBytes(array: Uint8Array, offset: number) {
-        const subArray = new Uint8Array(array.buffer, array.byteOffset + offset, 6);
-        subArray.set(this.raw, 0);
+        array[offset] = this.raw[0];
+        array[offset + 1] = this.raw[1];
+        array[offset + 2] = this.raw[2];
+        array[offset + 3] = this.raw[3];
+        array[offset + 4] = this.raw[4];
+        array[offset + 5] = this.raw[5];
     }
 
     public toString() {

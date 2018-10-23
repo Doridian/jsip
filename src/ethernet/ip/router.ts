@@ -3,7 +3,7 @@ import { INTERFACE_LOOPBACK } from "../../interface/loopback.js";
 import { INTERFACE_NONE } from "../../interface/none.js";
 import { getInterfaces } from "../../interface/stack.js";
 import { IP_NONE, IPAddr } from "./address.js";
-import { IPNet, IPNET_BROADCAST, IPNET_LINK_LOCAL, IPNET_NONE, IPNETS_MULTICAST } from "./subnet.js";
+import { IPNet, IPNET_BROADCAST, IPNET_LINK_LOCAL, IPNET_MULTICAST, IPNET_NONE } from "./subnet.js";
 
 interface IPRoute {
     router: IPAddr;
@@ -31,14 +31,13 @@ const staticRoutes: IPRoute[] = sortRoutes([
         src: IP_NONE,
         subnet: IPNET_BROADCAST,
     },
-].concat(IPNETS_MULTICAST.map((ipNet) => {
-    return {
+    {
         iface: INTERFACE_NONE,
         router: IP_NONE,
         src: IP_NONE,
-        subnet: ipNet,
-    };
-})));
+        subnet: IPNET_MULTICAST,
+    },
+]);
 
 function sortRoutes(toSort: IPRoute[]): IPRoute[] {
     return toSort.sort((a, b) => {
