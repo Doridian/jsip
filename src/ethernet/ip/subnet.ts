@@ -68,6 +68,10 @@ export class IPNet {
     public getBaseIP() {
         return this.baseIp;
     }
+
+    public getIP(num: number) {
+        return IPAddr.fromInt32(this.baseIpInt + num);
+    }
 }
 
 export const IPNETS_MULTICAST = [
