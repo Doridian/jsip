@@ -6,54 +6,37 @@ export class IPAddr {
     public static fromString(ipStr: string) {
         const ip = new IPAddr();
         const ipS = ipStr.split(".");
-        ip.a = parseInt(ipS[0], 10);
-        ip.b = parseInt(ipS[1], 10);
-        ip.c = parseInt(ipS[2], 10);
-        ip.d = parseInt(ipS[3], 10);
+        ipS.forEach((str, i) => {
+            ip.raw[i] = parseInt(str, 10);
+        });
         return ip;
     }
 
     public static fromPartialByteArray(ipBytes: Uint8Array, offset = 0, len = 4) {
         const ip = new IPAddr();
-        if (len >= 1) {
-            ip.a = ipBytes[offset];
-        }
-        if (len >= 2) {
-            ip.b = ipBytes[offset + 1];
-        }
-        if (len >= 3) {
-            ip.c = ipBytes[offset + 2];
-        }
-        if (len >= 4) {
-            ip.d = ipBytes[offset + 3];
-        }
+        ip.raw.set(new Uint8Array(ipBytes.buffer, ipBytes.byteOffset + offset, len));
         return ip;
     }
 
     public static fromByteArray(ipBytes: Uint8Array, offset = 0) {
-        const ip = new IPAddr();
-        ip.a = ipBytes[offset];
-        ip.b = ipBytes[offset + 1];
-        ip.c = ipBytes[offset + 2];
-        ip.d = ipBytes[offset + 3];
-        return ip;
+        return this.fromPartialByteArray(ipBytes, offset, 4);
     }
 
     public static fromBytes(a: number, b: number, c: number, d: number) {
         const ip = new IPAddr();
-        ip.a = a;
-        ip.b = b;
-        ip.c = c;
-        ip.d = d;
+        ip.raw[0] = a;
+        ip.raw[1] = b;
+        ip.raw[2] = c;
+        ip.raw[3] = d;
         return ip;
     }
 
     public static fromInt32(ipInt: number) {
         const ip = new IPAddr();
-        ip.d = ipInt & 0xFF;
-        ip.c = (ipInt >>> 8) & 0xFF;
-        ip.b = (ipInt >>> 16) & 0xFF;
-        ip.a = (ipInt >>> 24) & 0xFF;
+        ip.raw[0] = (ipInt >>> 24) & 0xFF;
+        ip.raw[1] = (ipInt >>> 16) & 0xFF;
+        ip.raw[2] = (ipInt >>> 8) & 0xFF;
+        ip.raw[3] = ipInt & 0xFF;
         return ip;
     }
 
@@ -64,23 +47,17 @@ export class IPAddr {
         multicastNets = nets.slice(0);
     }
 
-    private a = 0;
-    private b = 0;
-    private c = 0;
-    private d = 0;
+    private raw = new Uint8Array(4);
 
     public equals(ip?: IPAddr) {
         if (!ip) {
             return false;
         }
-        return ip.a === this.a && ip.b === this.b && ip.c === this.c && ip.d === this.d;
+        return this.raw.every((val, idx) => val === ip.raw[idx]);
     }
 
     public toBytes(array: Uint8Array, offset: number) {
-        array[offset] = this.a;
-        array[offset + 1] = this.b;
-        array[offset + 2] = this.c;
-        array[offset + 3] = this.d;
+        array.set(this.raw, offset);
     }
 
     public toByteArray() {
@@ -90,11 +67,11 @@ export class IPAddr {
     }
 
     public toInt() {
-        return this.d | (this.c << 8) | (this.b << 16) | (this.a << 24);
+        return this.raw[3] | (this.raw[2] << 8) | (this.raw[1] << 16) | (this.raw[0] << 24);
     }
 
     public toString() {
-        return `${this.a}.${this.b}.${this.c}.${this.d}`;
+        return `${this.raw[0]}.${this.raw[1]}.${this.raw[2]}.${this.raw[3]}`;
     }
 
     public isMulticast() {
@@ -110,11 +87,11 @@ export class IPAddr {
     }
 
     public isLoopback() {
-        return this.a === 127;
+        return this.raw[0] === 127;
     }
 
     public isLinkLocal() {
-        return this.a === 169 && this.b === 254;
+        return this.raw[0] === 169 && this.raw[1] === 254;
     }
 }
 
