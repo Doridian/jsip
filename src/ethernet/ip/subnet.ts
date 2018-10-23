@@ -65,8 +65,8 @@ export class IPNet {
         return this.sortmask - ipNet.sortmask;
     }
 
-    public getAddress(num: number) {
-        return IPAddr.fromInt32(this.baseIpInt + num);
+    public getBaseIP() {
+        return this.baseIp;
     }
 }
 

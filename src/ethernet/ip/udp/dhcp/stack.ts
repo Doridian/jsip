@@ -101,7 +101,7 @@ export class DHCPNegotiator {
 
                         i++;
                         const route = IPNet.fromIPAndSubnet(
-                            IPAddr.fromPartialByteArray(routesRaw, i, optLen), subnetLen);
+                            IPAddr.fromByteArray(routesRaw, i, optLen), subnetLen);
                         i += optLen;
                         const ip = IPAddr.fromByteArray(routesRaw, i);
                         i += 3;

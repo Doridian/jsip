@@ -71,8 +71,9 @@ export class WSVPN extends Interface {
                 const subnet = IPNet.fromString(spl[3]);
                 this.setIP(IPAddr.fromString(spl[3].split("/")[0]));
                 addRoute(subnet, IP_NONE, this);
-                addRoute(IPNET_ALL, subnet.getAddress(0), this);
-                addDNSServer(subnet.getAddress(0), this);
+                const serverIp = subnet.getBaseIP();
+                addRoute(IPNET_ALL, serverIp, this);
+                addDNSServer(serverIp, this);
                 break;
             case "TAP_NOCONF":
                 this.ethernet = true;

@@ -17,20 +17,11 @@ export class MACAddr {
         return mac;
     }
 
-    public static fromByteArray(macBytes: Uint8Array, offset = 0) {
+    public static fromByteArray(macBytes: ArrayLike<number>, offset = 0) {
         const mac = new MACAddr();
-        mac.raw.set(new Uint8Array(macBytes.buffer, macBytes.byteOffset + offset, 6));
-        return mac;
-    }
-
-    public static fromBytes(a: number, b: number, c: number, d: number, e: number, f: number) {
-        const mac = new MACAddr();
-        mac.raw[0] = a;
-        mac.raw[1] = b;
-        mac.raw[2] = c;
-        mac.raw[3] = d;
-        mac.raw[4] = e;
-        mac.raw[5] = f;
+        for (let i = 0; i < 6; i++) {
+            mac.raw[i] = macBytes[i + offset];
+        }
         return mac;
     }
 
@@ -46,8 +37,8 @@ export class MACAddr {
     }
 
     public static random() {
-        return MACAddr.fromBytes(0x0A,
-            randomByte(), randomByte(), randomByte(), randomByte(), randomByte());
+        return MACAddr.fromByteArray([0x0A,
+            randomByte(), randomByte(), randomByte(), randomByte(), randomByte()]);
     }
 
     private raw = new Uint8Array(6);
@@ -74,5 +65,5 @@ export class MACAddr {
     }
 }
 
-export const MAC_BROADCAST = MACAddr.fromBytes(255, 255, 255, 255, 255 , 255);
-export const MAC_NONE = MACAddr.fromBytes(0, 0, 0, 0, 0, 0);
+export const MAC_BROADCAST = MACAddr.fromByteArray([255, 255, 255, 255, 255, 255]);
+export const MAC_NONE = MACAddr.fromByteArray([0, 0, 0, 0, 0, 0]);

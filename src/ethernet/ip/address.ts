@@ -6,37 +6,23 @@ export class IPAddr {
     public static fromString(ipStr: string) {
         const ip = new IPAddr();
         const ipS = ipStr.split(".");
-        ipS.forEach((str, i) => {
-            ip.raw[i] = parseInt(str, 10);
-        });
+        for (let i = 0; i < 4; i++) {
+            ip.raw[3 - i] = parseInt(ipS[i], 10);
+        }
         return ip;
     }
 
-    public static fromPartialByteArray(ipBytes: Uint8Array, offset = 0, len = 4) {
+    public static fromByteArray(ipBytes: ArrayLike<number>, offset = 0, len = 4) {
         const ip = new IPAddr();
-        ip.raw.set(new Uint8Array(ipBytes.buffer, ipBytes.byteOffset + offset, len));
-        return ip;
-    }
-
-    public static fromByteArray(ipBytes: Uint8Array, offset = 0) {
-        return this.fromPartialByteArray(ipBytes, offset, 4);
-    }
-
-    public static fromBytes(a: number, b: number, c: number, d: number) {
-        const ip = new IPAddr();
-        ip.raw[0] = a;
-        ip.raw[1] = b;
-        ip.raw[2] = c;
-        ip.raw[3] = d;
+        for (let i = 0; i < len; i++) {
+            ip.raw[3 - i] = ipBytes[offset + i];
+        }
         return ip;
     }
 
     public static fromInt32(ipInt: number) {
         const ip = new IPAddr();
-        ip.raw[0] = (ipInt >>> 24) & 0xFF;
-        ip.raw[1] = (ipInt >>> 16) & 0xFF;
-        ip.raw[2] = (ipInt >>> 8) & 0xFF;
-        ip.raw[3] = ipInt & 0xFF;
+        ip.raw32[0] = ipInt;
         return ip;
     }
 
@@ -47,17 +33,26 @@ export class IPAddr {
         multicastNets = nets.slice(0);
     }
 
-    private raw = new Uint8Array(4);
+    private raw: Uint8Array;
+    private raw32: Uint32Array;
+
+    constructor() {
+        const buffer = new ArrayBuffer(4);
+        this.raw = new Uint8Array(buffer);
+        this.raw32 = new Uint32Array(buffer);
+    }
 
     public equals(ip?: IPAddr) {
         if (!ip) {
             return false;
         }
-        return this.raw.every((val, idx) => val === ip.raw[idx]);
+        return this.raw32[0] === ip.raw32[0];
     }
 
     public toBytes(array: Uint8Array, offset: number) {
-        array.set(this.raw, offset);
+        for (let i = 0; i < 4; i++) {
+            array[i + offset] = this.raw[3 - i];
+        }
     }
 
     public toByteArray() {
@@ -67,11 +62,11 @@ export class IPAddr {
     }
 
     public toInt() {
-        return this.raw[3] | (this.raw[2] << 8) | (this.raw[1] << 16) | (this.raw[0] << 24);
+        return this.raw32[0];
     }
 
     public toString() {
-        return `${this.raw[0]}.${this.raw[1]}.${this.raw[2]}.${this.raw[3]}`;
+        return `${this.raw[3]}.${this.raw[2]}.${this.raw[1]}.${this.raw[0]}`;
     }
 
     public isMulticast() {
@@ -87,11 +82,11 @@ export class IPAddr {
     }
 
     public isLoopback() {
-        return this.raw[0] === 127;
+        return this.raw[3] === 127;
     }
 
     public isLinkLocal() {
-        return this.raw[0] === 169 && this.raw[1] === 254;
+        return this.raw[3] === 169 && this.raw[2] === 254;
     }
 }
 
