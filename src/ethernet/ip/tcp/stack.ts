@@ -8,28 +8,12 @@ import { sendIPPacket } from "../send.js";
 import { registerIpHandler } from "../stack.js";
 import { TCP_FLAGS, TCPPkt } from "./index.js";
 
-export type TCPListener = (tcpConn: TCPConn) => void;
+export interface ITCPListener {
+    gotConnection(tcpConn: TCPConn): void;
+}
 
 const tcpConns = new Map<string, TCPConn>();
-const tcpListeners = new Map<number, TCPListener>();
-tcpListeners.set(
-    7,
-    (tcpConn) => { // ECHO
-        if (tcpConn.dport === 7) {
-            tcpConn.close();
-            return;
-        }
-
-        tcpConn.on("data", (dataRaw) => {
-            const data = dataRaw as Uint8Array;
-            if (data.byteLength > 0 && data.byteLength <= 2 && (data[0] === 10 || data[0] === 13)) {
-                tcpConn.close();
-            } else {
-                tcpConn.send(data);
-            }
-        });
-    },
-);
+const tcpListeners = new Map<number, ITCPListener>();
 
 // Public API:
 // *connect / *listen / send / close / kill
@@ -421,13 +405,13 @@ function tcpGotPacket(data: ArrayBuffer, offset: number, len: number, ipHdr: IPH
         if (listener) {
             const conn = new TCPConn();
             conn.accept(ipHdr, tcpPkt, iface);
-            listener(conn);
+            listener.gotConnection(conn);
             return;
         }
     }
 }
 
-export function tcpListen(port: number, func: TCPListener) {
+export function tcpListen(port: number, func: ITCPListener) {
     if (port < 1 || port > 65535) {
         return false;
     }
@@ -464,6 +448,27 @@ export function tcpConnect(
     conn.connect(port, ip, iface || INTERFACE_NONE);
     return conn;
 }
+
+// tslint:disable-next-line:max-classes-per-file
+class TCPEchoListener {
+    public static gotConnection(tcpConn: TCPConn) {
+        if (tcpConn.dport === 7) {
+            tcpConn.close();
+            return;
+        }
+
+        tcpConn.on("data", (dataRaw) => {
+            const data = dataRaw as Uint8Array;
+            if (data.byteLength > 0 && data.byteLength <= 2 && (data[0] === 10 || data[0] === 13)) {
+                tcpConn.close();
+            } else {
+                tcpConn.send(data);
+            }
+        });
+    }
+}
+
+tcpListeners.set(7, TCPEchoListener);
 
 setInterval(() => {
     tcpConns.forEach((conn) => conn.cycle());

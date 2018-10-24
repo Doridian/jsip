@@ -14,6 +14,24 @@ import { DHCP_MODE, DHCP_OPTION, DHCPPkt } from "./index.js";
 const dhcpNegotiators = new Map<IInterface, DHCPNegotiator>();
 
 export class DHCPNegotiator {
+    public static gotPacket(pkt: UDPPkt, _: IPHdr, iface: IInterface) {
+        const data = pkt.data;
+        if (!data) {
+            return;
+        }
+
+        const negotiator = dhcpNegotiators.get(iface);
+        if (!negotiator) {
+            return;
+        }
+
+        const packet = data.buffer;
+        const offset = data.byteOffset;
+
+        const dhcp = DHCPPkt.fromPacket(packet as ArrayBuffer, offset);
+        negotiator.handlePacket(dhcp);
+    }
+
     private xid?: number;
     private secs: number = 0;
     private iface: IInterface;
@@ -43,7 +61,7 @@ export class DHCPNegotiator {
         });
     }
 
-    public handlePacket(dhcp: DHCPPkt) {
+    private handlePacket(dhcp: DHCPPkt) {
         if (dhcp.op !== 2 || dhcp.xid !== this.xid) {
             return;
         }
@@ -262,23 +280,7 @@ function byteArrayToIpAddrs(array: Uint8Array) {
     return res;
 }
 
-udpListen(68, (pkt: UDPPkt, _: IPHdr, iface: IInterface) => {
-    const data = pkt.data;
-    if (!data) {
-        return;
-    }
-
-    const negotiator = dhcpNegotiators.get(iface);
-    if (!negotiator) {
-        return;
-    }
-
-    const packet = data.buffer;
-    const offset = data.byteOffset;
-
-    const dhcp = DHCPPkt.fromPacket(packet as ArrayBuffer, offset);
-    negotiator.handlePacket(dhcp);
-});
+udpListen(68, DHCPNegotiator);
 
 export function addDHCP(iface: IInterface): DHCPNegotiator {
     removeDHCP(iface);

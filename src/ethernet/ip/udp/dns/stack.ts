@@ -69,49 +69,53 @@ function domainCB(domain: string, type: number, result: DNSResult | undefined, e
     }
 }
 
-udpListen(53, (pkt: UDPPkt) => {
-    const data = pkt.data;
-    if (!data) {
-        return;
+class DNSUDPListener {
+    public static gotPacket(pkt: UDPPkt) {
+        const data = pkt.data;
+        if (!data) {
+            return;
+        }
+
+        const packet = data.buffer;
+        const offset = data.byteOffset;
+
+        const dns = DNSPkt.fromPacket(packet as ArrayBuffer, offset);
+        if (!dns || !dns.qr) {
+            return;
+        }
+
+        // This could clash if asked for ANY, but ANY is deprecated
+        const answerMap = new Map<string, DNSAnswer>();
+        dns.answers.forEach((a) => {
+            if (a.class !== DNS_CLASS.IN) {
+                return;
+            }
+
+            answerMap.set(a.name, a);
+        });
+
+        dns.questions.forEach((q) => {
+            if (q.class !== DNS_CLASS.IN) {
+                return;
+            }
+
+            const domain = q.name;
+            let answer = answerMap.get(domain);
+            while (answer && answer.type === DNS_TYPE.CNAME && q.type !== DNS_TYPE.CNAME) {
+                answer = answerMap.get(answer.getData()! as string);
+            }
+
+            if (!answer || answer.type !== q.type) {
+                domainCB(domain, q.type, undefined, new Error("Invalid DNS answer"));
+                return;
+            }
+
+            domainCB(domain, q.type, answer.getData());
+        });
     }
+}
 
-    const packet = data.buffer;
-    const offset = data.byteOffset;
-
-    const dns = DNSPkt.fromPacket(packet as ArrayBuffer, offset);
-    if (!dns || !dns.qr) {
-        return;
-    }
-
-    // This could clash if asked for ANY, but ANY is deprecated
-    const answerMap = new Map<string, DNSAnswer>();
-    dns.answers.forEach((a) => {
-        if (a.class !== DNS_CLASS.IN) {
-            return;
-        }
-
-        answerMap.set(a.name, a);
-    });
-
-    dns.questions.forEach((q) => {
-        if (q.class !== DNS_CLASS.IN) {
-            return;
-        }
-
-        const domain = q.name;
-        let answer = answerMap.get(domain);
-        while (answer && answer.type === DNS_TYPE.CNAME && q.type !== DNS_TYPE.CNAME) {
-            answer = answerMap.get(answer.getData()! as string);
-        }
-
-        if (!answer || answer.type !== q.type) {
-            domainCB(domain, q.type, undefined, new Error("Invalid DNS answer"));
-            return;
-        }
-
-        domainCB(domain, q.type, answer.getData());
-    });
-});
+udpListen(53, DNSUDPListener);
 
 export async function dnsResolve(domain: string, type: DNS_TYPE): Promise<DNSResult> {
     domain = domain.toLowerCase();

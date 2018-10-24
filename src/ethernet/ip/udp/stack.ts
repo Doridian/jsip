@@ -5,19 +5,25 @@ import { sendIPPacket } from "../send.js";
 import { registerIpHandler } from "../stack.js";
 import { UDPPkt } from "./index.js";
 
-type UDPReplyFunc = (data: Uint8Array) => void;
-type UDPListener = (data: UDPPkt, ipHdr: IPHdr, iface: IInterface, reply: UDPReplyFunc) => void;
+export type UDPReplyFunc = (data: Uint8Array) => void;
+export interface IUDPListener {
+    gotPacket(pkt: UDPPkt, ip: IPHdr, iface: IInterface): Uint8Array | PromiseLike<Uint8Array> |
+                                                          undefined | PromiseLike<undefined> |
+                                                          void | PromiseLike<void>;
+}
 
-const udpListeners = new Map<number, UDPListener>();
-udpListeners.set(
-    7,
-    (pkt, _, __, reply) => { // ECHO
-        if (!pkt.data || pkt.sport === 7) {
+const udpListeners = new Map<number, IUDPListener>();
+
+class UDPEchoListener {
+    public static gotPacket(pkt: UDPPkt, _: IPHdr, __: IInterface) {
+        if (pkt.sport === 7) {
             return;
         }
-        reply(pkt.data);
-    },
-);
+        return pkt.data;
+    }
+}
+
+udpListeners.set(7, UDPEchoListener);
 
 function udpGotPacket(data: ArrayBuffer, offset: number, len: number, ipHdr: IPHdr, iface: IInterface) {
     const udpPkt = UDPPkt.fromPacket(data, offset, len, ipHdr);
@@ -25,21 +31,27 @@ function udpGotPacket(data: ArrayBuffer, offset: number, len: number, ipHdr: IPH
     const listener = udpListeners.get(udpPkt.dport);
     if (listener && udpPkt.data) {
         try {
-            listener(udpPkt, ipHdr, iface, (sendData) => {
+            Promise.resolve<Uint8Array | undefined | void>(listener.gotPacket(udpPkt, ipHdr, iface))
+            .then((reply?: Uint8Array | void) => {
+                if (!reply) {
+                    return;
+                }
+
                 const ip = ipHdr.makeReply();
                 const udp = new UDPPkt();
                 udp.sport = udpPkt.dport;
                 udp.dport = udpPkt.sport;
-                udp.data = sendData;
+                udp.data = reply;
                 return sendIPPacket(ip, udp, iface);
-            });
+            })
+            .catch(logError);
         } catch (e) {
             logError(e as Error);
         }
     }
 }
 
-export function udpListenRandom(func: UDPListener) {
+export function udpListenRandom(func: IUDPListener) {
     let port = 0;
     do {
         port = 4097 + Math.floor(Math.random() * 61347);
@@ -48,7 +60,7 @@ export function udpListenRandom(func: UDPListener) {
     return udpListen(port, func);
 }
 
-export function udpListen(port: number, func: UDPListener) {
+export function udpListen(port: number, func: IUDPListener) {
     if (port < 1 || port > 65535) {
         return false;
     }
