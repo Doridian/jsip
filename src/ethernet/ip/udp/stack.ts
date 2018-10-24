@@ -25,28 +25,31 @@ class UDPEchoListener {
 
 udpListeners.set(7, UDPEchoListener);
 
-function udpGotPacket(data: ArrayBuffer, offset: number, len: number, ipHdr: IPHdr, iface: IInterface) {
-    const udpPkt = UDPPkt.fromPacket(data, offset, len, ipHdr);
+// tslint:disable-next-line:max-classes-per-file
+class IPUDPListener {
+    public static gotPacket(data: ArrayBuffer, offset: number, len: number, ipHdr: IPHdr, iface: IInterface) {
+        const udpPkt = UDPPkt.fromPacket(data, offset, len, ipHdr);
 
-    const listener = udpListeners.get(udpPkt.dport);
-    if (listener && udpPkt.data) {
-        try {
-            Promise.resolve<Uint8Array | undefined | void>(listener.gotPacket(udpPkt, ipHdr, iface))
-            .then((reply?: Uint8Array | void) => {
-                if (!reply) {
-                    return;
-                }
+        const listener = udpListeners.get(udpPkt.dport);
+        if (listener && udpPkt.data) {
+            try {
+                Promise.resolve<Uint8Array | undefined | void>(listener.gotPacket(udpPkt, ipHdr, iface))
+                .then((reply?: Uint8Array | void) => {
+                    if (!reply) {
+                        return;
+                    }
 
-                const ip = ipHdr.makeReply();
-                const udp = new UDPPkt();
-                udp.sport = udpPkt.dport;
-                udp.dport = udpPkt.sport;
-                udp.data = reply;
-                return sendIPPacket(ip, udp, iface);
-            })
-            .catch(logError);
-        } catch (e) {
-            logError(e as Error);
+                    const ip = ipHdr.makeReply();
+                    const udp = new UDPPkt();
+                    udp.sport = udpPkt.dport;
+                    udp.dport = udpPkt.sport;
+                    udp.data = reply;
+                    return sendIPPacket(ip, udp, iface);
+                })
+                .catch(logError);
+            } catch (e) {
+                logError(e as Error);
+            }
         }
     }
 }
@@ -86,4 +89,4 @@ export function udpCloseListener(port: number) {
     return true;
 }
 
-registerIpHandler(IPPROTO.UDP, udpGotPacket);
+registerIpHandler(IPPROTO.UDP, IPUDPListener);

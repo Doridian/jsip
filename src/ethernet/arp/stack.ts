@@ -92,33 +92,35 @@ function sendARPPkt(arpPkt: ARPPkt, fromAddr: MACAddr, iface: IInterface) {
     iface.sendRaw(pkt);
 }
 
-function handleARP(buffer: ArrayBuffer, offset: number, ethHdr: EthHdr, iface: IInterface) {
-    const arpPkt = ARPPkt.fromPacket(buffer, offset);
-    switch (arpPkt.operation) {
-        case ARP_REQUEST:
-            if (arpPkt.tpa && arpPkt.tpa.equals(iface.getIP())) {
-                sendARPPkt(arpPkt.makeReply()!, ethHdr.saddr, iface);
-            }
-            break;
-        case ARP_REPLY:
-            const ip = arpPkt.spa.toInt();
-            const mac = arpPkt.sha;
+class EthARPListener {
+    public static gotPacket(buffer: ArrayBuffer, offset: number, ethHdr: EthHdr, iface: IInterface) {
+        const arpPkt = ARPPkt.fromPacket(buffer, offset);
+        switch (arpPkt.operation) {
+            case ARP_REQUEST:
+                if (arpPkt.tpa && arpPkt.tpa.equals(iface.getIP())) {
+                    sendARPPkt(arpPkt.makeReply()!, ethHdr.saddr, iface);
+                }
+                break;
+            case ARP_REPLY:
+                const ip = arpPkt.spa.toInt();
+                const mac = arpPkt.sha;
 
-            arpCache.set(ip, mac);
+                arpCache.set(ip, mac);
 
-            const queue = arpResolveQueue.get(ip);
-            if (queue) {
-                queue.resolve(mac);
-                arpResolveQueue.delete(ip);
-                arpQueue.delete(ip);
-            }
-            const timeout = arpTimeouts.get(ip);
-            if (timeout) {
-                clearTimeout(timeout);
-                arpTimeouts.delete(ip);
-            }
-            break;
+                const queue = arpResolveQueue.get(ip);
+                if (queue) {
+                    queue.resolve(mac);
+                    arpResolveQueue.delete(ip);
+                    arpQueue.delete(ip);
+                }
+                const timeout = arpTimeouts.get(ip);
+                if (timeout) {
+                    clearTimeout(timeout);
+                    arpTimeouts.delete(ip);
+                }
+                break;
+        }
     }
 }
 
-registerEthHandler(ETH_TYPE.ARP, handleARP);
+registerEthHandler(ETH_TYPE.ARP, EthARPListener);

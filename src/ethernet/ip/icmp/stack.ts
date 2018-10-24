@@ -4,35 +4,42 @@ import { sendIPPacket } from "../send.js";
 import { registerIpHandler } from "../stack.js";
 import { ICMPPkt } from "./index.js";
 
-type ICMPHandler = (icmpPkt: ICMPPkt, ipHdr: IPHdr, iface: IInterface) => void;
+interface IICMPHandler {
+    gotPacket(icmpPkt: ICMPPkt, ipHdr: IPHdr, iface: IInterface): void;
+}
 
-const icmpHandlers = new Map<number, ICMPHandler>();
+const icmpHandlers = new Map<number, IICMPHandler>();
 
-function icmpGotPacket(data: ArrayBuffer, offset: number, len: number, ipHdr: IPHdr, iface: IInterface) {
-    const icmpPkt = ICMPPkt.fromPacket(data, offset, len);
+class IPICMPListener {
+    public static gotPacket(data: ArrayBuffer, offset: number, len: number, ipHdr: IPHdr, iface: IInterface) {
+        const icmpPkt = ICMPPkt.fromPacket(data, offset, len);
 
-    const handler = icmpHandlers.get(icmpPkt.type);
-    if (handler) {
-        handler(icmpPkt, ipHdr, iface);
+        const handler = icmpHandlers.get(icmpPkt.type);
+        if (handler) {
+            handler.gotPacket(icmpPkt, ipHdr, iface);
+        }
     }
 }
 
-function icmpHandleEchoRequest(icmpPkt: ICMPPkt, ipHdr: IPHdr, iface: IInterface) {
-    const replyIp = ipHdr.makeReply();
+// tslint:disable-next-line:max-classes-per-file
+class ICMPEchoRequestListener {
+    public static gotPacket(icmpPkt: ICMPPkt, ipHdr: IPHdr, iface: IInterface) {
+        const replyIp = ipHdr.makeReply();
 
-    const replyICMP = new ICMPPkt();
-    replyICMP.type = 0;
-    replyICMP.code = 0;
-    replyICMP.rest = icmpPkt.rest;
-    replyICMP.data = icmpPkt.data;
+        const replyICMP = new ICMPPkt();
+        replyICMP.type = 0;
+        replyICMP.code = 0;
+        replyICMP.rest = icmpPkt.rest;
+        replyICMP.data = icmpPkt.data;
 
-    sendIPPacket(replyIp, replyICMP, iface);
+        sendIPPacket(replyIp, replyICMP, iface);
+    }
 }
 
-function registerICMPHandler(type: number, handler: ICMPHandler) {
+function registerICMPHandler(type: number, handler: IICMPHandler) {
     icmpHandlers.set(type, handler);
 }
 
-registerICMPHandler(8, icmpHandleEchoRequest);
+registerICMPHandler(8, ICMPEchoRequestListener);
 
-registerIpHandler(IPPROTO.ICMP, icmpGotPacket);
+registerIpHandler(IPPROTO.ICMP, IPICMPListener);

@@ -2,9 +2,11 @@ import { IInterface } from "../interface/index.js";
 import { logDebug } from "../util/log.js";
 import { ETH_TYPE, EthHdr } from "./index.js";
 
-type EthHandler = (buffer: ArrayBuffer, offset: number, ethHdr: EthHdr, iface: IInterface) => void;
+export interface IEthHandler {
+    gotPacket(buffer: ArrayBuffer, offset: number, ethHdr: EthHdr, iface: IInterface): void;
+}
 
-const ethHandlers = new Map<number, EthHandler>();
+const ethHandlers = new Map<number, IEthHandler>();
 
 export function handleEthernet(buffer: ArrayBuffer, iface: IInterface) {
     let offset = 0;
@@ -20,10 +22,10 @@ export function handleEthernet(buffer: ArrayBuffer, iface: IInterface) {
 
     const handler = ethHandlers.get(ethHdr.ethtype);
     if (handler) {
-        handler(buffer, offset, ethHdr, iface);
+        handler.gotPacket(buffer, offset, ethHdr, iface);
     }
 }
 
-export function registerEthHandler(ethtype: ETH_TYPE, handler: EthHandler) {
+export function registerEthHandler(ethtype: ETH_TYPE, handler: IEthHandler) {
     ethHandlers.set(ethtype, handler);
 }

@@ -42,6 +42,26 @@ interface IWBufferEntry {
 }
 
 export class TCPConn extends EventEmitter {
+    public static gotPacket(data: ArrayBuffer, offset: number, len: number, ipHdr: IPHdr, iface: IInterface) {
+        const tcpPkt = TCPPkt.fromPacket(data, offset, len, ipHdr);
+
+        const id = tcpMakeId(ipHdr.saddr, tcpPkt.dport, tcpPkt.sport);
+        const gotConn = tcpConns.get(id);
+        if (gotConn) {
+            return gotConn.gotPacket(ipHdr, tcpPkt);
+        }
+
+        if (tcpPkt.hasFlag(TCP_FLAGS.SYN) && !tcpPkt.hasFlag(TCP_FLAGS.ACK)) {
+            const listener = tcpListeners.get(tcpPkt.dport);
+            if (listener) {
+                const conn = new TCPConn();
+                conn.accept(ipHdr, tcpPkt, iface);
+                listener.gotConnection(conn);
+                return;
+            }
+        }
+    }
+
     public sport = 0;
     public dport = 0;
 
@@ -87,7 +107,97 @@ export class TCPConn extends EventEmitter {
         this.sendPacket(ip, tcp);
     }
 
-    public gotPacket(_: IPHdr, tcpPkt: TCPPkt) {
+    public connect(dport: number, daddr: IPAddr, iface: IInterface) {
+        this.state = TCP_STATE.SYN_SENT;
+        this.daddr = daddr;
+        this.dport = dport;
+        this.iface = iface;
+        if (iface === INTERFACE_NONE) {
+            const route = getRoute(daddr, iface);
+            if (route && route.iface) {
+                this.iface = route.iface;
+            }
+        }
+
+        this.mss = this.iface.getMTU() - 40;
+        do {
+            this.sport = 4097 + Math.floor(Math.random() * 61347);
+            this.setId();
+        } while (tcpConns.has(this.connId) || tcpListeners.has(this.sport));
+        tcpConns.set(this.connId, this);
+
+        const ip = this.makeIp(true);
+        const tcp = this.makeTcp();
+        this.sendPacket(ip, tcp);
+    }
+
+    public cycle() {
+        if (!this.wlastack && this.lastTcp && this.wlastsend < Date.now() - 1000) {
+            if (this.wretrycount > 3) {
+                this.kill();
+                return;
+            }
+            if (this.lastIp) {
+                sendIPPacket(this.lastIp, this.lastTcp, this.iface);
+            }
+            this.wretrycount++;
+        }
+    }
+
+    public send(data: Uint8Array) {
+        if (!data || !data.byteLength) {
+            return;
+        }
+
+        const isReady = this.wlastack && this.state === TCP_STATE.ESTABLISHED;
+
+        let psh = true;
+        if (data.byteLength > this.mss) {
+            const first = data.slice(0, this.mss);
+            if (!isReady) {
+                this.wbuffers.push({ data: first, psh: false });
+            }
+            for (let i = this.mss; i < data.byteLength; i += this.mss) {
+                this.wbuffers.push({ data: data.slice(i, i + this.mss), psh: false });
+            }
+            const last = this.wbuffers[this.wbuffers.length - 1];
+            last.psh = true;
+            if (!isReady) {
+                return;
+            }
+            data = first;
+            psh = false;
+        }
+
+        if (!isReady) {
+            this.wbuffers.push({ data, psh: true });
+            return;
+        }
+
+        this.sendInternal(data, psh);
+    }
+
+    public getId() {
+        return this.connId;
+    }
+
+    public toString() {
+        return `IF=${this.iface},DADDR=${this.daddr},SPORT=${this.sport},DPORT=${this.dport},ID=${this.getId()}`;
+    }
+
+    private accept(ipHdr: IPHdr, tcpPkt: TCPPkt, iface: IInterface) {
+        this.state =  TCP_STATE.SYN_RECEIVED;
+        this.daddr = ipHdr.saddr;
+        this.dport = tcpPkt.sport;
+        this.sport = tcpPkt.dport;
+        this.iface = iface;
+        this.mss = iface.getMTU() - 40;
+        this.setId();
+        tcpConns.set(this.connId, this);
+        this.gotPacket(ipHdr, tcpPkt);
+    }
+
+    private gotPacket(_: IPHdr, tcpPkt: TCPPkt) {
         if (this.state === TCP_STATE.CLOSED) {
             return this.kill();
         }
@@ -225,96 +335,6 @@ export class TCPConn extends EventEmitter {
         }
     }
 
-    public accept(ipHdr: IPHdr, tcpPkt: TCPPkt, iface: IInterface) {
-        this.state =  TCP_STATE.SYN_RECEIVED;
-        this.daddr = ipHdr.saddr;
-        this.dport = tcpPkt.sport;
-        this.sport = tcpPkt.dport;
-        this.iface = iface;
-        this.mss = iface.getMTU() - 40;
-        this.setId();
-        tcpConns.set(this.connId, this);
-        this.gotPacket(ipHdr, tcpPkt);
-    }
-
-    public connect(dport: number, daddr: IPAddr, iface: IInterface) {
-        this.state = TCP_STATE.SYN_SENT;
-        this.daddr = daddr;
-        this.dport = dport;
-        this.iface = iface;
-        if (iface === INTERFACE_NONE) {
-            const route = getRoute(daddr, iface);
-            if (route && route.iface) {
-                this.iface = route.iface;
-            }
-        }
-
-        this.mss = this.iface.getMTU() - 40;
-        do {
-            this.sport = 4097 + Math.floor(Math.random() * 61347);
-            this.setId();
-        } while (tcpConns.has(this.connId) || tcpListeners.has(this.sport));
-        tcpConns.set(this.connId, this);
-
-        const ip = this.makeIp(true);
-        const tcp = this.makeTcp();
-        this.sendPacket(ip, tcp);
-    }
-
-    public cycle() {
-        if (!this.wlastack && this.lastTcp && this.wlastsend < Date.now() - 1000) {
-            if (this.wretrycount > 3) {
-                this.kill();
-                return;
-            }
-            if (this.lastIp) {
-                sendIPPacket(this.lastIp, this.lastTcp, this.iface);
-            }
-            this.wretrycount++;
-        }
-    }
-
-    public send(data: Uint8Array) {
-        if (!data || !data.byteLength) {
-            return;
-        }
-
-        const isReady = this.wlastack && this.state === TCP_STATE.ESTABLISHED;
-
-        let psh = true;
-        if (data.byteLength > this.mss) {
-            const first = data.slice(0, this.mss);
-            if (!isReady) {
-                this.wbuffers.push({ data: first, psh: false });
-            }
-            for (let i = this.mss; i < data.byteLength; i += this.mss) {
-                this.wbuffers.push({ data: data.slice(i, i + this.mss), psh: false });
-            }
-            const last = this.wbuffers[this.wbuffers.length - 1];
-            last.psh = true;
-            if (!isReady) {
-                return;
-            }
-            data = first;
-            psh = false;
-        }
-
-        if (!isReady) {
-            this.wbuffers.push({ data, psh: true });
-            return;
-        }
-
-        this.sendInternal(data, psh);
-    }
-
-    public getId() {
-        return this.connId;
-    }
-
-    public toString() {
-        return `IF=${this.iface},DADDR=${this.daddr},SPORT=${this.sport},DPORT=${this.dport},ID=${this.getId()}`;
-    }
-
     private delete() {
         this.state = TCP_STATE.CLOSED;
         this.wbuffers = [];
@@ -391,26 +411,6 @@ function tcpMakeId(daddr: IPAddr, sport: number, dport: number) {
     return `${daddr}|${sport}|${dport}`;
 }
 
-function tcpGotPacket(data: ArrayBuffer, offset: number, len: number, ipHdr: IPHdr, iface: IInterface) {
-    const tcpPkt = TCPPkt.fromPacket(data, offset, len, ipHdr);
-
-    const id = tcpMakeId(ipHdr.saddr, tcpPkt.dport, tcpPkt.sport);
-    const gotConn = tcpConns.get(id);
-    if (gotConn) {
-        return gotConn.gotPacket(ipHdr, tcpPkt);
-    }
-
-    if (tcpPkt.hasFlag(TCP_FLAGS.SYN) && !tcpPkt.hasFlag(TCP_FLAGS.ACK)) {
-        const listener = tcpListeners.get(tcpPkt.dport);
-        if (listener) {
-            const conn = new TCPConn();
-            conn.accept(ipHdr, tcpPkt, iface);
-            listener.gotConnection(conn);
-            return;
-        }
-    }
-}
-
 export function tcpListen(port: number, func: ITCPListener) {
     if (port < 1 || port > 65535) {
         return false;
@@ -474,4 +474,4 @@ setInterval(() => {
     tcpConns.forEach((conn) => conn.cycle());
 }, 1000);
 
-registerIpHandler(IPPROTO.TCP, tcpGotPacket);
+registerIpHandler(IPPROTO.TCP, TCPConn);
