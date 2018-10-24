@@ -29,15 +29,17 @@ export class IPNet {
     private baseIp: IPAddr;
     private baseIpInt: number;
     private sortmask: number;
-    private subnetLen: number | undefined;
+    private bits: number | undefined;
+    private size: number;
 
     constructor(ip: IPAddr, bitmask: number) {
         this.bitmask = bitmask;
         this.sortmask = bitmask >>> 0;
+        this.size = (~bitmask) >>> 0;
         this.mask = IPAddr.fromInt32(bitmask);
         this.baseIpInt = ip.toInt() & bitmask;
         this.baseIp = IPAddr.fromInt32(this.baseIpInt);
-        this.subnetLen = bitmaskToSubnetLen.get(bitmask);
+        this.bits = bitmaskToSubnetLen.get(bitmask);
     }
 
     public equals(ipNet: IPNet) {
@@ -48,8 +50,8 @@ export class IPNet {
     }
 
     public toString() {
-        if (this.subnetLen !== undefined) {
-            return `${this.baseIp}/${this.subnetLen}`;
+        if (this.bits !== undefined) {
+            return `${this.baseIp}/${this.bits}`;
         }
         return `${this.baseIp}/${this.mask}`;
     }
@@ -69,7 +71,14 @@ export class IPNet {
         return this.baseIp;
     }
 
+    public getIPCount() {
+        return this.size;
+    }
+
     public getIP(num: number) {
+        if (num >= this.size || num < 0) {
+            throw new RangeError("Address outside of subnet");
+        }
         return IPAddr.fromInt32(this.baseIpInt + num);
     }
 }
