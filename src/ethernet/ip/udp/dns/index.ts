@@ -173,16 +173,16 @@ export class DNSPkt {
     }
 
     public toPacket(array: ArrayBuffer, offset: number) {
-        return this._toPacket(new Uint8Array(array, offset));
+        return this.toPacketInternal(new Uint8Array(array, offset));
     }
 
     public toBytes() {
         const packet = new Uint8Array(this.getFullLength());
-        this._toPacket(packet);
+        this.toPacketInternal(packet);
         return packet;
     }
 
-    public _toPacket(packet: Uint8Array) {
+    private toPacketInternal(packet: Uint8Array) {
         packet[0] = (this.id >>> 8) & 0xFF;
         packet[1] = this.id & 0xFF;
         packet[2] = boolToBit(this.qr, 7) |

@@ -19,7 +19,7 @@ export class UDPPkt implements IPacket {
         }
 
         if (ipHdr && udp.checksum !== 0) {
-            const checksum = udp._computeChecksum(ipHdr, new Uint8Array(packet, offset, udp.getFullLength()));
+            const checksum = udp.computeChecksum(ipHdr, new Uint8Array(packet, offset, udp.getFullLength()));
             if (checksum !== 0xFFFF && (checksum !== 0 || udp.checksum !== 0xFFFF)) {
                 throw new Error(`Invalid UDP checksum: ${checksum} != 65535`);
             }
@@ -43,15 +43,6 @@ export class UDPPkt implements IPacket {
         return this.data.byteLength + 8;
     }
 
-    public _computeChecksum(ipHdr: IPHdr, packet: Uint8Array) {
-        let csum = computeChecksumPseudo(ipHdr, IPPROTO.UDP, packet.byteLength);
-        csum = computeChecksum(packet, csum);
-        if (csum === 0) {
-            return 0xFFFF;
-        }
-        return csum;
-    }
-
     public toPacket(array: ArrayBuffer, offset: number, ipHdr?: IPHdr) {
         const packet = new Uint8Array(array, offset, this.getFullLength());
         packet[0] = (this.sport >>> 8) & 0xFF;
@@ -70,12 +61,21 @@ export class UDPPkt implements IPacket {
             }
         }
         if (ipHdr) {
-            this.checksum = this._computeChecksum(ipHdr, packet);
+            this.checksum = this.computeChecksum(ipHdr, packet);
             packet[6] = this.checksum & 0xFF;
             packet[7] = (this.checksum >>> 8) & 0xFF;
         } else {
             this.checksum = 0;
         }
         return packet.length;
+    }
+
+    private computeChecksum(ipHdr: IPHdr, packet: Uint8Array) {
+        let csum = computeChecksumPseudo(ipHdr, IPPROTO.UDP, packet.byteLength);
+        csum = computeChecksum(packet, csum);
+        if (csum === 0) {
+            return 0xFFFF;
+        }
+        return csum;
     }
 }

@@ -198,7 +198,7 @@ class HttpCheckpointStream extends CheckpointStream<HttpParseState> {
     }
 }
 
-function _httpPromise(options: IHTTPOptionsFilled, resolve: (res: IHTTPResult) => void, reject: (err: Error) => void) {
+function httpPromise(options: IHTTPOptionsFilled, resolve: (res: IHTTPResult) => void, reject: (err: Error) => void) {
     const body = options.body;
     const url = options.url;
     const headers = options.headers;
@@ -275,7 +275,7 @@ export function httpGet(options: IHTTPOptions): Promise<IHTTPResult> {
     optionsFilled.headers = optionsFilled.headers.clone();
     optionsFilled.method = optionsFilled.method.toUpperCase();
 
-    return _httpGet(optionsFilled)
+    return httpGetInternal(optionsFilled)
     .then((result) => {
         if (!options.errorOnNon200) {
             return result;
@@ -289,9 +289,9 @@ export function httpGet(options: IHTTPOptions): Promise<IHTTPResult> {
     });
 }
 
-function _httpGet(options: IHTTPOptionsFilled): Promise<IHTTPResult> {
+function httpGetInternal(options: IHTTPOptionsFilled): Promise<IHTTPResult> {
     return new Promise<IHTTPResult>((resolve, reject) => {
-        _httpPromise(options, resolve, reject);
+        httpPromise(options, resolve, reject);
     })
     .then((result) => {
         if (options.redirectLimit === 0) {
@@ -311,6 +311,6 @@ function _httpGet(options: IHTTPOptionsFilled): Promise<IHTTPResult> {
         optionsClone.url = new URL(location, options.url);
         optionsClone.redirectLimit--;
         optionsClone.errorOnNon200 = false;
-        return _httpGet(optionsClone);
+        return httpGetInternal(optionsClone);
     });
 }

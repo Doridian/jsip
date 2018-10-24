@@ -39,12 +39,12 @@ function makeDNSUDP(dns: DNSPkt) {
     return pkt;
 }
 
-function _makeDNSCacheKey(domain: string, type: DNS_TYPE) {
+function makeDNSCacheKey(domain: string, type: DNS_TYPE) {
     return `${type},${domain}`;
 }
 
 function domainCB(domain: string, type: number, result: DNSResult | undefined, err?: Error) {
-    const cacheKey = _makeDNSCacheKey(domain, type);
+    const cacheKey = makeDNSCacheKey(domain, type);
     if (result) {
         dnsCache.set(cacheKey, result);
     } else {
@@ -115,7 +115,7 @@ udpListen(53, (pkt: UDPPkt) => {
 
 export async function dnsResolve(domain: string, type: DNS_TYPE): Promise<DNSResult> {
     domain = domain.toLowerCase();
-    const cacheKey = _makeDNSCacheKey(domain, type);
+    const cacheKey = makeDNSCacheKey(domain, type);
 
     if (dnsServerIps.length < 1) {
         throw new Error("Cannot run DNS query without DNS servers");

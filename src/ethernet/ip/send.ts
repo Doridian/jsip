@@ -50,18 +50,18 @@ export function sendIPPacket(ipHdr: IPHdr, payload: IPacket, iface: IInterface) 
     }
 
     if (!iface.useEthernet()) {
-        _sendIPPacket(ipHdr, payload, iface);
+        sendIPPacketInternal(ipHdr, payload, iface);
         return;
     }
 
     makeEthIPHdr(routeDestIp, iface).then((ethHdr) => {
-        _sendIPPacket(ipHdr, payload, iface, ethHdr);
+        sendIPPacketInternal(ipHdr, payload, iface, ethHdr);
     }).catch((err: Error) => {
         logError(err);
     });
 }
 
-function _sendIPPacket(ipHdr: IPHdr, payload: IPacket, iface: IInterface, ethIPHdr?: EthHdr) {
+function sendIPPacketInternal(ipHdr: IPHdr, payload: IPacket, iface: IInterface, ethIPHdr?: EthHdr) {
     const fullLength = payload.getFullLength();
     const cOffset = ipHdr.getContentOffset();
     const hdrLen = (ethIPHdr ? ETH_LEN : 0) + cOffset;

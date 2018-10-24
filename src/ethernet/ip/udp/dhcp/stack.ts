@@ -31,19 +31,19 @@ export class DHCPNegotiator {
     }
 
     public async negotiate() {
-        return this._mkPromise(() => {
-            this._negotiate();
+        return this.mkPromise(() => {
+            this.negotiateInternal();
         });
     }
 
     public async renew() {
-        return this._mkPromise(() => {
+        return this.mkPromise(() => {
             this.stopTimer();
-            this._renew(0);
+            this.renewInternal(0);
         });
     }
 
-    public _handlePacket(dhcp: DHCPPkt) {
+    public handlePacket(dhcp: DHCPPkt) {
         if (dhcp.op !== 2 || dhcp.xid !== this.xid) {
             return;
         }
@@ -129,7 +129,7 @@ export class DHCPNegotiator {
 
                 logDebug(`${this.iface.getName()} DHCP ACK. TTL: ${ttl}`);
                 const ttlHalftime = ((ttl * 1000) / 2) + 1000;
-                this.renewTimer = setTimeout(() => this._renew((ttl * 1000) - ttlHalftime), ttlHalftime);
+                this.renewTimer = setTimeout(() => this.renewInternal((ttl * 1000) - ttlHalftime), ttlHalftime);
 
                 if (this.doneCB) {
                     this.doneCB();
@@ -144,7 +144,7 @@ export class DHCPNegotiator {
         }
     }
 
-    private _mkPromise(cb: VoidCB) {
+    private mkPromise(cb: VoidCB) {
         if (this.donePromise) {
             cb();
         } else {
@@ -156,7 +156,7 @@ export class DHCPNegotiator {
         return this.donePromise;
     }
 
-    private _negotiate(secs = 0) {
+    private negotiateInternal(secs = 0) {
         this.stopTimer();
 
         if (secs === 0) {
@@ -167,7 +167,7 @@ export class DHCPNegotiator {
         }
         this.secs = secs;
 
-        this.renewTimer = setTimeout(() => this._negotiate(secs + 5), 5000);
+        this.renewTimer = setTimeout(() => this.negotiateInternal(secs + 5), 5000);
         sendIPPacket(this.makeDHCPIP(), this.makeDHCPDiscover(), this.iface);
     }
 
@@ -178,7 +178,7 @@ export class DHCPNegotiator {
         }
     }
 
-    private _renew(renegotiateAfter: number = 0) {
+    private renewInternal(renegotiateAfter: number = 0) {
         if (renegotiateAfter) {
             this.renewTimer = setTimeout(() => this.negotiate(), renegotiateAfter);
         }
@@ -277,7 +277,7 @@ udpListen(68, (pkt: UDPPkt, _: IPHdr, iface: IInterface) => {
     const offset = data.byteOffset;
 
     const dhcp = DHCPPkt.fromPacket(packet as ArrayBuffer, offset);
-    negotiator._handlePacket(dhcp);
+    negotiator.handlePacket(dhcp);
 });
 
 export function addDHCP(iface: IInterface): DHCPNegotiator {

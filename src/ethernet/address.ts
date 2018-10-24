@@ -1,6 +1,6 @@
 import { randomByte } from "../util/index.js";
 
-function _macPaddedOut(num: number) {
+function macPaddedOut(num: number) {
     if (num < 0x10) {
         return `0${num.toString(16)}`;
     }
@@ -63,8 +63,8 @@ export class MACAddr {
     }
 
     public toString() {
-        return `${_macPaddedOut(this.raw[0])}:${_macPaddedOut(this.raw[1])}:${_macPaddedOut(this.raw[2])}:` +
-                `${_macPaddedOut(this.raw[3])}:${_macPaddedOut(this.raw[4])}:${_macPaddedOut(this.raw[5])}`;
+        return `${macPaddedOut(this.raw[0])}:${macPaddedOut(this.raw[1])}:${macPaddedOut(this.raw[2])}:` +
+                `${macPaddedOut(this.raw[3])}:${macPaddedOut(this.raw[4])}:${macPaddedOut(this.raw[5])}`;
     }
 
     public isBroadcast() {
