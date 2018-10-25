@@ -10,12 +10,20 @@ import { handlePacket } from "./util/packet.js";
 
 let maxNumber = 0;
 
+interface ICommandCallback {
+    resolve(data?: string): void;
+    reject(err: Error): void;
+}
+
 export class WSVPN extends Interface {
     private ws: WebSocket;
     private ethernet: boolean = false;
     private mtu: number = 0;
     private donePromise: Promise<void>;
     private doneResolve?: VoidCB;
+    private serverIp = IP_NONE;
+    private nextCommandId = 0;
+    private commandPromises: { [key: string]: ICommandCallback } = {};
 
     constructor(url: string) {
         super(`wsvpn${maxNumber++}`);
@@ -36,7 +44,7 @@ export class WSVPN extends Interface {
                 return;
             }
 
-            this.handleInit(data).then(this.doneResolve!);
+            this.handleText(data);
         };
     }
 
@@ -56,10 +64,54 @@ export class WSVPN extends Interface {
         return this.ethernet;
     }
 
-    private handleInit(data: string) {
-        let needDHCP = false;
-        // 1|init|TUN|192.168.3.1/24|1280
+    public sendCommnd(command: string, args: string[]): Promise<string | undefined> {
+        const id = (this.nextCommandId++).toString();
+        return new Promise((resolve, reject) => {
+            this.commandPromises[id] = { resolve, reject };
+            this.sendCommndFixedId(id, command, args);
+        });
+    }
+
+    private sendCommndFixedId(id: string, command: string, args?: string[]) {
+        let data = [id, command];
+        if (args) {
+            data = data.concat(args);
+        }
+        this.ws.send(data.join("|"));
+    }
+
+    private handleText(data: string) {
         const spl = data.split("|");
+        if (spl.length < 2) {
+            return;
+        }
+
+        const id = spl[0];
+        const command = spl[1];
+        const result = "OK";
+
+        switch (command) {
+            case "init":
+                this.handleInit(spl).then(this.doneResolve!);
+                break;
+            case "addroute":
+                addRoute(IPNet.fromString(spl[2]), this.serverIp, this);
+                break;
+            case "reply":
+                logDebug(`${this.getName()} Got reply ${spl.join(" ")} to ID ${id}`);
+                const promise = this.commandPromises[id];
+                if (promise) {
+                    delete this.commandPromises[id];
+                    promise.resolve(spl[2]);
+                }
+                return;
+        }
+
+        this.sendCommndFixedId(id, "reply", [result]);
+    }
+
+    private handleInit(spl: string[]) {
+        let needDHCP = false;
 
         flushRoutes(this);
         flushDNSServers(this);
@@ -71,9 +123,9 @@ export class WSVPN extends Interface {
                 const subnet = IPNet.fromString(spl[3]);
                 this.setIP(IPAddr.fromString(spl[3].split("/")[0]));
                 addRoute(subnet, IP_NONE, this);
-                const serverIp = subnet.getBaseIP();
-                addRoute(IPNET_ALL, serverIp, this);
-                addDNSServer(serverIp, this);
+                this.serverIp = subnet.getBaseIP();
+                addRoute(IPNET_ALL, this.serverIp, this);
+                addDNSServer(this.serverIp, this);
                 break;
             case "TAP_NOCONF":
                 this.ethernet = true;
