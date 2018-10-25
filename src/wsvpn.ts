@@ -88,14 +88,18 @@ export class WSVPN extends Interface {
 
         const id = spl[0];
         const command = spl[1];
-        const result = "OK";
+        let result = "OK";
 
         switch (command) {
             case "init":
                 this.handleInit(spl).then(this.doneResolve!);
                 break;
             case "addroute":
-                addRoute(IPNet.fromString(spl[2]), this.serverIp, this);
+                if (this.serverIp === IP_NONE) {
+                    result = "Don't support addroute with unmanaged ip config";
+                } else {
+                    addRoute(IPNet.fromString(spl[2]), this.serverIp, this);
+                }
                 break;
             case "reply":
                 logDebug(`${this.getName()} Got reply ${spl.join(" ")} to ID ${id}`);
@@ -105,6 +109,9 @@ export class WSVPN extends Interface {
                     promise.resolve(spl[2]);
                 }
                 return;
+            default:
+                result = "Unknown command";
+                break;
         }
 
         this.sendCommndFixedId(id, "reply", [result]);
