@@ -64,7 +64,7 @@ export class WSVPN extends Interface {
         return this.ethernet;
     }
 
-    public sendCommnd(command: string, args: string[]): Promise<string | undefined> {
+    public sendCommnd(command: string, args?: string[]): Promise<string | undefined> {
         const id = (this.nextCommandId++).toString();
         return new Promise((resolve, reject) => {
             this.commandPromises[id] = { resolve, reject };
