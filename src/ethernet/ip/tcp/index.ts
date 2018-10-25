@@ -80,12 +80,7 @@ export class TCPPkt implements IPacket {
     }
 
     public fillMSS(mss: number) {
-        this.options = new Uint8Array(4);
-        const o8 = this.options;
-        o8[0] = 2;
-        o8[1] = 4;
-        o8[2] = (mss >>> 8) & 0xFF;
-        o8[3] = mss & 0xFF;
+        this.options = new Uint8Array([2, 4, (mss >>> 8) & 0xFF, mss & 0xFF]);
     }
 
     public setFlag(flag: TCP_FLAGS) {
