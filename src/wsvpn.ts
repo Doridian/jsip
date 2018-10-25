@@ -1,4 +1,4 @@
-import { IP_NONE, IPAddr } from "./ethernet/ip/address.js";
+import { IP_NONE } from "./ethernet/ip/address.js";
 import { addRoute, flushRoutes } from "./ethernet/ip/router.js";
 import { IPNet, IPNET_ALL } from "./ethernet/ip/subnet.js";
 import { addDHCP } from "./ethernet/ip/udp/dhcp/stack.js";
@@ -86,8 +86,8 @@ export class WSVPN extends Interface {
             return;
         }
 
-        const id = spl[0];
-        const command = spl[1];
+        const id = spl.shift()!;
+        const command = spl.shift()!;
         let result = "OK";
 
         switch (command) {
@@ -98,7 +98,7 @@ export class WSVPN extends Interface {
                 if (this.serverIp === IP_NONE) {
                     result = "Don't support addroute with unmanaged ip config";
                 } else {
-                    addRoute(IPNet.fromString(spl[2]), this.serverIp, this);
+                    addRoute(IPNet.fromString(spl[0]), this.serverIp, this);
                 }
                 break;
             case "reply":
@@ -106,7 +106,7 @@ export class WSVPN extends Interface {
                 const promise = this.commandPromises[id];
                 if (promise) {
                     delete this.commandPromises[id];
-                    promise.resolve(spl[2]);
+                    promise.resolve(spl[0]);
                 }
                 return;
             default:
@@ -123,12 +123,12 @@ export class WSVPN extends Interface {
         flushRoutes(this);
         flushDNSServers(this);
 
-        switch (spl[2]) {
+        switch (spl[0]) {
             case "TAP":
                 this.ethernet = true;
             case "TUN":
-                const subnet = IPNet.fromString(spl[3]);
-                this.setIP(IPAddr.fromString(spl[3].split("/")[0]));
+                const subnet = IPNet.fromString(spl[1]);
+                this.setIP(subnet.getCreationIP());
                 addRoute(subnet, IP_NONE, this);
                 this.serverIp = subnet.getBaseIP();
                 addRoute(IPNET_ALL, this.serverIp, this);
@@ -140,9 +140,9 @@ export class WSVPN extends Interface {
                 break;
         }
 
-        this.mtu = parseInt(spl[4], 10);
+        this.mtu = parseInt(spl[2], 10);
 
-        logDebug(`${this.getName()} mode: ${spl[2]}`);
+        logDebug(`${this.getName()} mode: ${spl[0]}`);
 
         if (needDHCP) {
             logDebug(`${this.getName()} starting DHCP procedure...`);

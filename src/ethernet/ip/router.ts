@@ -49,7 +49,7 @@ const routeCache = new Map<number, IPRoute | null>();
 let routes: IPRoute[];
 
 export function getRoute(ip: IPAddr, _: IInterface): IPRoute | null {
-    const ipKey = ip.toInt();
+    const ipKey = ip.toInt32();
     const cache = routeCache.get(ipKey);
     if (cache !== undefined) {
         return cache;

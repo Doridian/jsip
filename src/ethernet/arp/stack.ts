@@ -30,7 +30,7 @@ export async function makeEthIPHdr(destIp: IPAddr, iface: IInterface = INTERFACE
         throw new Error("Cannot make ETH header for none interface");
     }
 
-    const destIpKey = destIp.toInt();
+    const destIpKey = destIp.toInt32();
 
     const cacheValue = arpCache.get(destIpKey);
     if (cacheValue) {
@@ -102,7 +102,7 @@ class EthARPListener {
                 }
                 break;
             case ARP_REPLY:
-                const ip = arpPkt.spa.toInt();
+                const ip = arpPkt.spa.toInt32();
                 const mac = arpPkt.sha;
 
                 arpCache.set(ip, mac);

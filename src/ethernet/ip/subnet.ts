@@ -31,13 +31,15 @@ export class IPNet {
     private sortmask: number;
     private bits: number | undefined;
     private size: number;
+    private creationIp: IPAddr;
 
     constructor(ip: IPAddr, bitmask: number) {
+        this.creationIp = ip;
         this.bitmask = bitmask;
         this.sortmask = bitmask >>> 0;
         this.size = (~bitmask) >>> 0;
         this.mask = IPAddr.fromInt32(bitmask);
-        this.baseIpInt = ip.toInt() & bitmask;
+        this.baseIpInt = ip.toInt32() & bitmask;
         this.baseIp = IPAddr.fromInt32(this.baseIpInt);
         this.bits = bitmaskToSubnetLen.get(bitmask);
     }
@@ -60,11 +62,15 @@ export class IPNet {
         if (!ip) {
             return false;
         }
-        return (ip.toInt() & this.bitmask) === this.baseIpInt;
+        return (ip.toInt32() & this.bitmask) === this.baseIpInt;
     }
 
     public compareTo(ipNet: IPNet) {
         return this.sortmask - ipNet.sortmask;
+    }
+
+    public getCreationIP() {
+        return this.creationIp;
     }
 
     public getBaseIP() {

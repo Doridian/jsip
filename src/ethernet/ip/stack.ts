@@ -78,7 +78,7 @@ export class EthIPListener {
             fragmentCache.set(ifaceName, ifaceFragmentCache);
         }
 
-        const pktId = ipHdr.id + (ipHdr.saddr.toInt() << 16);
+        const pktId = ipHdr.id + (ipHdr.saddr.toInt32() << 16);
         let curFrag = ifaceFragmentCache.get(pktId);
         if (!curFrag) {
             curFrag = {

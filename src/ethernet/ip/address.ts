@@ -52,7 +52,7 @@ export class IPAddr {
         return res;
     }
 
-    public toInt() {
+    public toInt32() {
         return this.raw32[0];
     }
 
