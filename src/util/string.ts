@@ -21,7 +21,7 @@ export function bufferToString(buf: ArrayBuffer, offset: number, len?: number) {
 }
 
 export function arrayToString(buf: Uint8Array) {
-    return String.fromCharCode.apply(null, buf) as string;
+    return String.fromCharCode.apply(null, <number[]><unknown>buf) as string;
 }
 
 export function buffersToString(bufs: ArrayBuffer[]) {

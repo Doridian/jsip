@@ -21,11 +21,11 @@
   },
   "homepage": "https://github.com/Doridian/jsip#readme",
   "dependencies": {
-    "@types/chai": "^4.1.6",
+    "@types/chai": "^4.1.7",
     "chai": "^4.2.0",
-    "esm": "^3.0.84",
-    "ts-node": "^7.0.1",
-    "tslint": "^5.11.0",
-    "typescript": "^3.1.1"
+    "esm": "^3.2.25",
+    "ts-node": "^8.3.0",
+    "tslint": "^5.18.0",
+    "typescript": "^3.5.2"
   }
 }
