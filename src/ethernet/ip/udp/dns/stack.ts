@@ -15,7 +15,7 @@ interface IDNSResolve {
 
 const dnsCache = new Map<string, DNSResult>();
 const dnsResolveQueue = new Map<string, IDNSResolve>();
-const dnsQueue = new Map<string, Promise<DNSResult>>();
+const dnsQueue = new Map<string, Promise<DNSResult | undefined>>();
 const dnsQueueTimeout = new Map<string, number>();
 
 let dnsServerIps: IPAddr[] = [];
@@ -117,7 +117,7 @@ class DNSUDPListener {
 
 udpListen(53, DNSUDPListener);
 
-export async function dnsResolve(domain: string, type: DNS_TYPE): Promise<DNSResult> {
+export async function dnsResolve(domain: string, type: DNS_TYPE): Promise<DNSResult | undefined> {
     domain = domain.toLowerCase();
     const cacheKey = makeDNSCacheKey(domain, type);
 
@@ -135,7 +135,7 @@ export async function dnsResolve(domain: string, type: DNS_TYPE): Promise<DNSRes
         return queue;
     }
 
-    const promise = new Promise<DNSResult>((resolve, reject) => {
+    const promise = new Promise<DNSResult | undefined>((resolve, reject) => {
         dnsResolveQueue.set(cacheKey, { resolve, reject });
         dnsQueueTimeout.set(cacheKey, setTimeout(() => {
             dnsQueueTimeout.delete(cacheKey);
