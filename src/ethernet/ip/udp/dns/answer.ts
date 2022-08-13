@@ -1,7 +1,7 @@
-import { stringToBuffer } from "../../../../util/string.js";
-import { IPAddr } from "../../address.js";
-import { DNS_CLASS, DNS_TYPE } from "./index.js";
-import { DNSResult, makeDNSLabel } from "./util.js";
+import { stringToBuffer } from "../../../../util/string";
+import { IPAddr } from "../../address";
+import { DNS_CLASS, DNS_TYPE } from "./index";
+import { DNSResult, makeDNSLabel } from "./util";
 
 export class DNSAnswer {
     public name: string = "";

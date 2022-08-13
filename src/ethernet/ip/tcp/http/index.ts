@@ -1,7 +1,7 @@
-import { CheckpointStream } from "../../../../util/stream.js";
-import { arrayToString, buffersToBuffer, CHAR_CR, stringToBuffer } from "../../../../util/string.js";
-import { dnsTcpConnect } from "../../udp/dns/tcp_util.js";
-import { HTTPHeaders } from "./headers.js";
+import { CheckpointStream } from "../../../../util/stream";
+import { arrayToString, buffersToBuffer, CHAR_CR, stringToBuffer } from "../../../../util/string";
+import { dnsTcpConnect } from "../../udp/dns/tcp_util";
+import { HTTPHeaders } from "./headers";
 
 export interface IHTTPResult {
     statusCode: number;

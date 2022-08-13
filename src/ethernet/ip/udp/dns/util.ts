@@ -1,5 +1,5 @@
-import { stringIntoBuffer } from "../../../../util/string.js";
-import { IPAddr } from "../../address.js";
+import { stringIntoBuffer } from "../../../../util/string";
+import { IPAddr } from "../../address";
 
 export type DNSResult = IPAddr | string;
 export interface IDNSParseState { pos: number; data: Uint8Array; packet: ArrayBuffer; offset: number; }

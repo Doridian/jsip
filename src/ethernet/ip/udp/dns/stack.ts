@@ -1,12 +1,12 @@
-import { IInterface } from "../../../../interface/index.js";
-import { IPAddr } from "../../address.js";
-import { sendPacketTo } from "../../send.js";
-import { UDPPkt } from "../index.js";
-import { udpListen } from "../stack.js";
-import { DNSAnswer } from "./answer.js";
-import { DNS_CLASS, DNS_TYPE, DNSPkt } from "./index.js";
-import { DNSQuestion } from "./question.js";
-import { DNSResult } from "./util.js";
+import { IInterface } from "../../../../interface/index";
+import { IPAddr } from "../../address";
+import { sendPacketTo } from "../../send";
+import { UDPPkt } from "../index";
+import { udpListen } from "../stack";
+import { DNSAnswer } from "./answer";
+import { DNS_CLASS, DNS_TYPE, DNSPkt } from "./index";
+import { DNSQuestion } from "./question";
+import { DNSResult } from "./util";
 
 interface IDNSResolve {
     resolve: (result?: DNSResult) => void;

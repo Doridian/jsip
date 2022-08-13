@@ -1,5 +1,5 @@
-import { computeChecksum } from "../../../util/checksum.js";
-import { IPPROTO } from "../index.js";
+import { computeChecksum } from "../../../util/checksum";
+import { IPPROTO } from "../index";
 
 export class ICMPPkt {
     public static fromPacket(packet: ArrayBuffer, offset: number, len: number) {

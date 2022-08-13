@@ -1,5 +1,5 @@
-import { logDebug } from "../util/log.js";
-import { Interface } from "./index.js";
+import { logDebug } from "../util/log";
+import { Interface } from "./index";
 
 export class InterfaceNone extends Interface {
     public sendRaw(_: ArrayBuffer): void {

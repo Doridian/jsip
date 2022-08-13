@@ -1,6 +1,6 @@
-import { IPacket } from "../../../ipacket.js";
-import { computeChecksum, computeChecksumPseudo } from "../../../util/checksum.js";
-import { IPHdr, IPPROTO } from "../index.js";
+import { IPacket } from "../../../ipacket";
+import { computeChecksum, computeChecksumPseudo } from "../../../util/checksum";
+import { IPHdr, IPPROTO } from "../index";
 
 export class UDPPkt implements IPacket {
     public static fromPacket(packet: ArrayBuffer, offset: number, len: number, ipHdr: IPHdr) {

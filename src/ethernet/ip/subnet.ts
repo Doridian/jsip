@@ -1,4 +1,4 @@
-import { IP_BROADCAST, IP_LOOPBACK, IP_NONE, IPAddr } from "./address.js";
+import { IP_BROADCAST, IP_LOOPBACK, IP_NONE, IPAddr } from "./address";
 
 const subnetLenToBitmask: number[] = [];
 const bitmaskToSubnetLen = new Map<number, number>();

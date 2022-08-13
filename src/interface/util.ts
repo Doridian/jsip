@@ -1,8 +1,8 @@
-import { flushRoutes, recomputeRoutes } from "../ethernet/ip/router.js";
-import { removeDHCP } from "../ethernet/ip/udp/dhcp/stack.js";
-import { flushDNSServers } from "../ethernet/ip/udp/dns/stack.js";
-import { IInterface } from "./index.js";
-import { addInterface, deleteInterface } from "./stack.js";
+import { flushRoutes, recomputeRoutes } from "../ethernet/ip/router";
+import { removeDHCP } from "../ethernet/ip/udp/dhcp/stack";
+import { flushDNSServers } from "../ethernet/ip/udp/dns/stack";
+import { IInterface } from "./index";
+import { addInterface, deleteInterface } from "./stack";
 
 export function addInterfaceEasy(iface: IInterface) {
     addInterface(iface);

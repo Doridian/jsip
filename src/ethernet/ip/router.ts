@@ -1,9 +1,9 @@
-import { IInterface } from "../../interface/index.js";
-import { INTERFACE_LOOPBACK } from "../../interface/loopback.js";
-import { INTERFACE_NONE } from "../../interface/none.js";
-import { getInterfaces } from "../../interface/stack.js";
-import { IP_NONE, IPAddr } from "./address.js";
-import { IPNet, IPNET_BROADCAST, IPNET_LINK_LOCAL, IPNET_MULTICAST, IPNET_NONE } from "./subnet.js";
+import { IInterface } from "../../interface/index";
+import { INTERFACE_LOOPBACK } from "../../interface/loopback";
+import { INTERFACE_NONE } from "../../interface/none";
+import { getInterfaces } from "../../interface/stack";
+import { IP_NONE, IPAddr } from "./address";
+import { IPNet, IPNET_BROADCAST, IPNET_LINK_LOCAL, IPNET_MULTICAST, IPNET_NONE } from "./subnet";
 
 interface IPRoute {
     router: IPAddr;

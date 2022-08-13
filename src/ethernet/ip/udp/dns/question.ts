@@ -1,5 +1,5 @@
-import { DNS_CLASS, DNS_TYPE } from "./index.js";
-import { makeDNSLabel } from "./util.js";
+import { DNS_CLASS, DNS_TYPE } from "./index";
+import { makeDNSLabel } from "./util";
 
 export class DNSQuestion {
     public name: string = "";

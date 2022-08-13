@@ -1,10 +1,10 @@
 import { expect } from "chai";
-import { MACAddr } from "../ethernet/address.js";
-import { ETH_TYPE } from "../ethernet/index.js";
-import { IPAddr } from "../ethernet/ip/address.js";
-import { IPPROTO } from "../ethernet/ip/index.js";
-import { DNS_CLASS, DNS_TYPE } from "../ethernet/ip/udp/dns/index.js";
-import { decodeHexString, parsePacketParts } from "./util.js";
+import { MACAddr } from "../ethernet/address";
+import { ETH_TYPE } from "../ethernet/index";
+import { IPAddr } from "../ethernet/ip/address";
+import { IPPROTO } from "../ethernet/ip/index";
+import { DNS_CLASS, DNS_TYPE } from "../ethernet/ip/udp/dns/index";
+import { decodeHexString, parsePacketParts } from "./util";
 
 // tslint:disable-next-line:max-line-length
 const DNS_REQUEST = decodeHexString("b8aeed7c1e719c5c8ec0ee8a080045000039760a000080113f41c0a80214c0a80204e6280035002511a1b2ce01000001000000000000076578616d706c6503636f6d0000010001");

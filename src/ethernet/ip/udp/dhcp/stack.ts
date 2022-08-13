@@ -1,15 +1,15 @@
-import { IInterface } from "../../../../interface/index.js";
-import { VoidCB } from "../../../../util/index.js";
-import { logDebug } from "../../../../util/log.js";
-import { IP_BROADCAST, IP_NONE, IPAddr } from "../../address.js";
-import { IPHdr, IPPROTO } from "../../index.js";
-import { addRoute, flushRoutes, recomputeRoutes } from "../../router.js";
-import { sendIPPacket } from "../../send.js";
-import { IPNet, IPNET_ALL } from "../../subnet.js";
-import { addDNSServer, flushDNSServers } from "../dns/stack.js";
-import { UDPPkt } from "../index.js";
-import { udpListen } from "../stack.js";
-import { DHCP_MODE, DHCP_OPTION, DHCPPkt } from "./index.js";
+import { IInterface } from "../../../../interface/index";
+import { VoidCB } from "../../../../util/index";
+import { logDebug } from "../../../../util/log";
+import { IP_BROADCAST, IP_NONE, IPAddr } from "../../address";
+import { IPHdr, IPPROTO } from "../../index";
+import { addRoute, flushRoutes, recomputeRoutes } from "../../router";
+import { sendIPPacket } from "../../send";
+import { IPNet, IPNET_ALL } from "../../subnet";
+import { addDNSServer, flushDNSServers } from "../dns/stack";
+import { UDPPkt } from "../index";
+import { udpListen } from "../stack";
+import { DHCP_MODE, DHCP_OPTION, DHCPPkt } from "./index";
 
 const dhcpNegotiators = new Map<IInterface, DHCPNegotiator>();
 

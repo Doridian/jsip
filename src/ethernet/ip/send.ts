@@ -1,12 +1,12 @@
-import { IInterface } from "../../interface/index.js";
-import { INTERFACE_NONE } from "../../interface/none.js";
-import { IPacket } from "../../ipacket.js";
-import { logError } from "../../util/log.js";
-import { makeEthIPHdr } from "../arp/stack.js";
-import { ETH_LEN, EthHdr } from "../index.js";
-import { IP_NONE, IPAddr } from "./address.js";
-import { IPHdr } from "./index.js";
-import { getRoute } from "./router.js";
+import { IInterface } from "../../interface/index";
+import { INTERFACE_NONE } from "../../interface/none";
+import { IPacket } from "../../ipacket";
+import { logError } from "../../util/log";
+import { makeEthIPHdr } from "../arp/stack";
+import { ETH_LEN, EthHdr } from "../index";
+import { IP_NONE, IPAddr } from "./address";
+import { IPHdr } from "./index";
+import { getRoute } from "./router";
 
 export function sendPacketTo(dest: IPAddr, payload: IPacket) {
     const hdr = new IPHdr();

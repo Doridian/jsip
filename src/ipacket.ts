@@ -1,4 +1,4 @@
-import { IPHdr, IPPROTO } from "./ethernet/ip/index.js";
+import { IPHdr, IPPROTO } from "./ethernet/ip/index";
 
 export interface IPacket {
     toPacket(array: ArrayBuffer, offset: number, ipHdr?: IPHdr): number;

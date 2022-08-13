@@ -1,4 +1,4 @@
-import { logError } from "./log.js";
+import { logError } from "./log";
 
 type EventCB = (data: unknown) => void;
 interface IEventCBContainer { [key: string]: EventCB[]; }

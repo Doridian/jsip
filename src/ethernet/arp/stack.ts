@@ -1,10 +1,10 @@
-import { IInterface } from "../../interface/index.js";
-import { INTERFACE_NONE } from "../../interface/none.js";
-import { MAC_BROADCAST, MACAddr } from "../address.js";
-import { ETH_LEN, ETH_TYPE, EthHdr } from "../index.js";
-import { IPAddr } from "../ip/address.js";
-import { registerEthHandler } from "../stack.js";
-import { ARP_LEN, ARP_REPLY, ARP_REQUEST, ARPPkt } from "./index.js";
+import { IInterface } from "../../interface/index";
+import { INTERFACE_NONE } from "../../interface/none";
+import { MAC_BROADCAST, MACAddr } from "../address";
+import { ETH_LEN, ETH_TYPE, EthHdr } from "../index";
+import { IPAddr } from "../ip/address";
+import { registerEthHandler } from "../stack";
+import { ARP_LEN, ARP_REPLY, ARP_REQUEST, ARPPkt } from "./index";
 
 interface IARPResolve {
     resolve: (mac: MACAddr) => void;

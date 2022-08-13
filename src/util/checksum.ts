@@ -1,4 +1,4 @@
-import { IPHdr } from "../ethernet/ip/index.js";
+import { IPHdr } from "../ethernet/ip/index";
 
 export function computeChecksumIntermediate(bytes: Uint8Array, csum = 0) {
     for (let i = 0; i < bytes.length; i += 2) {
