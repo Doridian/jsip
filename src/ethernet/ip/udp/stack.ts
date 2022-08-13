@@ -23,8 +23,6 @@ class UDPEchoListener {
     }
 }
 
-udpListeners.set(7, UDPEchoListener);
-
 // tslint:disable-next-line:max-classes-per-file
 class IPUDPListener {
     public static gotPacket(data: ArrayBuffer, offset: number, len: number, ipHdr: IPHdr, iface: IInterface) {
@@ -89,4 +87,9 @@ export function udpCloseListener(port: number) {
     return true;
 }
 
-registerIpHandler(IPPROTO.UDP, IPUDPListener);
+export function enableUDP() {
+    udpListeners.set(7, UDPEchoListener);
+
+    registerIpHandler(IPPROTO.UDP, IPUDPListener);
+}
+

@@ -4,7 +4,7 @@ import { sendIPPacket } from "../send";
 import { registerIpHandler } from "../stack";
 import { ICMPPkt } from "./index";
 
-interface IICMPHandler {
+export interface IICMPHandler {
     gotPacket(icmpPkt: ICMPPkt, ipHdr: IPHdr, iface: IInterface): void;
 }
 
@@ -36,10 +36,11 @@ class ICMPEchoRequestListener {
     }
 }
 
-function registerICMPHandler(type: number, handler: IICMPHandler) {
+export function registerICMPHandler(type: number, handler: IICMPHandler) {
     icmpHandlers.set(type, handler);
 }
 
-registerICMPHandler(8, ICMPEchoRequestListener);
-
-registerIpHandler(IPPROTO.ICMP, IPICMPListener);
+export function enableICMP() {
+    registerICMPHandler(8, ICMPEchoRequestListener);
+    registerIpHandler(IPPROTO.ICMP, IPICMPListener);
+}

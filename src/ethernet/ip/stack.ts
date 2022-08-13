@@ -156,6 +156,9 @@ function timeoutFragments() {
         }
     }
 }
-setInterval(timeoutFragments, 1000);
 
-registerEthHandler(ETH_TYPE.IP, EthIPListener);
+export function enableIP() {
+    setInterval(timeoutFragments, 1000);
+
+    registerEthHandler(ETH_TYPE.IP, EthIPListener);
+}

@@ -123,4 +123,6 @@ class EthARPListener {
     }
 }
 
-registerEthHandler(ETH_TYPE.ARP, EthARPListener);
+export function enableARP() {
+    registerEthHandler(ETH_TYPE.ARP, EthARPListener);
+}

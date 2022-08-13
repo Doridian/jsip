@@ -1,6 +1,6 @@
 {
   "name": "@doridian/jsip",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "private": false,
   "description": "",
   "main": "dist/index.js",
@@ -20,9 +20,6 @@
     "url": "https://github.com/Doridian/jsip/issues"
   },
   "homepage": "https://github.com/Doridian/jsip#readme",
-  "dependencies": {
-    "@wsvpn/web": "^1.0.0"
-  },
   "devDependencies": {
     "@types/chai": "^4.3.3",
     "chai": "^4.3.6",

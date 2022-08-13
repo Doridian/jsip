@@ -115,8 +115,6 @@ class DNSUDPListener {
     }
 }
 
-udpListen(53, DNSUDPListener);
-
 export async function dnsResolve(domain: string, type: DNS_TYPE): Promise<DNSResult | undefined> {
     domain = domain.toLowerCase();
     const cacheKey = makeDNSCacheKey(domain, type);
@@ -200,4 +198,8 @@ export function getDNSServers(iface?: IInterface): IPAddr[] {
         return dnsServerIpsByIface.get(iface) || [];
     }
     return dnsServerIps.slice(0);
+}
+
+export function enableDNS() {    
+    udpListen(53, DNSUDPListener);
 }

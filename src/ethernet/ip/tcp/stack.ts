@@ -468,10 +468,13 @@ class TCPEchoListener {
     }
 }
 
-tcpListeners.set(7, TCPEchoListener);
 
-setInterval(() => {
-    tcpConns.forEach((conn) => conn.cycle());
-}, 1000);
+export function enableTCP() {
+    setInterval(() => {
+        tcpConns.forEach((conn) => conn.cycle());
+    }, 1000);
+    
+    registerIpHandler(IPPROTO.TCP, TCPConn);
 
-registerIpHandler(IPPROTO.TCP, TCPConn);
+    tcpListeners.set(7, TCPEchoListener);
+}

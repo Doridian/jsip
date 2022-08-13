@@ -280,8 +280,6 @@ function byteArrayToIpAddrs(array: Uint8Array) {
     return res;
 }
 
-udpListen(68, DHCPNegotiator);
-
 export function addDHCP(iface: IInterface): DHCPNegotiator {
     removeDHCP(iface);
     const negotiator = new DHCPNegotiator(iface);
@@ -299,4 +297,8 @@ export function removeDHCP(iface: IInterface) {
         dhcpNegotiators.delete(iface);
         old.stop();
     }
+}
+
+export function enableDHCP() {
+    udpListen(68, DHCPNegotiator);
 }
