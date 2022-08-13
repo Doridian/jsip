@@ -1,5 +1,4 @@
 import { IInterface } from "../../interface/index";
-import { INTERFACE_NONE } from "../../interface/none";
 import { MAC_BROADCAST, MACAddr } from "../address";
 import { ETH_LEN, ETH_TYPE, EthHdr } from "../index";
 import { IPAddr } from "../ip/address";
@@ -16,7 +15,7 @@ const arpQueue = new Map<number, Promise<EthHdr>>();
 const arpResolveQueue = new Map<number, IARPResolve>();
 const arpTimeouts = new Map<number, number>();
 
-export async function makeEthIPHdr(destIp: IPAddr, iface: IInterface = INTERFACE_NONE): Promise<EthHdr> {
+export async function makeEthIPHdr(destIp: IPAddr, iface: IInterface): Promise<EthHdr> {
     const ethHdr = new EthHdr();
     ethHdr.ethtype = ETH_TYPE.IP;
     ethHdr.saddr = iface.getMAC();
@@ -24,10 +23,6 @@ export async function makeEthIPHdr(destIp: IPAddr, iface: IInterface = INTERFACE
     if (!destIp.isUnicast()) {
         ethHdr.daddr = MAC_BROADCAST;
         return ethHdr;
-    }
-
-    if (iface === INTERFACE_NONE) {
-        throw new Error("Cannot make ETH header for none interface");
     }
 
     const destIpKey = destIp.toInt32();
@@ -98,12 +93,12 @@ class EthARPListener {
         switch (arpPkt.operation) {
             case ARP_REQUEST:
                 if (arpPkt.tpa && arpPkt.tpa.equals(iface.getIP())) {
-                    sendARPPkt(arpPkt.makeReply()!, ethHdr.saddr, iface);
+                    sendARPPkt(arpPkt.makeReply()!, ethHdr.saddr!, iface);
                 }
                 break;
             case ARP_REPLY:
-                const ip = arpPkt.spa.toInt32();
-                const mac = arpPkt.sha;
+                const ip = arpPkt.spa!.toInt32();
+                const mac = arpPkt.sha!;
 
                 arpCache.set(ip, mac);
 

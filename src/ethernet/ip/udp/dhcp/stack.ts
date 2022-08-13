@@ -1,7 +1,7 @@
 import { IInterface } from "../../../../interface/index";
 import { VoidCB } from "../../../../util/index";
 import { logDebug } from "../../../../util/log";
-import { IP_BROADCAST, IP_NONE, IPAddr } from "../../address";
+import { IP_BROADCAST, IPAddr, IP_NULL } from "../../address";
 import { IPHdr, IPPROTO } from "../../index";
 import { addRoute, flushRoutes, recomputeRoutes } from "../../router";
 import { sendIPPacket } from "../../send";
@@ -79,7 +79,7 @@ export class DHCPNegotiator {
                 const dhcpOptIp = dhcp.options.get(DHCP_OPTION.IP);
                 const ourIp = dhcpOptIp ?
                     IPAddr.fromByteArray(dhcpOptIp, 0) :
-                    dhcp.yiaddr;
+                    dhcp.yiaddr!;
 
                 this.iface.setIP(ourIp);
 
@@ -100,13 +100,13 @@ export class DHCPNegotiator {
                 const dhcpServerRaw = dhcp.options.get(DHCP_OPTION.SERVER);
                 this.server = dhcpServerRaw ?
                     IPAddr.fromByteArray(dhcpServerRaw, 0) :
-                    dhcp.siaddr;
+                    dhcp.siaddr!;
 
                 const dhcpRouterRaw = dhcp.options.get(DHCP_OPTION.ROUTER);
                 if (dhcpRouterRaw) {
                     const router = IPAddr.fromByteArray(dhcpRouterRaw, 0);
                     if (!subnet.contains(router)) {
-                        addRoute(IPNet.fromIPAndSubnet(router, 32), IP_NONE, this.iface);
+                        addRoute(IPNet.fromIPAndSubnet(router, 32), undefined, this.iface);
                     }
                     addRoute(IPNET_ALL, router, this.iface);
                 }
@@ -241,12 +241,12 @@ export class DHCPNegotiator {
     }
 
     private makeDHCPRequestFromOffer(offer: DHCPPkt) {
-        this.server = offer.siaddr;
-        return this.makeDHCPRequest(offer.yiaddr);
+        this.server = offer.siaddr!;
+        return this.makeDHCPRequest(offer.yiaddr!);
     }
 
     private makeDHCPRenewRequest() {
-        return this.makeDHCPRequest(this.iface.getIP());
+        return this.makeDHCPRequest(this.iface.getIP()!);
     }
 
     private makeDHCPUDP(dhcp: DHCPPkt) {
@@ -264,7 +264,7 @@ export class DHCPNegotiator {
             ip.saddr = this.iface.getIP();
             ip.daddr = this.server;
         } else {
-            ip.saddr = IP_NONE;
+            ip.saddr = IP_NULL;
             ip.daddr = IP_BROADCAST;
         }
         ip.df = true;

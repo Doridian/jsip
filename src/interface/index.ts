@@ -1,7 +1,7 @@
 import { MACAddr } from "../ethernet/address";
-import { IP_NONE, IPAddr } from "../ethernet/ip/address";
+import { IPAddr } from "../ethernet/ip/address";
 import { addRoute, flushRoutes as clearRoutes, recomputeRoutes, removeRoute } from "../ethernet/ip/router";
-import { IPNet, IPNET_NONE } from "../ethernet/ip/subnet";
+import { IPNet } from "../ethernet/ip/subnet";
 import { addDHCP, DHCPNegotiator, removeDHCP } from "../ethernet/ip/udp/dhcp/stack";
 import { addDNSServer, clearDNSServers as clearDNSServers, removeDNSServer } from "../ethernet/ip/udp/dns/stack";
 import { handlePacket } from "../util/packet";
@@ -10,9 +10,9 @@ import { addInterface, deleteInterface as removeInterface } from "./stack";
 export interface IInterface {
     getName(): string;
     isEthernet(): boolean;
-    getIP(): IPAddr;
+    getIP(): IPAddr | undefined;
     setIP(ip: IPAddr): void;
-    getSubnet(): IPNet;
+    getSubnet(): IPNet | undefined;
     setSubnet(subnet: IPNet): void;
     getMAC(): MACAddr;
     getMTU(): number;
@@ -22,9 +22,9 @@ export interface IInterface {
 }
 
 export abstract class Interface implements IInterface {
-    protected subnet: IPNet = IPNET_NONE;
+    protected subnet?: IPNet;
     private name: string;
-    private ip: IPAddr = IP_NONE;
+    private ip?: IPAddr;
     private mac: MACAddr = MACAddr.random();
 
     public constructor(name: string) {
@@ -56,15 +56,11 @@ export abstract class Interface implements IInterface {
     }
 
     public isConfigured(): boolean {
-        return this.getIP() !== IP_NONE;
+        return !!this.getIP();
     }
 
     public isLocalDest(ip: IPAddr): boolean {
-        if (!this.isConfigured()) {
-            return true;
-        }
-
-        return this.ip.equals(ip);
+        return this.ip && this.ip.equals(ip) || false;
     }
 
     public abstract sendPacket(msg: ArrayBuffer): void;
@@ -75,7 +71,7 @@ export abstract class Interface implements IInterface {
         handlePacket(packet, this);
     }
 
-    public addRoute(subnet: IPNet, router: IPAddr, src?: IPAddr): void {
+    public addRoute(subnet: IPNet, router?: IPAddr, src?: IPAddr): void {
         addRoute(subnet, router, this, src);
     }
 

@@ -1,40 +1,33 @@
 import { IInterface } from "../../interface/index";
 import { getLoopbackInterface } from "../../interface/loopback";
-import { INTERFACE_NONE } from "../../interface/none";
 import { getInterfaces } from "../../interface/stack";
-import { IP_NONE, IPAddr } from "./address";
-import { IPNet, IPNET_BROADCAST, IPNET_LINK_LOCAL, IPNET_MULTICAST, IPNET_NONE } from "./subnet";
+import { IPAddr } from "./address";
+import { IPNet, IPNET_BROADCAST, IPNET_LINK_LOCAL, IPNET_MULTICAST } from "./subnet";
 
 interface IPRoute {
-    router: IPAddr;
-    iface: IInterface;
-    src: IPAddr;
+    router?: IPAddr;
+    iface?: IInterface;
+    src?: IPAddr;
     subnet: IPNet;
 }
 
 const staticRoutes: IPRoute[] = sortRoutes([
     {
-        iface: INTERFACE_NONE,
-        router: IP_NONE,
-        src: IP_NONE,
-        subnet: IPNET_NONE,
-    },
-    {
-        iface: INTERFACE_NONE,
-        router: IP_NONE,
-        src: IP_NONE,
+        iface: undefined,
+        router: undefined,
+        src: undefined,
         subnet: IPNET_LINK_LOCAL,
     },
     {
-        iface: INTERFACE_NONE,
-        router: IP_NONE,
-        src: IP_NONE,
+        iface: undefined,
+        router: undefined,
+        src: undefined,
         subnet: IPNET_BROADCAST,
     },
     {
-        iface: INTERFACE_NONE,
-        router: IP_NONE,
-        src: IP_NONE,
+        iface: undefined,
+        router: undefined,
+        src: undefined,
         subnet: IPNET_MULTICAST,
     },
 ]);
@@ -48,7 +41,7 @@ function sortRoutes(toSort: IPRoute[]): IPRoute[] {
 const routeCache = new Map<number, IPRoute | null>();
 let routes: IPRoute[];
 
-export function getRoute(ip: IPAddr, _: IInterface): IPRoute | null {
+export function getRoute(ip: IPAddr, _?: IInterface): IPRoute | null {
     const ipKey = ip.toInt32();
     const cache = routeCache.get(ipKey);
     if (cache !== undefined) {
@@ -86,7 +79,7 @@ export function flushRoutes(iface: IInterface) {
     recomputeRoutes();
 }
 
-export function addRoute(subnet: IPNet, router: IPAddr, iface: IInterface, src: IPAddr = IP_NONE) {
+export function addRoute(subnet: IPNet, router?: IPAddr, iface?: IInterface, src?: IPAddr) {
     removeRoute(subnet);
     staticRoutes.push({ router, subnet, iface, src });
     recomputeRoutes();
@@ -103,9 +96,14 @@ export function removeRoute(subnet: IPNet) {
 export function recomputeRoutes() {
     routes = staticRoutes.slice(0);
     for (const iface of getInterfaces()) {
-        routes.push({ router: IP_NONE, iface, subnet: iface.getSubnet(), src: IP_NONE });
+        const subnet = iface.getSubnet();
+        if (subnet) {
+            routes.push({ router: undefined, iface, subnet: subnet, src: undefined });
+        }
         const ip = iface.getIP();
-        routes.push({ router: IP_NONE, iface: getLoopbackInterface(), subnet: IPNet.fromIPAndSubnet(ip, 32), src: ip });
+        if (ip) {
+            routes.push({ router: undefined, iface: getLoopbackInterface(), subnet: IPNet.fromIPAndSubnet(ip, 32), src: ip });
+        }
     }
     routes = sortRoutes(routes);
     routeCache.clear();
@@ -116,7 +114,7 @@ export function reversePathCheck(iface: IInterface, src: IPAddr): boolean {
     if (!route) {
         return false;
     }
-    return route.iface === INTERFACE_NONE || route.iface === iface;
+    return !route.iface || route.iface === iface;
 }
 
 routes = staticRoutes.slice(0);

@@ -1,10 +1,9 @@
 import { IInterface } from "../../interface/index";
-import { INTERFACE_NONE } from "../../interface/none";
 import { IPacket } from "../../ipacket";
 import { logError } from "../../util/log";
 import { makeEthIPHdr } from "../arp/stack";
 import { ETH_LEN, EthHdr } from "../index";
-import { IP_NONE, IPAddr } from "./address";
+import { IPAddr } from "./address";
 import { IPHdr } from "./index";
 import { getRoute } from "./router";
 
@@ -12,11 +11,11 @@ export function sendPacketTo(dest: IPAddr, payload: IPacket) {
     const hdr = new IPHdr();
     hdr.daddr = dest;
     hdr.protocol = payload.getProto();
-    return sendIPPacket(hdr, payload, INTERFACE_NONE);
+    return sendIPPacket(hdr, payload, undefined);
 }
 
-export function sendIPPacket(ipHdr: IPHdr, payload: IPacket, iface: IInterface) {
-    let routeDestIp = ipHdr.daddr;
+export function sendIPPacket(ipHdr: IPHdr, payload: IPacket, iface?: IInterface) {
+    let routeDestIp = ipHdr.daddr!;
 
     let route = getRoute(routeDestIp, iface);
     if (!route) {
@@ -24,28 +23,28 @@ export function sendIPPacket(ipHdr: IPHdr, payload: IPacket, iface: IInterface) 
     }
 
     let srcIp = route.src;
-    if (route.router !== IP_NONE) {
+    if (route.router) {
         routeDestIp = route.router;
-        if (route.iface === INTERFACE_NONE) {
+        if (!route.iface) {
             route = getRoute(routeDestIp, iface);
             if (!route) {
                 return;
             }
-            if (route.src !== IP_NONE) {
+            if (route.src) {
                 srcIp = route.src;
             }
         }
     }
 
-    if (route.iface !== INTERFACE_NONE) {
+    if (route.iface) {
         iface = route.iface;
-    } else if (iface === INTERFACE_NONE) {
+    } else if (!iface) {
         return;
     }
 
-    if (srcIp !== IP_NONE) {
+    if (srcIp) {
         ipHdr.saddr = srcIp;
-    } else if (ipHdr.saddr === IP_NONE) {
+    } else if (!ipHdr.saddr) {
         ipHdr.saddr = iface.getIP();
     }
 
@@ -55,7 +54,7 @@ export function sendIPPacket(ipHdr: IPHdr, payload: IPacket, iface: IInterface) 
     }
 
     makeEthIPHdr(routeDestIp, iface).then((ethHdr) => {
-        sendIPPacketInternal(ipHdr, payload, iface, ethHdr);
+        sendIPPacketInternal(ipHdr, payload, iface!, ethHdr);
     }).catch((err: Error) => {
         logError(err);
     });
@@ -80,7 +79,6 @@ function sendIPPacketInternal(ipHdr: IPHdr, payload: IPacket, iface: IInterface,
         offset += payload.toPacket(reply, offset, ipHdr);
 
         iface.sendPacket(reply);
-
         return;
     }
 

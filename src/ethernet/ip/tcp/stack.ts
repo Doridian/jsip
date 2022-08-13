@@ -1,7 +1,6 @@
 import { IInterface } from "../../../interface/index";
-import { INTERFACE_NONE } from "../../../interface/none";
 import { EventEmitter } from "../../../util/emitter";
-import { IP_NONE, IPAddr } from "../address";
+import { IPAddr } from "../address";
 import { IPHdr, IPPROTO } from "../index";
 import { getRoute } from "../router";
 import { sendIPPacket } from "../send";
@@ -45,7 +44,7 @@ export class TCPConn extends EventEmitter {
     public static gotPacket(data: ArrayBuffer, offset: number, len: number, ipHdr: IPHdr, iface: IInterface) {
         const tcpPkt = TCPPkt.fromPacket(data, offset, len, ipHdr);
 
-        const id = tcpMakeId(ipHdr.saddr, tcpPkt.dport, tcpPkt.sport);
+        const id = tcpMakeId(ipHdr.saddr!, tcpPkt.dport, tcpPkt.sport);
         const gotConn = tcpConns.get(id);
         if (gotConn) {
             return gotConn.gotPacket(ipHdr, tcpPkt);
@@ -66,7 +65,7 @@ export class TCPConn extends EventEmitter {
     public dport = 0;
 
     private state = TCP_STATE.CLOSED;
-    private daddr: IPAddr = IP_NONE;
+    private daddr?: IPAddr;
     private wseqno?: number;
     private rseqno?: number;
     private wnd = 65535;
@@ -79,7 +78,7 @@ export class TCPConn extends EventEmitter {
     private rlastseqno?: number;
     private mss = -1;
     private connId: string = "";
-    private iface: IInterface = INTERFACE_NONE;
+    private iface?: IInterface;
 
     private lastIp?: IPHdr;
     private lastTcp?: TCPPkt;
@@ -107,19 +106,19 @@ export class TCPConn extends EventEmitter {
         this.sendPacket(ip, tcp);
     }
 
-    public connect(dport: number, daddr: IPAddr, iface: IInterface) {
+    public connect(dport: number, daddr: IPAddr, iface?: IInterface) {
         this.state = TCP_STATE.SYN_SENT;
         this.daddr = daddr;
         this.dport = dport;
         this.iface = iface;
-        if (iface === INTERFACE_NONE) {
+        if (!this.iface) {
             const route = getRoute(daddr, iface);
             if (route && route.iface) {
                 this.iface = route.iface;
             }
         }
 
-        this.mss = this.iface.getMTU() - 40;
+        this.mss = (this.iface?.getMTU() || 1280) - 40;
         do {
             this.sport = 4097 + Math.floor(Math.random() * 61347);
             this.setId();
@@ -373,7 +372,7 @@ export class TCPConn extends EventEmitter {
     private makeIp(df = false) {
         const ip = new IPHdr();
         ip.protocol = IPPROTO.TCP;
-        ip.saddr = IP_NONE;
+        ip.saddr = undefined;
         ip.daddr = this.daddr;
         ip.df = df;
         return ip;
@@ -403,7 +402,7 @@ export class TCPConn extends EventEmitter {
     }
 
     private setId() {
-        this.connId = tcpMakeId(this.daddr, this.sport, this.dport);
+        this.connId = tcpMakeId(this.daddr!, this.sport, this.dport);
     }
 }
 
@@ -445,7 +444,7 @@ export function tcpConnect(
     }
 
     const conn = new TCPConn();
-    conn.connect(port, ip, iface || INTERFACE_NONE);
+    conn.connect(port, ip, iface);
     return conn;
 }
 

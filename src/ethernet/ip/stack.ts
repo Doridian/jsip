@@ -52,13 +52,13 @@ export class EthIPListener {
         }
 
         if (iface.isConfigured()) {
-            if (!reversePathCheck(iface, ipHdr.saddr)) {
+            if (!reversePathCheck(iface, ipHdr.saddr!)) {
                 logDebug(`Reverse path check failed for src ${ipHdr.saddr} on ${iface.getName()}`);
                 return;
             }
 
-            if (ipHdr.daddr.isUnicast() &&
-                !iface.isLocalDest(ipHdr.daddr)) {
+            if (ipHdr.daddr!.isUnicast() &&
+                !iface.isLocalDest(ipHdr.daddr!)) {
                 logDebug(`${iface.getName()} Discarding packet not meant for us, but for ${ipHdr.daddr}`);
                 return;
             }
@@ -78,7 +78,7 @@ export class EthIPListener {
             fragmentCache.set(ifaceName, ifaceFragmentCache);
         }
 
-        const pktId = ipHdr.id + (ipHdr.saddr.toInt32() << 16);
+        const pktId = ipHdr.id + (ipHdr.saddr!.toInt32() << 16);
         let curFrag = ifaceFragmentCache.get(pktId);
         if (!curFrag) {
             curFrag = {

@@ -9,8 +9,8 @@ export function computeChecksumIntermediate(bytes: Uint8Array, csum = 0) {
 
 export function computeChecksumPseudo(ipHdr: IPHdr, proto: number, fullLen: number) {
     const pseudoIP8 = new Uint8Array(12);
-    ipHdr.saddr.toBytes(pseudoIP8, 0);
-    ipHdr.daddr.toBytes(pseudoIP8, 4);
+    ipHdr.saddr!.toBytes(pseudoIP8, 0);
+    ipHdr.daddr!.toBytes(pseudoIP8, 4);
     pseudoIP8[8] = 0;
     pseudoIP8[9] = proto;
     pseudoIP8[10] = (fullLen >>> 8) & 0xFF;

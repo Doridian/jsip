@@ -1,7 +1,5 @@
-import { IP_NONE } from "./ethernet/ip/address";
 import { getRoutes } from "./ethernet/ip/router";
 import { getDNSServers } from "./ethernet/ip/udp/dns/stack";
-import { INTERFACE_NONE } from "./interface/none";
 import { getInterfaces } from "./interface/stack";
 import { logDebug } from "./util/log";
 
@@ -15,14 +13,14 @@ export function configOut() {
     const routesStr = getRoutes().map((route) => {
         let routeStr = `${route.subnet}`;
         let validRoute = false;
-        if (route.iface !== INTERFACE_NONE) {
+        if (route.iface) {
             routeStr += ` on ${route.iface.getName()}`;
             validRoute = true;
         }
-        if (route.src !== IP_NONE) {
+        if (route.src) {
             routeStr += ` src ${route.src}`;
         }
-        if (route.router !== IP_NONE) {
+        if (route.router) {
             routeStr += ` gw ${route.router}`;
             validRoute = true;
         } else {

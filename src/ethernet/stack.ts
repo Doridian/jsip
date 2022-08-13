@@ -13,8 +13,8 @@ export function handleEthernet(buffer: ArrayBuffer, iface: IInterface) {
 
     const ethHdr = EthHdr.fromPacket(buffer, offset);
 
-    if (!ethHdr.daddr.equals(iface.getMAC()) && !ethHdr.daddr.isBroadcast()) {
-        logDebug(`Discarding packet not meant for us, but for ${ethHdr.daddr.toString()}`);
+    if (!ethHdr.daddr!.equals(iface.getMAC()) && !ethHdr.daddr!.isBroadcast()) {
+        logDebug(`Discarding packet not meant for us, but for ${ethHdr.daddr!.toString()}`);
         return;
     }
 

@@ -1,6 +1,6 @@
-import { MAC_NONE, MACAddr } from "../../../address";
+import { MACAddr } from "../../../address";
 import { ARP_HLEN, ARP_HTYPE } from "../../../arp/index";
-import { IP_NONE, IPAddr } from "../../address";
+import { IPAddr } from "../../address";
 
 const DHCP_MAGIC = new Uint8Array([0x63, 0x82, 0x53, 0x63]);
 const DHCP_MAGIC_OFFSET = 236;
@@ -78,11 +78,11 @@ export class DHCPPkt {
     public xid = 0;
     public secs = 0;
     public flags = 0;
-    public ciaddr: IPAddr = IP_NONE;
-    public yiaddr: IPAddr = IP_NONE;
-    public siaddr: IPAddr = IP_NONE;
-    public giaddr: IPAddr = IP_NONE;
-    public chaddr = MAC_NONE;
+    public ciaddr?: IPAddr;
+    public yiaddr?: IPAddr;
+    public siaddr?: IPAddr;
+    public giaddr?: IPAddr;
+    public chaddr?: MACAddr;
     public options = new Map<DHCP_OPTION, Uint8Array>();
 
     public getFullLength() {
@@ -116,11 +116,11 @@ export class DHCPPkt {
         packet[9] = this.secs & 0xFF;
         packet[10] = (this.flags >>> 8) & 0xFF;
         packet[11] = this.flags & 0xFF;
-        this.ciaddr.toBytes(packet, 12);
-        this.yiaddr.toBytes(packet, 16);
-        this.siaddr.toBytes(packet, 20);
-        this.giaddr.toBytes(packet, 24);
-        this.chaddr.toBytes(packet, 28);
+        this.ciaddr!.toBytes(packet, 12);
+        this.yiaddr!.toBytes(packet, 16);
+        this.siaddr!.toBytes(packet, 20);
+        this.giaddr!.toBytes(packet, 24);
+        this.chaddr!.toBytes(packet, 28);
         packet[DHCP_MAGIC_OFFSET] = DHCP_MAGIC[0];
         packet[DHCP_MAGIC_OFFSET + 1] = DHCP_MAGIC[1];
         packet[DHCP_MAGIC_OFFSET + 2] = DHCP_MAGIC[2];

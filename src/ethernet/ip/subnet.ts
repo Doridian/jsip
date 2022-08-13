@@ -1,4 +1,4 @@
-import { IP_BROADCAST, IP_LOOPBACK, IP_NONE, IPAddr } from "./address";
+import { IP_BROADCAST, IP_LOOPBACK, IPAddr } from "./address";
 
 const subnetLenToBitmask: number[] = [];
 const bitmaskToSubnetLen = new Map<number, number>();
@@ -89,8 +89,7 @@ export class IPNet {
     }
 }
 
-export const IPNET_NONE = IPNet.fromIPAndSubnet(IP_NONE, 8);
-export const IPNET_ALL = IPNet.fromIPAndSubnet(IP_NONE, 0);
+export const IPNET_ALL = IPNet.fromString("0.0.0.0/0");
 export const IPNET_LOOPBACK = IPNet.fromIPAndSubnet(IP_LOOPBACK, 8);
 export const IPNET_LINK_LOCAL = IPNet.fromString("169.254.0.0/16");
 export const IPNET_BROADCAST = IPNet.fromIPAndSubnet(IP_BROADCAST, 32);
