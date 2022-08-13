@@ -41,6 +41,7 @@ export abstract class Interface implements IInterface {
 
     public setIP(ip: IPAddr) {
         this.ip = ip;
+        recomputeRoutes();
     }
 
     public getSubnet() {
@@ -49,6 +50,7 @@ export abstract class Interface implements IInterface {
 
     public setSubnet(subnet: IPNet) {
         this.subnet = subnet;
+        recomputeRoutes();
     }
 
     public getMAC(): MACAddr {
