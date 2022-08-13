@@ -137,7 +137,7 @@ export async function dnsResolve(domain: string, type: DNS_TYPE): Promise<DNSRes
         dnsResolveQueue.set(cacheKey, { resolve, reject });
         dnsQueueTimeout.set(cacheKey, setTimeout(() => {
             dnsQueueTimeout.delete(cacheKey);
-            domainCB(domain, type, undefined, new Error("Timeout"));
+            domainCB(domain, type, undefined, new Error("DNS Timeout"));
         }, 10000));
 
         sendPacketTo(getDNSServer(), makeDNSRequest(domain, type));

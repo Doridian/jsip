@@ -1,3 +1,4 @@
+import { IInterface } from "../../interface/index.js";
 import { MACAddr } from "../address.js";
 import { IPAddr } from "../ip/address.js";
 
@@ -37,7 +38,7 @@ export class ARPPkt {
     public tha?: MACAddr;
     public tpa?: IPAddr;
 
-    public makeReply() {
+    public makeReply(iface: IInterface) {
         if (this.operation !== ARP_REQUEST) {
             return undefined;
         }
@@ -47,7 +48,7 @@ export class ARPPkt {
         replyARP.hlen = this.hlen;
         replyARP.plen = this.plen;
         replyARP.operation = ARP_REPLY;
-        replyARP.sha = this.tha;
+        replyARP.sha = iface.getMAC();
         replyARP.spa = this.tpa;
         replyARP.tha = this.sha;
         replyARP.tpa = this.spa;

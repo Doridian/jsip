@@ -56,7 +56,7 @@ export async function makeEthIPHdr(destIp: IPAddr, iface: IInterface): Promise<E
         arpTimeouts.delete(destIpKey);
         const timeoutQueue = arpResolveQueue.get(destIpKey);
         if (timeoutQueue) {
-            timeoutQueue.reject(new Error("Timeout"));
+            timeoutQueue.reject(new Error("ARP Timeout"));
             arpResolveQueue.delete(destIpKey);
             arpQueue.delete(destIpKey);
         }
@@ -93,7 +93,7 @@ class EthARPListener {
         switch (arpPkt.operation) {
             case ARP_REQUEST:
                 if (arpPkt.tpa && arpPkt.tpa.equals(iface.getIP())) {
-                    sendARPPkt(arpPkt.makeReply()!, ethHdr.saddr!, iface);
+                    sendARPPkt(arpPkt.makeReply(iface)!, ethHdr.saddr!, iface);
                 }
                 break;
             case ARP_REPLY:

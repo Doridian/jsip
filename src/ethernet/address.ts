@@ -72,4 +72,4 @@ export class MACAddr {
     }
 }
 
-export const MAC_BROADCAST = MACAddr.fromByteArray([255, 255, 255, 255, 255, 255]);
+export const MAC_BROADCAST = MACAddr.fromByteArray([0, 0, 0, 0, 0, 0]);
