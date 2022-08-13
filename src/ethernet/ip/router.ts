@@ -1,5 +1,5 @@
 import { IInterface } from "../../interface/index";
-import { INTERFACE_LOOPBACK } from "../../interface/loopback";
+import { getLoopbackInterface } from "../../interface/loopback";
 import { INTERFACE_NONE } from "../../interface/none";
 import { getInterfaces } from "../../interface/stack";
 import { IP_NONE, IPAddr } from "./address";
@@ -105,7 +105,7 @@ export function recomputeRoutes() {
     for (const iface of getInterfaces()) {
         routes.push({ router: IP_NONE, iface, subnet: iface.getSubnet(), src: IP_NONE });
         const ip = iface.getIP();
-        routes.push({ router: IP_NONE, iface: INTERFACE_LOOPBACK, subnet: IPNet.fromIPAndSubnet(ip, 32), src: ip });
+        routes.push({ router: IP_NONE, iface: getLoopbackInterface(), subnet: IPNet.fromIPAndSubnet(ip, 32), src: ip });
     }
     routes = sortRoutes(routes);
     routeCache.clear();

@@ -22,10 +22,16 @@ export class InterfaceLoopback extends Interface {
     }
 }
 
-export const INTERFACE_LOOPBACK = new InterfaceLoopback("lo");
-INTERFACE_LOOPBACK.setIP(IP_LOOPBACK);
-INTERFACE_LOOPBACK.setSubnet(IPNET_LOOPBACK);
+let loopbackInterface: InterfaceLoopback | undefined;
+export function getLoopbackInterface() {
+    if (!loopbackInterface) {
+        loopbackInterface = new InterfaceLoopback("lo");
+        loopbackInterface.setIP(IP_LOOPBACK);
+        loopbackInterface.setSubnet(IPNET_LOOPBACK);
+    }
+    return loopbackInterface;
+}
 
 export function addLoopback() {
-    addInterface(INTERFACE_LOOPBACK);
+    addInterface(getLoopbackInterface());
 }
