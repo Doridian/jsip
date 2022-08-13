@@ -3,10 +3,8 @@
   "version": "1.0.0",
   "private": false,
   "description": "",
-  "main": "main.js",
-  "directories": {
-    "lib": "lib"
-  },
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
   "scripts": {
     "build": "rimraf dist && tsc --project .",
     "test": "npm run build && node -r esm ./dist/test/dns.js",
