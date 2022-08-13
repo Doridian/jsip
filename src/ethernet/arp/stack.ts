@@ -1,5 +1,5 @@
 import { IInterface } from "../../interface/index.js";
-import { MAC_BROADCAST, MACAddr } from "../address.js";
+import { MAC_BROADCAST, MACAddr, MAC_NULL } from "../address.js";
 import { ETH_LEN, ETH_TYPE, EthHdr } from "../index.js";
 import { IPAddr } from "../ip/address.js";
 import { registerEthHandler } from "../stack.js";
@@ -66,7 +66,7 @@ export async function makeEthIPHdr(destIp: IPAddr, iface: IInterface): Promise<E
     arpReq.operation = ARP_REQUEST;
     arpReq.sha = ethHdr.saddr;
     arpReq.spa = ourIp;
-    arpReq.tha = MAC_BROADCAST;
+    arpReq.tha = MAC_NULL;
     arpReq.tpa = destIp;
     sendARPPkt(arpReq, MAC_BROADCAST, iface);
 
