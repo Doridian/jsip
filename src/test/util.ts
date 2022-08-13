@@ -1,5 +1,7 @@
+import { MACAddr } from "../ethernet/address";
 import { ARPPkt } from "../ethernet/arp/index";
 import { ETH_TYPE, EthHdr } from "../ethernet/index";
+import { IPAddr } from "../ethernet/ip/address";
 import { ICMPPkt } from "../ethernet/ip/icmp/index";
 import { IPHdr, IPPROTO } from "../ethernet/ip/index";
 import { TCPPkt } from "../ethernet/ip/tcp/index";
@@ -84,5 +86,48 @@ export function parsePacketParts(packet: ArrayBuffer): IPacketParts {
             }
         default:
             return { eth: ethHdr };
+    }
+}
+
+function compareIPOrMAC(a: IPAddr | MACAddr | undefined, b: IPAddr | MACAddr | undefined): boolean {
+    if (!a || !b) {
+        return !a && !b;
+    }
+
+    if (a instanceof IPAddr) {
+        if (!(b instanceof IPAddr)) {
+            return false;
+        }
+        return a.equals(b);
+    }
+
+    if (!(b instanceof MACAddr)) {
+        return false;
+    }
+    return a.equals(b);
+}
+
+export class AssertionError extends Error {
+    constructor(public readonly expected: unknown, public readonly actual: unknown) {
+        super(`Actual: ${actual}; Expected: ${expected}`);
+    }
+}
+
+export function expect(actual: unknown) {
+    return {
+        to: {
+            equal(expected: unknown) {
+                if (actual !== expected) {
+                    throw new AssertionError(expected, actual);
+                }
+            },
+            deep: {
+                equal(expected: MACAddr | IPAddr) {
+                    if (!compareIPOrMAC(actual as typeof expected, expected)) {
+                        throw new AssertionError(expected, actual);
+                    }
+                }
+            }
+        }
     }
 }

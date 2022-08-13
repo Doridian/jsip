@@ -170,7 +170,9 @@ function recomputeDNSServers() {
     });
 }
 
-export function addDNSServer(ip: IPAddr, iface: IInterface) {
+export function addDNSServerFor(ip: IPAddr, iface: IInterface) {
+    enableDNS();
+
     let ifaceIps = dnsServerIpsByIface.get(iface);
     if (!ifaceIps) {
         ifaceIps = [];
@@ -184,7 +186,7 @@ export function addDNSServer(ip: IPAddr, iface: IInterface) {
     recomputeDNSServers();
 }
 
-export function removeDNSServer(ip: IPAddr, iface: IInterface) {
+export function removeDNSServerFor(ip: IPAddr, iface: IInterface) {
     const ifaceIps = dnsServerIpsByIface.get(iface);
     if (!ifaceIps) {
         return;
@@ -195,7 +197,7 @@ export function removeDNSServer(ip: IPAddr, iface: IInterface) {
     }
 }
 
-export function clearDNSServers(iface: IInterface) {
+export function clearDNSServersFor(iface: IInterface) {
     dnsServerIpsByIface.delete(iface);
     recomputeDNSServers();
 }
@@ -211,6 +213,6 @@ export function getDNSServers(iface?: IInterface): IPAddr[] {
     return dnsServerIps.slice(0);
 }
 
-export function enableDNS() {    
+export function enableDNS() {
     udpListen(53, DNSUDPListener);
 }

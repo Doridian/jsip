@@ -1,10 +1,10 @@
-import { expect } from "chai";
 import { MACAddr } from "../ethernet/address";
 import { ETH_TYPE } from "../ethernet/index";
 import { IPAddr } from "../ethernet/ip/address";
 import { IPPROTO } from "../ethernet/ip/index";
 import { DNS_CLASS, DNS_TYPE } from "../ethernet/ip/udp/dns/index";
-import { decodeHexString, parsePacketParts } from "./util";
+import { logDebug } from "../util/log";
+import { decodeHexString, expect, parsePacketParts } from "./util";
 
 // tslint:disable-next-line:max-line-length
 const DNS_REQUEST = decodeHexString("b8aeed7c1e719c5c8ec0ee8a080045000039760a000080113f41c0a80214c0a80204e6280035002511a1b2ce01000001000000000000076578616d706c6503636f6d0000010001");
@@ -59,3 +59,5 @@ expect(replyParts.dns!.answers[0].name).to.equal(DNS_DOMAIN);
 expect(replyParts.dns!.answers[0].class).to.equal(DNS_CLASS.IN);
 expect(replyParts.dns!.answers[0].type).to.equal(DNS_TYPE.A);
 expect(replyParts.dns!.answers[0].getData()).to.deep.equal(DNS_ADDR);
+
+logDebug("DNS test passed!");

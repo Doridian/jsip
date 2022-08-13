@@ -1,5 +1,6 @@
 import { IInterface } from "../../../interface/index";
 import { EventEmitter } from "../../../util/emitter";
+import { assertValidPort, makeRandomPort } from "../../../util/port";
 import { IPAddr } from "../address";
 import { IPHdr, IPPROTO } from "../index";
 import { getRoute } from "../router";
@@ -120,7 +121,7 @@ export class TCPConn extends EventEmitter {
 
         this.mss = (this.iface?.getMTU() || 1280) - 40;
         do {
-            this.sport = 4097 + Math.floor(Math.random() * 61347);
+            this.sport = makeRandomPort();
             this.setId();
         } while (tcpConns.has(this.connId) || tcpListeners.has(this.sport));
         tcpConns.set(this.connId, this);
@@ -411,37 +412,31 @@ function tcpMakeId(daddr: IPAddr, sport: number, dport: number) {
 }
 
 export function tcpListen(port: number, func: ITCPListener) {
-    if (port < 1 || port > 65535) {
+    assertValidPort(port);
+
+    if (tcpListeners.has(port)) {
         return false;
     }
 
-    if  (tcpListeners.has(port)) {
-        return false;
-    }
+    enableTCP();
 
     tcpListeners.set(port, func);
     return true;
 }
 
 export function tcpCloseListener(port: number) {
-    if (port < 1 || port > 65535) {
-        return false;
-    }
+    assertValidPort(port);
 
-    if (port === 7) {
-        return false;
-    }
-
-    tcpListeners.delete(port);
-    return true;
+    return tcpListeners.delete(port);
 }
 
 export function tcpConnect(
     ip: IPAddr, port: number,
     iface?: IInterface) {
-    if (port < 1 || port > 65535) {
-        throw new Error("Port out of range");
-    }
+
+    assertValidPort(port);
+
+    enableTCP();
 
     const conn = new TCPConn();
     conn.connect(port, ip, iface);
@@ -469,11 +464,11 @@ class TCPEchoListener {
 
 
 export function enableTCP() {
-    setInterval(() => {
-        tcpConns.forEach((conn) => conn.cycle());
-    }, 1000);
-    
-    registerIpHandler(IPPROTO.TCP, TCPConn);
+    if (registerIpHandler(IPPROTO.TCP, TCPConn)) {
+        setInterval(() => {
+            tcpConns.forEach((conn) => conn.cycle());
+        }, 1000);
+    }
 }
 
 export function enableTCPEcho() {

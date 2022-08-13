@@ -25,7 +25,12 @@ function handlePacket(ipHdr: IPHdr, data: ArrayBuffer, offset: number, iface: II
 }
 
 export function registerIpHandler(iptype: number, handler: IIPHandler) {
+    if (ipHandlers.has(iptype)) {
+        return false;
+    }
+    enableIP();
     ipHandlers.set(iptype, handler);
+    return true;
 }
 
 interface IPFragment {
@@ -158,7 +163,7 @@ function timeoutFragments() {
 }
 
 export function enableIP() {
-    setInterval(timeoutFragments, 1000);
-
-    registerEthHandler(ETH_TYPE.IP, EthIPListener);
+    if (registerEthHandler(ETH_TYPE.IP, EthIPListener)) {
+        setInterval(timeoutFragments, 1000);
+    }
 }

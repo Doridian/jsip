@@ -7,14 +7,14 @@ import { enableDHCP } from "./ethernet/ip/udp/dhcp/stack";
 import { enableDNS } from "./ethernet/ip/udp/dns/stack";
 import { addLoopback } from "./interface/loopback";
 
-export { Interface } from "./interface";
+export { Interface, IInterface } from "./interface";
 
 export function initialize() {
     addLoopback();
 
     enableARP();
     enableIP();
-    
+
     enableICMP();
     enableUDP();
     enableTCP();

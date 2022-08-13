@@ -1,5 +1,6 @@
 import { IInterface } from "../../../interface/index";
 import { logError } from "../../../util/log";
+import { assertValidPort, makeRandomPort } from "../../../util/port";
 import { IPHdr, IPPROTO } from "../index";
 import { sendIPPacket } from "../send";
 import { registerIpHandler } from "../stack";
@@ -16,9 +17,6 @@ const udpListeners = new Map<number, IUDPListener>();
 
 class UDPEchoListener {
     public static gotPacket(pkt: UDPPkt, _: IPHdr, __: IInterface) {
-        if (pkt.sport === 7) {
-            return;
-        }
         return pkt.data;
     }
 }
@@ -55,36 +53,28 @@ class IPUDPListener {
 export function udpListenRandom(func: IUDPListener) {
     let port = 0;
     do {
-        port = 4097 + Math.floor(Math.random() * 61347);
+        port = makeRandomPort();
     } while (udpListeners.has(port));
 
     return udpListen(port, func);
 }
 
 export function udpListen(port: number, func: IUDPListener) {
-    if (port < 1 || port > 65535) {
+    assertValidPort(port);
+
+    if (udpListeners.has(port)) {
         return false;
     }
 
-    if  (udpListeners.has(port)) {
-        return false;
-    }
-
+    enableUDP();
     udpListeners.set(port, func);
     return true;
 }
 
 export function udpCloseListener(port: number) {
-    if (port < 1 || port > 65535) {
-        return false;
-    }
+    assertValidPort(port);
 
-    if (port === 7) {
-        return false;
-    }
-
-    udpListeners.delete(port);
-    return true;
+    return udpListeners.delete(port);
 }
 
 export function enableUDP() {

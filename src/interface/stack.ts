@@ -10,6 +10,6 @@ export function addInterface(iface: IInterface) {
     interfaceTable.set(iface.getName(), iface);
 }
 
-export function deleteInterface(iface: IInterface) {
+export function removeInterface(iface: IInterface) {
     interfaceTable.delete(iface.getName());
 }

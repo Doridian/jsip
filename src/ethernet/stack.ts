@@ -27,5 +27,9 @@ export function handleEthernet(buffer: ArrayBuffer, iface: IInterface) {
 }
 
 export function registerEthHandler(ethtype: ETH_TYPE, handler: IEthHandler) {
+    if (ethHandlers.has(ethtype)) {
+        return false;
+    }
     ethHandlers.set(ethtype, handler);
+    return true;
 }

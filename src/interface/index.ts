@@ -1,11 +1,11 @@
 import { MACAddr } from "../ethernet/address";
 import { IPAddr } from "../ethernet/ip/address";
-import { addRoute, flushRoutes as clearRoutes, recomputeRoutes, removeRoute } from "../ethernet/ip/router";
+import { addRoute, clearRoutesFor, IPRoute, Metric, recomputeRoutes, removeRoute } from "../ethernet/ip/router";
 import { IPNet } from "../ethernet/ip/subnet";
 import { addDHCP, DHCPNegotiator, removeDHCP } from "../ethernet/ip/udp/dhcp/stack";
-import { addDNSServer, clearDNSServers as clearDNSServers, removeDNSServer } from "../ethernet/ip/udp/dns/stack";
+import { addDNSServerFor, clearDNSServersFor, removeDNSServerFor } from "../ethernet/ip/udp/dns/stack";
 import { handlePacket } from "../util/packet";
-import { addInterface, deleteInterface as removeInterface } from "./stack";
+import { addInterface, removeInterface } from "./stack";
 
 export interface IInterface {
     getName(): string;
@@ -73,20 +73,26 @@ export abstract class Interface implements IInterface {
         handlePacket(packet, this);
     }
 
-    public addRoute(subnet: IPNet, router?: IPAddr, src?: IPAddr): void {
-        addRoute(subnet, router, this, src);
+    public addRoute(route: IPRoute): void {
+        addRoute({
+            ...route,
+            iface: this,
+        });
     }
 
-    public removeRoute(subnet: IPNet): void {
-        removeRoute(subnet);
+    public removeRoute(route: IPRoute): void {
+        removeRoute({
+            ...route,
+            iface: this,
+        });
     }
 
     public clearRoutes(): void {
-        clearRoutes(this);
+        clearRoutesFor(this);
     }
 
-    public addDHCP(): DHCPNegotiator {
-        return addDHCP(this);
+    public addDHCP(metric: number = Metric.DHCPDefault): DHCPNegotiator {
+        return addDHCP(this, metric);
     }
 
     public removeDHCP(): void {
@@ -94,15 +100,15 @@ export abstract class Interface implements IInterface {
     }
 
     public addDNSServer(ip: IPAddr): void {
-        addDNSServer(ip, this);
+        addDNSServerFor(ip, this);
     }
 
     public removeDNSServer(ip: IPAddr): void {
-        removeDNSServer(ip, this);
+        removeDNSServerFor(ip, this);
     }
 
     public clearDNSServers(): void {
-        clearDNSServers(this);
+        clearDNSServersFor(this);
     }
 
     public add(): void {
@@ -113,7 +119,7 @@ export abstract class Interface implements IInterface {
     public remove(): void {
         removeInterface(this);
         removeDHCP(this);
-        clearRoutes(this);
-        clearDNSServers(this);
+        clearRoutesFor(this);
+        clearDNSServersFor(this);
     }
 }

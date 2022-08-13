@@ -3,10 +3,10 @@ import { VoidCB } from "../../../../util/index";
 import { logDebug } from "../../../../util/log";
 import { IP_BROADCAST, IPAddr, IP_NULL } from "../../address";
 import { IPHdr, IPPROTO } from "../../index";
-import { addRoute, flushRoutes, recomputeRoutes } from "../../router";
+import { addRoute, clearRoutesFor, Metric, recomputeRoutes } from "../../router";
 import { sendIPPacket } from "../../send";
 import { IPNet, IPNET_ALL } from "../../subnet";
-import { addDNSServer, clearDNSServers } from "../dns/stack";
+import { addDNSServerFor, clearDNSServersFor } from "../dns/stack";
 import { UDPPkt } from "../index";
 import { udpListen } from "../stack";
 import { DHCP_MODE, DHCP_OPTION, DHCPPkt } from "./index";
@@ -34,14 +34,14 @@ export class DHCPNegotiator {
 
     private xid?: number;
     private secs: number = 0;
-    private iface: IInterface;
     private renewTimer?: number;
     private server: IPAddr = IP_BROADCAST;
     private doneCB?: VoidCB;
     private donePromise?: Promise<void>;
 
-    constructor(iface: IInterface) {
-        this.iface = iface;
+    constructor(private readonly iface: IInterface,
+                private readonly metric: number = Metric.DHCPDefault) {
+
     }
 
     public stop() {
@@ -74,7 +74,7 @@ export class DHCPNegotiator {
                 sendIPPacket(this.makeDHCPIP(), this.makeDHCPRequestFromOffer(dhcp), this.iface);
                 break;
             case DHCP_MODE.ACK:
-                flushRoutes(this.iface);
+                clearRoutesFor(this.iface);
 
                 const dhcpOptIp = dhcp.options.get(DHCP_OPTION.IP);
                 const ourIp = dhcpOptIp ?
@@ -106,9 +106,17 @@ export class DHCPNegotiator {
                 if (dhcpRouterRaw) {
                     const router = IPAddr.fromByteArray(dhcpRouterRaw, 0);
                     if (!subnet.contains(router)) {
-                        addRoute(IPNet.fromIPAndSubnet(router, 32), undefined, this.iface);
+                        addRoute({
+                            subnet: IPNet.fromIPAndSubnet(router, 32),
+                            iface: this.iface,
+                            metric: this.metric,
+                        });
                     }
-                    addRoute(IPNET_ALL, router, this.iface);
+                    addRoute({
+                        subnet: IPNET_ALL,
+                        iface: this.iface,
+                        metric: this.metric,
+                    });
                 }
 
                 const routesRaw = dhcp.options.get(DHCP_OPTION.CLASSLESS_STATIC_ROUTE);
@@ -127,15 +135,20 @@ export class DHCPNegotiator {
                         const ip = IPAddr.fromByteArray(routesRaw, i);
                         i += 3;
 
-                        addRoute(route, ip, this.iface);
+                        addRoute({
+                            subnet: route,
+                            router: ip,
+                            iface: this.iface,
+                            metric: this.metric,
+                        });
                     }
                 }
 
-                clearDNSServers(this.iface);
+                clearDNSServersFor(this.iface);
                 const dnsServersRaw = dhcp.options.get(DHCP_OPTION.DNS);
                 if (dnsServersRaw) {
                     const dnsServers = byteArrayToIpAddrs(dnsServersRaw);
-                    dnsServers.forEach((server) => addDNSServer(server, this.iface));
+                    dnsServers.forEach((server) => addDNSServerFor(server, this.iface));
                 }
 
                 const rawTtl = dhcp.options.get(DHCP_OPTION.LEASETIME);
@@ -280,9 +293,11 @@ function byteArrayToIpAddrs(array: Uint8Array) {
     return res;
 }
 
-export function addDHCP(iface: IInterface): DHCPNegotiator {
+export function addDHCP(iface: IInterface, metric: number = Metric.DHCPDefault): DHCPNegotiator {
+    enableDHCP();
+
     removeDHCP(iface);
-    const negotiator = new DHCPNegotiator(iface);
+    const negotiator = new DHCPNegotiator(iface, metric);
     dhcpNegotiators.set(iface, negotiator);
     return negotiator;
 }
