@@ -2,7 +2,7 @@ import { MACAddr } from "../ethernet/address";
 import { IP_NONE, IPAddr } from "../ethernet/ip/address";
 import { addRoute, flushRoutes as clearRoutes, recomputeRoutes, removeRoute } from "../ethernet/ip/router";
 import { IPNet, IPNET_NONE } from "../ethernet/ip/subnet";
-import { addDHCP, removeDHCP } from "../ethernet/ip/udp/dhcp/stack";
+import { addDHCP, DHCPNegotiator, removeDHCP } from "../ethernet/ip/udp/dhcp/stack";
 import { addDNSServer, clearDNSServers as clearDNSServers, removeDNSServer } from "../ethernet/ip/udp/dns/stack";
 import { handlePacket } from "../util/packet";
 import { addInterface, deleteInterface as removeInterface } from "./stack";
@@ -79,31 +79,31 @@ export abstract class Interface implements IInterface {
         addRoute(subnet, router, this, src);
     }
 
-    public removeRoute(subnet: IPNet) {
+    public removeRoute(subnet: IPNet): void {
         removeRoute(subnet);
     }
 
-    public clearRoutes() {
+    public clearRoutes(): void {
         clearRoutes(this);
     }
 
-    public addDHCP() {
-        addDHCP(this);
+    public addDHCP(): DHCPNegotiator {
+        return addDHCP(this);
     }
 
-    public removeDHCP() {
+    public removeDHCP(): void {
         removeDHCP(this);
     }
 
-    public addDNSServer(ip: IPAddr) {
+    public addDNSServer(ip: IPAddr): void {
         addDNSServer(ip, this);
     }
 
-    public removeDNSServer(ip: IPAddr) {
+    public removeDNSServer(ip: IPAddr): void {
         removeDNSServer(ip, this);
     }
 
-    public clearDNSServers() {
+    public clearDNSServers(): void {
         clearDNSServers(this);
     }
 
