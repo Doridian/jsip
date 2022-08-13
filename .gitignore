@@ -1,6 +1,6 @@
 node_modules
 
-/dist
+/lib
 
 .vscode/*
 !.vscode/settings.json
