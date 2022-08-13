@@ -1,6 +1,6 @@
-import { MACAddr } from "../../../address";
-import { ARP_HLEN, ARP_HTYPE } from "../../../arp/index";
-import { IPAddr } from "../../address";
+import { MACAddr } from "../../../address.js";
+import { ARP_HLEN, ARP_HTYPE } from "../../../arp/index.js";
+import { IPAddr } from "../../address.js";
 
 const DHCP_MAGIC = new Uint8Array([0x63, 0x82, 0x53, 0x63]);
 const DHCP_MAGIC_OFFSET = 236;

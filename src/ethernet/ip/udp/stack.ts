@@ -1,10 +1,10 @@
-import { IInterface } from "../../../interface/index";
-import { logError } from "../../../util/log";
-import { assertValidPort, makeRandomPort } from "../../../util/port";
-import { IPHdr, IPPROTO } from "../index";
-import { sendIPPacket } from "../send";
-import { registerIpHandler } from "../stack";
-import { UDPPkt } from "./index";
+import { IInterface } from "../../../interface/index.js";
+import { logError } from "../../../util/log.js";
+import { assertValidPort, makeRandomPort } from "../../../util/port.js";
+import { IPHdr, IPPROTO } from "../index.js";
+import { sendIPPacket } from "../send.js";
+import { registerIpHandler } from "../stack.js";
+import { UDPPkt } from "./index.js";
 
 export type UDPReplyFunc = (data: Uint8Array) => void;
 export interface IUDPListener {

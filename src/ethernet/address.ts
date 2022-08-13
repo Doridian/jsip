@@ -1,4 +1,4 @@
-import { randomByte } from "../util/index";
+import { randomByte } from "../util/index.js";
 
 function macPaddedOut(num: number) {
     if (num < 0x10) {

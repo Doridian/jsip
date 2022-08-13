@@ -1,4 +1,4 @@
-import { buffersToBuffer, CHAR_LF } from "./string";
+import { buffersToBuffer, CHAR_LF } from "./string.js";
 
 export abstract class CheckpointStream<T> {
     public parseOnAdd = true;

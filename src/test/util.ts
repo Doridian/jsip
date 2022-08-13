@@ -1,13 +1,13 @@
-import { MACAddr } from "../ethernet/address";
-import { ARPPkt } from "../ethernet/arp/index";
-import { ETH_TYPE, EthHdr } from "../ethernet/index";
-import { IPAddr } from "../ethernet/ip/address";
-import { ICMPPkt } from "../ethernet/ip/icmp/index";
-import { IPHdr, IPPROTO } from "../ethernet/ip/index";
-import { TCPPkt } from "../ethernet/ip/tcp/index";
-import { DHCPPkt } from "../ethernet/ip/udp/dhcp/index";
-import { DNSPkt } from "../ethernet/ip/udp/dns/index";
-import { UDPPkt } from "../ethernet/ip/udp/index";
+import { MACAddr } from "../ethernet/address.js";
+import { ARPPkt } from "../ethernet/arp/index.js";
+import { ETH_TYPE, EthHdr } from "../ethernet/index.js";
+import { IPAddr } from "../ethernet/ip/address.js";
+import { ICMPPkt } from "../ethernet/ip/icmp/index.js";
+import { IPHdr, IPPROTO } from "../ethernet/ip/index.js";
+import { TCPPkt } from "../ethernet/ip/tcp/index.js";
+import { DHCPPkt } from "../ethernet/ip/udp/dhcp/index.js";
+import { DNSPkt } from "../ethernet/ip/udp/dns/index.js";
+import { UDPPkt } from "../ethernet/ip/udp/index.js";
 
 export function decodeHexString(str: string) {
     const res = new ArrayBuffer(str.length / 2);

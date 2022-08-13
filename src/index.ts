@@ -1,11 +1,11 @@
-import { enableARP } from "./ethernet/arp/stack";
-import { enableIP } from "./ethernet/ip/stack";
-import { enableICMP } from "./ethernet/ip/icmp/stack";
-import { enableUDP, enableUDPEcho } from "./ethernet/ip/udp/stack";
-import { enableTCP, enableTCPEcho } from "./ethernet/ip/tcp/stack";
-import { enableDHCP } from "./ethernet/ip/udp/dhcp/stack";
-import { enableDNS } from "./ethernet/ip/udp/dns/stack";
-import { addLoopback } from "./interface/loopback";
+import { enableARP } from "./ethernet/arp/stack.js";
+import { enableIP } from "./ethernet/ip/stack.js";
+import { enableICMP } from "./ethernet/ip/icmp/stack.js";
+import { enableUDP, enableUDPEcho } from "./ethernet/ip/udp/stack.js";
+import { enableTCP, enableTCPEcho } from "./ethernet/ip/tcp/stack.js";
+import { enableDHCP } from "./ethernet/ip/udp/dhcp/stack.js";
+import { enableDNS } from "./ethernet/ip/udp/dns/stack.js";
+import { addLoopback } from "./interface/loopback.js";
 
 export { Interface, IInterface } from "./interface";
 

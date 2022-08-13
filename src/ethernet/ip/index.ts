@@ -1,6 +1,6 @@
-import { computeChecksum } from "../../util/checksum";
-import { logDebug } from "../../util/log";
-import { IPAddr } from "./address";
+import { computeChecksum } from "../../util/checksum.js";
+import { logDebug } from "../../util/log.js";
+import { IPAddr } from "./address.js";
 
 export const enum IPPROTO {
     NONE = 0,

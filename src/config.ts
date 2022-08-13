@@ -1,7 +1,7 @@
-import { getRoutes } from "./ethernet/ip/router";
-import { getDNSServers } from "./ethernet/ip/udp/dns/stack";
-import { getInterfaces } from "./interface/stack";
-import { logDebug } from "./util/log";
+import { getRoutes } from "./ethernet/ip/router.js";
+import { getDNSServers } from "./ethernet/ip/udp/dns/stack.js";
+import { getInterfaces } from "./interface/stack.js";
+import { logDebug } from "./util/log.js";
 
 export function configOut() {
     const ifaces = getInterfaces();

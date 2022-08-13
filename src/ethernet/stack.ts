@@ -1,6 +1,6 @@
-import { IInterface } from "../interface/index";
-import { logDebug } from "../util/log";
-import { ETH_TYPE, EthHdr } from "./index";
+import { IInterface } from "../interface/index.js";
+import { logDebug } from "../util/log.js";
+import { ETH_TYPE, EthHdr } from "./index.js";
 
 export interface IEthHandler {
     gotPacket(buffer: ArrayBuffer, offset: number, ethHdr: EthHdr, iface: IInterface): void;

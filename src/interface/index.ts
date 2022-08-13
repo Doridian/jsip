@@ -1,11 +1,11 @@
-import { MACAddr } from "../ethernet/address";
-import { IPAddr } from "../ethernet/ip/address";
-import { addRoute, clearRoutesFor, IPRoute, Metric, recomputeRoutes, removeRoute } from "../ethernet/ip/router";
-import { IPNet } from "../ethernet/ip/subnet";
-import { addDHCP, DHCPNegotiator, removeDHCP } from "../ethernet/ip/udp/dhcp/stack";
-import { addDNSServerFor, clearDNSServersFor, removeDNSServerFor } from "../ethernet/ip/udp/dns/stack";
-import { handlePacket } from "../util/packet";
-import { addInterface, removeInterface } from "./stack";
+import { MACAddr } from "../ethernet/address.js";
+import { IPAddr } from "../ethernet/ip/address.js";
+import { addRoute, clearRoutesFor, IPRoute, Metric, recomputeRoutes, removeRoute } from "../ethernet/ip/router.js";
+import { IPNet } from "../ethernet/ip/subnet.js";
+import { addDHCP, DHCPNegotiator, removeDHCP } from "../ethernet/ip/udp/dhcp/stack.js";
+import { addDNSServerFor, clearDNSServersFor, removeDNSServerFor } from "../ethernet/ip/udp/dns/stack.js";
+import { handlePacket } from "../util/packet.js";
+import { addInterface, removeInterface } from "./stack.js";
 
 export interface IInterface {
     getName(): string;

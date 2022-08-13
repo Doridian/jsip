@@ -1,9 +1,9 @@
-import { boolToBit } from "../../../../util/index";
-import { bufferToString } from "../../../../util/string";
-import { IPAddr } from "../../address";
-import { DNSAnswer } from "./answer";
-import { DNSQuestion } from "./question";
-import { IDNSParseState } from "./util";
+import { boolToBit } from "../../../../util/index.js";
+import { bufferToString } from "../../../../util/string.js";
+import { IPAddr } from "../../address.js";
+import { DNSAnswer } from "./answer.js";
+import { DNSQuestion } from "./question.js";
+import { IDNSParseState } from "./util.js";
 
 const DNS_SEG_PTR = 0b11000000;
 const DNS_SEG_MAX = 0b00111111;

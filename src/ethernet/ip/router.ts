@@ -1,8 +1,8 @@
-import { IInterface } from "../../interface/index";
-import { getLoopbackInterface } from "../../interface/loopback";
-import { getInterfaces } from "../../interface/stack";
-import { IPAddr } from "./address";
-import { IPNet, IPNET_BROADCAST, IPNET_LINK_LOCAL, IPNET_MULTICAST } from "./subnet";
+import { IInterface } from "../../interface/index.js";
+import { getLoopbackInterface } from "../../interface/loopback.js";
+import { getInterfaces } from "../../interface/stack.js";
+import { IPAddr } from "./address.js";
+import { IPNet, IPNET_BROADCAST, IPNET_LINK_LOCAL, IPNET_MULTICAST } from "./subnet.js";
 
 export const enum Metric {
     Core = 0,

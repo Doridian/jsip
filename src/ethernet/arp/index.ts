@@ -1,5 +1,5 @@
-import { MACAddr } from "../address";
-import { IPAddr } from "../ip/address";
+import { MACAddr } from "../address.js";
+import { IPAddr } from "../ip/address.js";
 
 export const ARP_HTYPE = 1;
 export const ARP_PTYPE = 0x800;

@@ -1,6 +1,6 @@
-import { IPacket } from "../../../ipacket";
-import { computeChecksum, computeChecksumPseudo } from "../../../util/checksum";
-import { IPHdr, IPPROTO } from "../index";
+import { IPacket } from "../../../ipacket.js";
+import { computeChecksum, computeChecksumPseudo } from "../../../util/checksum.js";
+import { IPHdr, IPPROTO } from "../index.js";
 
 export const enum TCP_FLAGS {
     NS = 0x100,

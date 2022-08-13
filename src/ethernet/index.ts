@@ -1,4 +1,4 @@
-import { MACAddr } from "./address";
+import { MACAddr } from "./address.js";
 
 export const enum ETH_TYPE {
     NONE = 0x0000,

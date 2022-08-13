@@ -1,12 +1,12 @@
-import { IInterface } from "../../../interface/index";
-import { EventEmitter } from "../../../util/emitter";
-import { assertValidPort, makeRandomPort } from "../../../util/port";
-import { IPAddr } from "../address";
-import { IPHdr, IPPROTO } from "../index";
-import { getRoute } from "../router";
-import { sendIPPacket } from "../send";
-import { registerIpHandler } from "../stack";
-import { TCP_FLAGS, TCPPkt } from "./index";
+import { IInterface } from "../../../interface/index.js";
+import { EventEmitter } from "../../../util/emitter.js";
+import { assertValidPort, makeRandomPort } from "../../../util/port.js";
+import { IPAddr } from "../address.js";
+import { IPHdr, IPPROTO } from "../index.js";
+import { getRoute } from "../router.js";
+import { sendIPPacket } from "../send.js";
+import { registerIpHandler } from "../stack.js";
+import { TCP_FLAGS, TCPPkt } from "./index.js";
 
 export interface ITCPListener {
     gotConnection(tcpConn: TCPConn): void;
