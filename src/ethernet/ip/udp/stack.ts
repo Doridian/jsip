@@ -88,8 +88,9 @@ export function udpCloseListener(port: number) {
 }
 
 export function enableUDP() {
-    udpListeners.set(7, UDPEchoListener);
-
     registerIpHandler(IPPROTO.UDP, IPUDPListener);
 }
 
+export function enableUDPEcho() {
+    udpListen(7, UDPEchoListener);
+}

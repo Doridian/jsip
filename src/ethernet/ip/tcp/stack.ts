@@ -475,6 +475,8 @@ export function enableTCP() {
     }, 1000);
     
     registerIpHandler(IPPROTO.TCP, TCPConn);
+}
 
-    tcpListeners.set(7, TCPEchoListener);
+export function enableTCPEcho() {
+    tcpListen(7, TCPEchoListener);
 }
