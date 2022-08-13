@@ -11,6 +11,7 @@
 
     /* Strict Type-Checking Options */
     "strict": true,                        /* Enable all strict type-checking options. */
+    "declaration": true,
 
     /* Additional Checks */
     "noUnusedLocals": true,                /* Report errors on unused locals. */

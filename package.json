@@ -1,6 +1,7 @@
 {
-  "name": "jsip",
+  "name": "@doridian/jsip",
   "version": "1.0.0",
+  "private": false,
   "description": "",
   "main": "main.js",
   "directories": {
@@ -8,14 +9,15 @@
   },
   "scripts": {
     "build": "rimraf dist && tsc --project .",
-    "test": "npm run build && node -r esm ./dist/test/dns.js"
+    "test": "npm run build && node -r esm ./dist/test/dns.js",
+    "prepare": "npm rum build"
   },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/Doridian/jsip.git"
   },
-  "author": "",
-  "license": "ISC",
+  "author": "Doridian",
+  "license": "BSD-3-Clause",
   "bugs": {
     "url": "https://github.com/Doridian/jsip/issues"
   },
