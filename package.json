@@ -10,7 +10,9 @@
     "test": "npm run build && node -r esm ./dist/test/dns.js",
     "prepare": "npm rum build"
   },
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "repository": {
     "type": "git",
     "url": "git+https://github.com/Doridian/jsip.git"
