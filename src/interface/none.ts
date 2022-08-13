@@ -2,11 +2,11 @@ import { logDebug } from "../util/log";
 import { Interface } from "./index";
 
 export class InterfaceNone extends Interface {
-    public sendRaw(_: ArrayBuffer): void {
+    public sendPacket(_: ArrayBuffer): void {
         logDebug("Discarding packet sent to none iface");
     }
 
-    public useEthernet(): boolean {
+    public isEthernet(): boolean {
         return false;
     }
 

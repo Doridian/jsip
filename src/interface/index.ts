@@ -1,10 +1,15 @@
 import { MACAddr } from "../ethernet/address";
 import { IP_NONE, IPAddr } from "../ethernet/ip/address";
+import { addRoute, flushRoutes as clearRoutes, recomputeRoutes, removeRoute } from "../ethernet/ip/router";
 import { IPNet, IPNET_NONE } from "../ethernet/ip/subnet";
+import { addDHCP, removeDHCP } from "../ethernet/ip/udp/dhcp/stack";
+import { addDNSServer, clearDNSServers as clearDNSServers, removeDNSServer } from "../ethernet/ip/udp/dns/stack";
+import { handlePacket } from "../util/packet";
+import { addInterface, deleteInterface as removeInterface } from "./stack";
 
 export interface IInterface {
     getName(): string;
-    useEthernet(): boolean;
+    isEthernet(): boolean;
     getIP(): IPAddr;
     setIP(ip: IPAddr): void;
     getSubnet(): IPNet;
@@ -13,7 +18,7 @@ export interface IInterface {
     getMTU(): number;
     isConfigured(): boolean;
     isLocalDest(ip: IPAddr): boolean;
-    sendRaw(msg: ArrayBuffer): void;
+    sendPacket(msg: ArrayBuffer): void;
 }
 
 export abstract class Interface implements IInterface {
@@ -62,7 +67,55 @@ export abstract class Interface implements IInterface {
         return this.ip.equals(ip);
     }
 
-    public abstract sendRaw(msg: ArrayBuffer): void;
-    public abstract useEthernet(): boolean;
+    public abstract sendPacket(msg: ArrayBuffer): void;
+    public abstract isEthernet(): boolean;
     public abstract getMTU(): number;
+
+    protected handlePacket(packet: ArrayBuffer): void {
+        handlePacket(packet, this);
+    }
+
+    public addRoute(subnet: IPNet, router: IPAddr, src?: IPAddr): void {
+        addRoute(subnet, router, this, src);
+    }
+
+    public removeRoute(subnet: IPNet) {
+        removeRoute(subnet);
+    }
+
+    public clearRoutes() {
+        clearRoutes(this);
+    }
+
+    public addDHCP() {
+        addDHCP(this);
+    }
+
+    public removeDHCP() {
+        removeDHCP(this);
+    }
+
+    public addDNSServer(ip: IPAddr) {
+        addDNSServer(ip, this);
+    }
+
+    public removeDNSServer(ip: IPAddr) {
+        removeDNSServer(ip, this);
+    }
+
+    public clearDNSServers() {
+        clearDNSServers(this);
+    }
+
+    public add(): void {
+        addInterface(this);
+        recomputeRoutes();
+    }
+
+    public remove(): void {
+        removeInterface(this);
+        removeDHCP(this);
+        clearRoutes(this);
+        clearDNSServers(this);
+    }
 }

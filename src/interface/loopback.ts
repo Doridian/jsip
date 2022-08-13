@@ -5,11 +5,11 @@ import { Interface } from "./index";
 import { addInterface } from "./stack";
 
 export class InterfaceLoopback extends Interface {
-    public sendRaw(msg: ArrayBuffer): void {
+    public sendPacket(msg: ArrayBuffer): void {
         handlePacket(msg, this);
     }
 
-    public useEthernet(): boolean {
+    public isEthernet(): boolean {
         return false;
     }
 
@@ -26,4 +26,6 @@ export const INTERFACE_LOOPBACK = new InterfaceLoopback("lo");
 INTERFACE_LOOPBACK.setIP(IP_LOOPBACK);
 INTERFACE_LOOPBACK.setSubnet(IPNET_LOOPBACK);
 
-addInterface(INTERFACE_LOOPBACK);
+export function addLoopback() {
+    addInterface(INTERFACE_LOOPBACK);
+}

@@ -6,7 +6,7 @@ import { IPHdr, IPPROTO } from "../../index";
 import { addRoute, flushRoutes, recomputeRoutes } from "../../router";
 import { sendIPPacket } from "../../send";
 import { IPNet, IPNET_ALL } from "../../subnet";
-import { addDNSServer, flushDNSServers } from "../dns/stack";
+import { addDNSServer, clearDNSServers } from "../dns/stack";
 import { UDPPkt } from "../index";
 import { udpListen } from "../stack";
 import { DHCP_MODE, DHCP_OPTION, DHCPPkt } from "./index";
@@ -131,7 +131,7 @@ export class DHCPNegotiator {
                     }
                 }
 
-                flushDNSServers(this.iface);
+                clearDNSServers(this.iface);
                 const dnsServersRaw = dhcp.options.get(DHCP_OPTION.DNS);
                 if (dnsServersRaw) {
                     const dnsServers = byteArrayToIpAddrs(dnsServersRaw);

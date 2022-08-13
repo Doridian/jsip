@@ -5,8 +5,13 @@ import { enableUDP } from "./ethernet/ip/udp/stack";
 import { enableTCP } from "./ethernet/ip/tcp/stack";
 import { enableDHCP } from "./ethernet/ip/udp/dhcp/stack";
 import { enableDNS } from "./ethernet/ip/udp/dns/stack";
+import { addLoopback } from "./interface/loopback";
 
-export function enableProtocols() {
+export { Interface } from "./interface";
+
+export function initialize() {
+    addLoopback();
+
     enableARP();
     enableIP();
     

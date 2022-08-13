@@ -49,7 +49,7 @@ export function sendIPPacket(ipHdr: IPHdr, payload: IPacket, iface: IInterface) 
         ipHdr.saddr = iface.getIP();
     }
 
-    if (!iface.useEthernet()) {
+    if (!iface.isEthernet()) {
         sendIPPacketInternal(ipHdr, payload, iface);
         return;
     }
@@ -79,7 +79,7 @@ function sendIPPacketInternal(ipHdr: IPHdr, payload: IPacket, iface: IInterface,
         offset += ipHdr.toPacket(reply, offset);
         offset += payload.toPacket(reply, offset, ipHdr);
 
-        iface.sendRaw(reply);
+        iface.sendPacket(reply);
 
         return;
     }
@@ -123,6 +123,6 @@ function sendIPPacketInternal(ipHdr: IPHdr, payload: IPacket, iface: IInterface,
             p8[j + hdrLen] = r8[j + offset];
         }
 
-        iface.sendRaw(pktData);
+        iface.sendPacket(pktData);
     }
 }

@@ -89,7 +89,7 @@ function sendARPPkt(arpPkt: ARPPkt, fromAddr: MACAddr, iface: IInterface) {
     ethHdr.toPacket(pkt, 0);
     arpPkt.toPacket(pkt, ETH_LEN);
 
-    iface.sendRaw(pkt);
+    iface.sendPacket(pkt);
 }
 
 class EthARPListener {

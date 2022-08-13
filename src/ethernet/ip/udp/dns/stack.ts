@@ -184,7 +184,18 @@ export function addDNSServer(ip: IPAddr, iface: IInterface) {
     recomputeDNSServers();
 }
 
-export function flushDNSServers(iface: IInterface) {
+export function removeDNSServer(ip: IPAddr, iface: IInterface) {
+    const ifaceIps = dnsServerIpsByIface.get(iface);
+    if (!ifaceIps) {
+        return;
+    }
+    const idx = ifaceIps.findIndex((sIp) => sIp.equals(ip));
+    if (idx >= 0) {
+        ifaceIps.splice(idx, 1);
+    }
+}
+
+export function clearDNSServers(iface: IInterface) {
     dnsServerIpsByIface.delete(iface);
     recomputeDNSServers();
 }
