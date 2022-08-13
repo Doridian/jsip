@@ -116,11 +116,11 @@ export class DHCPPkt {
         packet[9] = this.secs & 0xFF;
         packet[10] = (this.flags >>> 8) & 0xFF;
         packet[11] = this.flags & 0xFF;
-        this.ciaddr!.toBytes(packet, 12);
-        this.yiaddr!.toBytes(packet, 16);
-        this.siaddr!.toBytes(packet, 20);
-        this.giaddr!.toBytes(packet, 24);
-        this.chaddr!.toBytes(packet, 28);
+        this.ciaddr?.toBytes(packet, 12);
+        this.yiaddr?.toBytes(packet, 16);
+        this.siaddr?.toBytes(packet, 20);
+        this.giaddr?.toBytes(packet, 24);
+        this.chaddr?.toBytes(packet, 28);
         packet[DHCP_MAGIC_OFFSET] = DHCP_MAGIC[0];
         packet[DHCP_MAGIC_OFFSET + 1] = DHCP_MAGIC[1];
         packet[DHCP_MAGIC_OFFSET + 2] = DHCP_MAGIC[2];
