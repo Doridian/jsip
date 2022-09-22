@@ -1,5 +1,6 @@
 import { IInterface } from "../../../interface/index.js";
 import { EventEmitter } from "../../../util/emitter.js";
+import { logDebug } from "../../../util/log.js";
 import { assertValidPort, makeRandomPort } from "../../../util/port.js";
 import { IPAddr } from "../address.js";
 import { IPHdr, IPPROTO } from "../index.js";
@@ -303,7 +304,12 @@ export class TCPConn extends EventEmitter {
                         this.emit("drain", undefined);
                     }
                 }
-            } else if (tcpPkt.ackno !== this.wlastackno) {
+            } else if (tcpPkt.ackno < wseqno! && tcpPkt.ackno > this.wlastackno) {
+                logDebug(`In-between-ack of packet (packet.ackno=${tcpPkt.ackno} wseqno=${wseqno} wlastackno=${this.wlastackno})`);
+                this.wlastackno = tcpPkt.ackno;
+            } else if (tcpPkt.ackno === this.wlastackno) {
+                logDebug(`Re-ack of packet (packet.ackno=${tcpPkt.ackno} wseqno=${wseqno} wlastackno=${this.wlastackno})`);
+            } else {
                 throw new Error(`Wrong ACK (packet.ackno=${tcpPkt.ackno} wseqno=${wseqno} wlastackno=${this.wlastackno})`);
             }
         }
