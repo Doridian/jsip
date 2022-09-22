@@ -1,5 +1,5 @@
 import { IInterface } from "../../../interface/index.js";
-import { logError } from "../../../util/log.js";
+import { logPacketError } from "../../../util/log.js";
 import { assertValidPort, makeRandomPort } from "../../../util/port.js";
 import { IPHdr, IPPROTO } from "../index.js";
 import { sendIPPacket } from "../send.js";
@@ -42,9 +42,9 @@ class IPUDPListener {
                     udp.data = reply;
                     return sendIPPacket(ip, udp, iface);
                 })
-                .catch(logError);
+                .catch((e) => logPacketError(e as Error, data));
             } catch (e) {
-                logError(e as Error);
+                logPacketError(e as Error, data);
             }
         }
     }

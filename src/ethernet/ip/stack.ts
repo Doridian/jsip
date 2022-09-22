@@ -1,5 +1,5 @@
 import { IInterface } from "../../interface/index.js";
-import { logDebug, logError } from "../../util/log.js";
+import { logDebug, logPacketError } from "../../util/log.js";
 import { ETH_TYPE, EthHdr } from "../index.js";
 import { registerEthHandler } from "../stack.js";
 import { IPHdr } from "./index.js";
@@ -19,7 +19,7 @@ function handlePacket(ipHdr: IPHdr, data: ArrayBuffer, offset: number, iface: II
         try {
             handler.gotPacket(data, offset, len, ipHdr, iface);
         } catch (e) {
-            logError(e as Error);
+            logPacketError(e as Error, data);
         }
     }
 }
