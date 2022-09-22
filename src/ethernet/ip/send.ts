@@ -83,7 +83,7 @@ function sendIPPacketInternal(ipHdr: IPHdr, payload: IPacket, iface: IInterface,
     }
 
     if (ipHdr.df) {
-        throw new Error("Needing to send packet too big for MTU/MSS, but DF set");
+        throw new Error(`Needing to send packet too big for MTU/MSS, but DF set (len=${fullLength} max=${maxPacketSize})`);
     }
 
     const maxPacketSizeFrag = (maxPacketSize >>> 3) << 3;

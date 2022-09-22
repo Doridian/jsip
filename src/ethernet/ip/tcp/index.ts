@@ -57,8 +57,9 @@ export class TCPPkt implements IPacket {
             tcp.data = new Uint8Array(packet, 20 + offset);
         }
 
-        if (ipHdr && tcp.computeChecksum(ipHdr, data) !== 0) {
-            throw new Error("Invalid TCP checksum");
+        const checksum = tcp.computeChecksum(ipHdr, data);
+        if (ipHdr && checksum !== 0) {
+            throw new Error(`Invalid TCP checksum: ${checksum} != 0`);
         }
         return tcp;
     }

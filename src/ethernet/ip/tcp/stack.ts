@@ -240,7 +240,7 @@ export class TCPConn extends EventEmitter {
             }
 
             if (tcpPkt.seqno !== this.rseqno) {
-                throw new Error("Invalid sequence number");
+                throw new Error(`Invalid sequence number (packet.seqno=${tcpPkt.seqno} rseqno=${this.rseqno})`);
             }
 
             if (tcpPkt.hasFlag(TCP_FLAGS.RST)) {
@@ -304,7 +304,7 @@ export class TCPConn extends EventEmitter {
                     }
                 }
             } else if (tcpPkt.ackno !== this.wlastackno) {
-                throw new Error("Wrong ACK");
+                throw new Error(`Wrong ACK (packet.ackno=${tcpPkt.ackno} wseqno=${wseqno} wlastackno=${this.wlastackno})`);
             }
         }
 

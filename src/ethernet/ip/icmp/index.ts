@@ -12,8 +12,9 @@ export class ICMPPkt {
 
         icmp.data = (len > 8) ? new Uint8Array(packet, offset + 8) : undefined;
 
-        if (computeChecksum(data) !== 0) {
-            throw new Error("Invalid ICMP checksum");
+        const checksum = computeChecksum(data);
+        if (checksum !== 0) {
+            throw new Error(`Invalid ICMP checksum: ${checksum} != 0`);
         }
         return icmp;
     }
