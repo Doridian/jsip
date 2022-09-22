@@ -74,6 +74,7 @@ export class TCPConn extends EventEmitter {
     private rbuffers: Uint8Array[] = [];
     private rbufferlen = 0;
     private wlastack = false;
+    private wlastackno = 0;
     private wlastsend = 0;
     private wretrycount = 0;
     private rlastseqno?: number;
@@ -290,6 +291,7 @@ export class TCPConn extends EventEmitter {
         if (tcpPkt.hasFlag(TCP_FLAGS.ACK)) {
             if (tcpPkt.ackno === wseqno) {
                 this.wlastack = true;
+                this.wlastackno = tcpPkt.ackno;
                 this.wretrycount = 0;
                 if (this.state === TCP_STATE.CLOSING || this.state === TCP_STATE.LAST_ACK) {
                     this.delete();
@@ -301,7 +303,7 @@ export class TCPConn extends EventEmitter {
                         this.emit("drain", undefined);
                     }
                 }
-            } else {
+            } else if (tcpPkt.ackno !== this.wlastackno) {
                 throw new Error("Wrong ACK");
             }
         }
