@@ -197,7 +197,6 @@ export class TCPConn extends EventEmitter {
         this.setId();
         tcpConns.set(this.connId, this);
         this.gotPacket(ipHdr, tcpPkt);
-        console.log(this.rwnd_ackd);
     }
 
     private isAllACK() {
