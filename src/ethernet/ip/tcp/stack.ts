@@ -287,7 +287,7 @@ export class TCPConn extends EventEmitter {
                     this.rejectPkt(ipHdr, tcpPkt, "Expected SYN");
                     return;
                 }
-                this.ackno = tcpPkt.seqno;
+                this.ackno = tcpPkt.seqno + TCPConn.tcpSize(tcpPkt);
                 this.state = TCP_STATE.SYN_RECEIVED;
 
                 const ip = this.makeIp(true);
