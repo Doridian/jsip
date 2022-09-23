@@ -96,6 +96,7 @@ export class TCPConn extends EventEmitter {
 
     private pbuffer: WPacket[] = []; // Packet sent buffer
     private pbufferoffset: number = 0; // Offset of last sent element within buffer (for resend)
+    private pbufferbytes: number = 0;
 
     public kill() {
         const ip = this.makeIp(true);
@@ -167,6 +168,7 @@ export class TCPConn extends EventEmitter {
     private pushPBuffer(ip: IPHdr, tcp: TCPPkt) {
         const len = TCPConn.tcpSize(tcp);
         this.seqno = (this.seqno + len) & 0xFFFFFFFF;
+        this.pbufferbytes += len;
         this.pbuffer.push({
             ip,
             tcp,
@@ -210,22 +212,25 @@ export class TCPConn extends EventEmitter {
             return;
         }
 
+        if (tcpPkt.hasFlag(TCP_FLAGS.RST)) {
+            this.rejectPkt(ipHdr, tcpPkt, "RST received");
+            this.delete();
+            return;
+        }
+
         if (tcpPkt.hasFlag(TCP_FLAGS.ACK)) {
             for (let i = 0; i < this.pbufferoffset; i++) {
                 const pkt = this.pbuffer[i];
                 if (pkt.seqend === tcpPkt.ackno) {
                     const toACK = i + 1;
                     this.pbufferoffset -= toACK;
-                    this.pbuffer.splice(0, toACK);
+                    const ackdPkts = this.pbuffer.splice(0, toACK);
+                    for (const ackdPkt of ackdPkts) {
+                        this.pbufferbytes -= TCPConn.tcpSize(ackdPkt.tcp);
+                    }
                     break;
                 }
             }
-        }
-
-        if (tcpPkt.hasFlag(TCP_FLAGS.RST)) {
-            this.rejectPkt(ipHdr, tcpPkt, "RST received");
-            this.delete();
-            return;
         }
 
         switch (this.state) {
@@ -338,7 +343,7 @@ export class TCPConn extends EventEmitter {
             return;
         }
 
-        const maxSend = Math.min(this.wbuffer.length(), this.wwnd, this.mss);
+        const maxSend = Math.min(this.wbuffer.length(), this.wwnd - this.pbufferbytes, this.mss);
         if (maxSend <= 0) {
             return;
         }
@@ -346,8 +351,6 @@ export class TCPConn extends EventEmitter {
         const ip = this.makeIp();
         const tcp = this.makeTcp();
         tcp.data = this.wbuffer.read(maxSend);
-        const len = TCPConn.tcpSize(tcp);
-        this.wwnd -= len;
         this.pushPBuffer(ip, tcp);
     }
 
@@ -392,8 +395,9 @@ export class TCPConn extends EventEmitter {
         this.state = TCP_STATE.CLOSED;
 
         this.pbuffer = [];
-        this.wbuffer.readAll();
+        this.wbuffer.reset();
         this.pbufferoffset = 0;
+        this.pbufferbytes = 0;
 
         this.emit("close", undefined);
         tcpConns.delete(this.connId);

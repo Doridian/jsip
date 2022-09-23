@@ -12,6 +12,14 @@ export class Buffer {
         this.len += data.length;
     }
 
+    public reset() {
+        this.data = [];
+        this.len = 0;
+        this.lastReadDelim = -1;
+        this.lastReadEnd = 0;
+        this.lastStartPosOffset = 0;
+    }
+
     public length() {
         return this.len;
     }
@@ -56,9 +64,7 @@ export class Buffer {
         }
 
         const res = new Uint8Array(buffersToBuffer(this.data));
-        this.data = [];
-        this.len = 0;
-        this.lastReadDelim = -1;
+        this.reset();
         return res;
     }
 
