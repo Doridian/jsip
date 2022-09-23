@@ -1,6 +1,6 @@
 import { IInterface } from "../../../interface/index.js";
+import { Buffer } from "../../../util/buffer.js";
 import { EventEmitter } from "../../../util/emitter.js";
-import { logDebug } from "../../../util/log.js";
 import { assertValidPort, makeRandomPort } from "../../../util/port.js";
 import { IPAddr } from "../address.js";
 import { IPHdr, IPPROTO } from "../index.js";
@@ -20,26 +20,38 @@ const tcpListeners = new Map<number, ITCPListener>();
 // *connect / *listen / send / close / kill
 
 const enum TCP_STATE {
+    // Done
     CLOSED = 0,
-    SYN_SENT = 1,
-    SYN_RECEIVED = 2,
-    FIN_WAIT_1 = 3,
-    FIN_WAIT_2 = 4,
-    CLOSING = 5,
-    TIME_WAIT = 6,
-    CLOSE_WAIT = 7,
-    LAST_ACK = 8,
-    ESTABLISHED = 9,
-}
+    LISTENING = 1,
 
-const TCP_ONLY_SEND_ON_PSH = false;
+    // Handshaking
+    SYN_SENT = 2,
+    SYN_RECEIVED = 3,
+
+    // Ready
+    ESTABLISHED = 4,
+
+    // Local close
+    FIN_WAIT_1 = 5, // FIN sent
+    FIN_WAIT_2 = 6, // FIN ACK'd
+    CLOSING = 7,
+    TIME_WAIT = 8,
+
+    // Remote close
+    CLOSE_WAIT = 9,
+    LAST_ACK = 10,
+}
 
 const TCP_FLAG_INCSEQ = ~(TCP_FLAGS.PSH | TCP_FLAGS.ACK);
 
-interface IWBufferEntry {
-    close?: boolean;
-    data?: Uint8Array;
-    psh?: boolean;
+interface WPacket {
+    ip: IPHdr;
+    tcp: TCPPkt;
+
+    seqend: number;
+
+    nextSend: number;
+    retries: number;
 }
 
 export class TCPConn extends EventEmitter {
@@ -65,52 +77,45 @@ export class TCPConn extends EventEmitter {
 
     public sport = 0;
     public dport = 0;
-
-    private state = TCP_STATE.CLOSED;
     private daddr?: IPAddr;
-    private wseqno?: number;
-    private rseqno?: number;
-    private wnd = 65535;
-    private wbuffers: IWBufferEntry[] = [];
-    private rbuffers: Uint8Array[] = [];
-    private rbufferlen = 0;
-    private wlastack = false;
-    private wlastackno = 0;
-    private wlastsend = 0;
-    private wretrycount = 0;
-    private rlastseqno?: number;
+
+    private seqno: number = Math.floor(Math.random() * (1 << 30));
+    private ackno: number = -1;
+
+    private wwnd = 0; // Max the remote end wants us to send
+    private rwnd = 65535; // Max we want the remote end to send
+
     private mss = -1;
+
     private connId: string = "";
     private iface?: IInterface;
 
-    private lastIp?: IPHdr;
-    private lastTcp?: TCPPkt;
-    private lastAckIp?: IPHdr;
-    private lastAckTcp?: TCPPkt;
+    private state = TCP_STATE.CLOSED;
+
+    private wbuffer = new Buffer();
+    private pbuffer: WPacket[] = [];
+    private pbufferoffset: number = 0;
 
     public kill() {
         const ip = this.makeIp(true);
         const tcp = this.makeTcp();
-        tcp.flags = 0;
-        tcp.setFlag(TCP_FLAGS.RST);
+        tcp.flags = TCP_FLAGS.RST;
         sendIPPacket(ip, tcp, this.iface);
         this.delete();
     }
 
     public close() {
-        if (!this.wlastack || this.state !== TCP_STATE.ESTABLISHED) {
-            this.wbuffers.push({ close: true });
+        if (this.state !== TCP_STATE.ESTABLISHED) {
             return;
         }
-
+        this.state = TCP_STATE.FIN_WAIT_1;
         const ip = this.makeIp(true);
         const tcp = this.makeTcp();
         tcp.setFlag(TCP_FLAGS.FIN);
-        this.sendPacket(ip, tcp);
+        this.pushPBuffer(ip, tcp);
     }
 
-    public connect(dport: number, daddr: IPAddr, iface?: IInterface) {
-        this.state = TCP_STATE.SYN_SENT;
+    public connect(daddr: IPAddr, dport: number, iface?: IInterface) {
         this.daddr = daddr;
         this.dport = dport;
         this.iface = iface;
@@ -128,22 +133,13 @@ export class TCPConn extends EventEmitter {
         } while (tcpConns.has(this.connId) || tcpListeners.has(this.sport));
         tcpConns.set(this.connId, this);
 
+        const syn = this.makeTcp();
+        syn.unsetFlag(TCP_FLAGS.ACK);
+        syn.setFlag(TCP_FLAGS.SYN);
         const ip = this.makeIp(true);
-        const tcp = this.makeTcp();
-        this.sendPacket(ip, tcp);
-    }
-
-    public cycle() {
-        if (!this.wlastack && this.lastTcp && this.wlastsend < Date.now() - 1000) {
-            if (this.wretrycount > 3) {
-                this.kill();
-                return;
-            }
-            if (this.lastIp) {
-                sendIPPacket(this.lastIp, this.lastTcp, this.iface);
-            }
-            this.wretrycount++;
-        }
+        this.pushPBuffer(ip, syn);
+        this.state = TCP_STATE.SYN_SENT;
+        this.processWPBuffer();
     }
 
     public send(data: Uint8Array) {
@@ -151,32 +147,8 @@ export class TCPConn extends EventEmitter {
             return;
         }
 
-        const isReady = this.wlastack && this.state === TCP_STATE.ESTABLISHED;
-
-        let psh = true;
-        if (data.byteLength > this.mss) {
-            const first = data.slice(0, this.mss);
-            if (!isReady) {
-                this.wbuffers.push({ data: first, psh: false });
-            }
-            for (let i = this.mss; i < data.byteLength; i += this.mss) {
-                this.wbuffers.push({ data: data.slice(i, i + this.mss), psh: false });
-            }
-            const last = this.wbuffers[this.wbuffers.length - 1];
-            last.psh = true;
-            if (!isReady) {
-                return;
-            }
-            data = first;
-            psh = false;
-        }
-
-        if (!isReady) {
-            this.wbuffers.push({ data, psh: true });
-            return;
-        }
-
-        this.sendInternal(data, psh);
+        this.wbuffer.add(data);
+        this.processWPBuffer();
     }
 
     public getId() {
@@ -187,8 +159,24 @@ export class TCPConn extends EventEmitter {
         return `IF=${this.iface},DADDR=${this.daddr},SPORT=${this.sport},DPORT=${this.dport},ID=${this.getId()}`;
     }
 
+    private calcNextSend(retries: number) {
+        return Date.now() + (2000 * (retries + 1));
+    }
+
+    private pushPBuffer(ip: IPHdr, tcp: TCPPkt) {
+        const len = TCPConn.tcpSize(tcp);
+        this.seqno = (this.seqno + len) & 0xFFFFFFFF;
+        this.pbuffer.push({
+            ip,
+            tcp,
+            seqend: this.seqno,
+            nextSend: this.calcNextSend(0),
+            retries: 0,
+        });
+    }
+
     private accept(ipHdr: IPHdr, tcpPkt: TCPPkt, iface: IInterface) {
-        this.state =  TCP_STATE.SYN_RECEIVED;
+        this.state =  TCP_STATE.LISTENING;
         this.daddr = ipHdr.saddr;
         this.dport = tcpPkt.sport;
         this.sport = tcpPkt.dport;
@@ -199,183 +187,214 @@ export class TCPConn extends EventEmitter {
         this.gotPacket(ipHdr, tcpPkt);
     }
 
-    private gotPacket(_: IPHdr, tcpPkt: TCPPkt) {
-        if (this.state === TCP_STATE.CLOSED) {
-            return this.kill();
-        }
+    private isAllACK() {
+        return this.pbuffer.length === 0;
+    }
 
-        if (this.rlastseqno !== undefined && tcpPkt.seqno <= this.rlastseqno) {
-            if (this.lastAckTcp && this.lastAckIp) {
-                sendIPPacket(this.lastAckIp, this.lastAckTcp, this.iface);
-            }
+    private rejectPkt(ip: IPHdr, tcpPkt: TCPPkt, reason: string) {
+        console.log(`Rejecting packet: ${reason}`, this, ip, tcpPkt);
+    }
+
+    private gotPacket(ipHdr: IPHdr, tcpPkt: TCPPkt) {
+        tcpPkt.unsetFlag(TCP_FLAGS.PSH);
+
+        if (this.ackno >= 0 && tcpPkt.seqno !== this.ackno) {
+            // Buffer it for out-of-order reorder!
+            this.rejectPkt(ipHdr, tcpPkt, "Wrong sequence from remote end");
             return;
         }
 
-        let wseqno = this.wseqno;
-        let rseqno = this.rseqno;
+        if (tcpPkt.hasFlag(TCP_FLAGS.ACK)) {
+            while (this.pbufferoffset > 0 && this.pbuffer[0].seqend <= tcpPkt.ackno) {
+                this.pbufferoffset--;
+                this.pbuffer.shift();
+            }
+        }
 
-        if (tcpPkt.hasFlag(TCP_FLAGS.SYN)) {
-            if (this.state === TCP_STATE.SYN_SENT || this.state === TCP_STATE.SYN_RECEIVED) {
-                this.rseqno = tcpPkt.seqno;
+        switch (this.state) {
+            case TCP_STATE.LISTENING:
+                if (tcpPkt.flags !== TCP_FLAGS.SYN) {
+                    return;
+                }
+                this.ackno = tcpPkt.seqno;
+                this.state = TCP_STATE.SYN_RECEIVED;
 
-                this.incRSeq(1);
                 const ip = this.makeIp(true);
                 const tcp = this.makeTcp();
-                if (this.state === TCP_STATE.SYN_RECEIVED) {
-                    this.sendPacket(ip, tcp);
-                } else {
-                    sendIPPacket(ip, tcp, this.iface);
-                }
+                tcp.setFlag(TCP_FLAGS.SYN);
+                this.pushPBuffer(ip, tcp);
+                return;
 
-                rseqno = this.rseqno;
-                wseqno = this.wseqno;
+            case TCP_STATE.SYN_RECEIVED:
+                if (tcpPkt.flags !== TCP_FLAGS.ACK) {
+                    this.rejectPkt(ipHdr, tcpPkt, "Expected ACK");
+                    return;
+                }
 
                 this.state = TCP_STATE.ESTABLISHED;
                 this.emit("connect", undefined);
-            } else {
-                throw new Error("Unexpected SYN");
-            }
-        } else {
-            if (this.rseqno === undefined) {
-                throw new Error("Wanted SYN, but got none");
-            }
+                break;
 
-            if (tcpPkt.seqno !== this.rseqno) {
-                throw new Error(`Invalid sequence number (packet.seqno=${tcpPkt.seqno} rseqno=${this.rseqno})`);
-            }
+            case TCP_STATE.SYN_SENT:
+                if (tcpPkt.flags !== (TCP_FLAGS.SYN | TCP_FLAGS.ACK)) {
+                    this.rejectPkt(ipHdr, tcpPkt, "Expected SYN+ACK");
+                    return;
+                }
+                this.ackno = tcpPkt.seqno;
+                this.state = TCP_STATE.ESTABLISHED;
+                this.emit("connect", undefined);
+                break;
 
-            if (tcpPkt.hasFlag(TCP_FLAGS.RST)) {
-                this.delete();
-                return;
-            }
+            case TCP_STATE.ESTABLISHED:
+                if (tcpPkt.hasFlag(TCP_FLAGS.SYN)) {
+                    this.rejectPkt(ipHdr, tcpPkt, "Unexpected SYN");
+                    return;
+                }
 
+                if (tcpPkt.hasFlag(TCP_FLAGS.FIN)) {
+                    this.state = TCP_STATE.CLOSE_WAIT;
+                    // Technically, do application layer close here
+
+                    this.state = TCP_STATE.LAST_ACK;
+                    const ip = this.makeIp(true);
+                    const tcp = this.makeTcp();
+                    tcp.setFlag(TCP_FLAGS.FIN);
+                    this.pushPBuffer(ip, tcp);
+                    return;
+                }
+                break;
+
+            case TCP_STATE.FIN_WAIT_1:
+                if (tcpPkt.hasFlag(TCP_FLAGS.SYN)) {
+                    this.rejectPkt(ipHdr, tcpPkt, "Unexpected SYN");
+                    return;
+                }
+
+                if (tcpPkt.hasFlag(TCP_FLAGS.FIN) && this.pbufferoffset === 0) {
+                    this.state = TCP_STATE.TIME_WAIT;
+                } else if (tcpPkt.hasFlag(TCP_FLAGS.FIN)) {
+                    this.state = TCP_STATE.CLOSING;
+                } else if (this.isAllACK()) {
+                    this.state = TCP_STATE.FIN_WAIT_2;
+                }
+                break;
+
+            case TCP_STATE.FIN_WAIT_2:
+                if (tcpPkt.hasFlag(TCP_FLAGS.SYN)) {
+                    this.rejectPkt(ipHdr, tcpPkt, "Unexpected SYN");
+                    return;
+                }
+
+                if (tcpPkt.hasFlag(TCP_FLAGS.FIN)) {
+                    this.state = TCP_STATE.TIME_WAIT;
+                }
+                break;
+
+            case TCP_STATE.LAST_ACK:
+            case TCP_STATE.CLOSING:
+                if (tcpPkt.hasFlag(TCP_FLAGS.SYN)) {
+                    this.rejectPkt(ipHdr, tcpPkt, "Unexpected SYN");
+                    return;
+                }
+
+                if (this.isAllACK()) {
+                    this.state = TCP_STATE.TIME_WAIT;
+                }
+                break;
+        }
+
+        let needACK = false;
+
+        const len = TCPConn.tcpSize(tcpPkt);
+        if (len > 0) {
+            this.ackno = (this.ackno + len) & 0xFFFFFFFF;
             if (tcpPkt.data && tcpPkt.data.byteLength > 0) {
-                this.rlastseqno = rseqno;
-                this.incRSeq(tcpPkt.data.byteLength);
-                const ip = this.makeIp(true);
-                const tcp = this.makeTcp();
-                sendIPPacket(ip, tcp, this.iface);
-                this.lastAckIp = ip;
-                this.lastAckTcp = tcp;
-
-                if (TCP_ONLY_SEND_ON_PSH) {
-                    this.rbufferlen += tcpPkt.data.byteLength;
-                    this.rbuffers.push(tcpPkt.data);
-                    if (tcpPkt.hasFlag(TCP_FLAGS.PSH)) {
-                        const all = new ArrayBuffer(this.rbufferlen);
-                        const a8 = new Uint8Array(all);
-                        let pos = 0;
-                        for (const rbuffer of this.rbuffers) {
-                            const b8 = new Uint8Array(rbuffer);
-                            for (let j = 0; j < b8.length; j++) {
-                                a8[pos + j] = b8[j];
-                            }
-                            pos += b8.length;
-                        }
-                        this.rbuffers = [];
-                        this.emit("data", new Uint8Array(all));
-                    }
-                } else {
-                    this.emit("data", tcpPkt.data);
-                }
+                this.emit("data", tcpPkt.data);
             }
-
-            if ((tcpPkt.flags & TCP_FLAG_INCSEQ) !== 0) { // not (only) ACK set?
-                this.incRSeq(1);
-            }
-
-            if (tcpPkt.mss !== -1) {
-                this.mss = tcpPkt.mss;
-            }
+            needACK = true;
         }
 
-        if (tcpPkt.hasFlag(TCP_FLAGS.ACK)) {
-            if (tcpPkt.ackno === wseqno) {
-                this.wlastack = true;
-                this.wlastackno = tcpPkt.ackno;
-                this.wretrycount = 0;
-                if (this.state === TCP_STATE.CLOSING || this.state === TCP_STATE.LAST_ACK) {
-                    this.delete();
-                } else {
-                    const next = this.wbuffers.shift();
-                    if (next) {
-                        this.sendInternal(next.data, next.psh);
-                    } else {
-                        this.emit("drain", undefined);
-                    }
-                }
-            } else if (tcpPkt.ackno < wseqno! && tcpPkt.ackno > this.wlastackno) {
-                logDebug(`In-between-ack of packet (packet.ackno=${tcpPkt.ackno} wseqno=${wseqno} wlastackno=${this.wlastackno})`);
-                this.wlastackno = tcpPkt.ackno;
-            } else if (tcpPkt.ackno === this.wlastackno) {
-                logDebug(`Re-ack of packet (packet.ackno=${tcpPkt.ackno} wseqno=${wseqno} wlastackno=${this.wlastackno})`);
-            } else {
-                throw new Error(`Wrong ACK (packet.ackno=${tcpPkt.ackno} wseqno=${wseqno} wlastackno=${this.wlastackno})`);
-            }
-        }
+        this.wwnd = tcpPkt.windowSize;
+        this.processWPBuffer(needACK);
 
-        if (tcpPkt.hasFlag(TCP_FLAGS.FIN)) {
+        if (this.state === TCP_STATE.TIME_WAIT) {
+            this.delete();
+            return;
+        }
+    }
+
+    private processWPBuffer(needACK: boolean = false) {
+        this.processWBuffer();
+
+        if (needACK && this.pbuffer.length <= this.pbufferoffset) {
             const ip = this.makeIp(true);
             const tcp = this.makeTcp();
-            switch (this.state) {
-                case TCP_STATE.FIN_WAIT_1:
-                case TCP_STATE.FIN_WAIT_2:
-                    sendIPPacket(ip, tcp, this.iface); // ACK it
-                    if (!tcpPkt.hasFlag(TCP_FLAGS.ACK)) {
-                        this.state = TCP_STATE.CLOSING;
-                    } else {
-                        this.delete();
-                    }
-                    break;
-                case TCP_STATE.CLOSING:
-                case TCP_STATE.LAST_ACK:
-                    this.delete();
-                    sendIPPacket(ip, tcp, this.iface);
-                    this.incWSeq(1);
-                    break;
-                default:
-                    this.state = TCP_STATE.LAST_ACK;
-                    tcp.setFlag(TCP_FLAGS.FIN);
-                    sendIPPacket(ip, tcp, this.iface);
-                    this.incWSeq(1);
-                    break;
-            }
+            this.pushPBuffer(ip, tcp);
         }
+
+        this.processPBuffer();
     }
 
-    private delete() {
-        this.state = TCP_STATE.CLOSED;
-        this.wbuffers = [];
-        this.rbuffers = [];
-        this.emit("close", undefined);
-        tcpConns.delete(this.connId);
-    }
+    private processWBuffer() {
+        if (this.state !== TCP_STATE.ESTABLISHED) {
+            return;
+        }
 
-    private sendPacket(ipHdr: IPHdr, tcpPkt: TCPPkt) {
-        this.lastIp = ipHdr;
-        this.lastTcp = tcpPkt;
-        sendIPPacket(ipHdr, tcpPkt, this.iface);
-        this.wlastack = false;
-        this.wlastsend = Date.now();
-    }
+        const maxSend = Math.min(this.wbuffer.length(), this.wwnd, this.mss);
+        if (maxSend <= 0) {
+            return;
+        }
 
-    private incRSeq(inc: number) {
-        this.rseqno = (this.rseqno! + inc) & 0xFFFFFFFF;
-    }
-
-    private incWSeq(inc: number) {
-        this.wseqno = (this.wseqno! + inc) & 0xFFFFFFFF;
-    }
-
-    private sendInternal(data?: Uint8Array, psh: boolean = false) {
         const ip = this.makeIp();
         const tcp = this.makeTcp();
-        tcp.data = data;
-        if (psh) {
-            tcp.setFlag(TCP_FLAGS.PSH);
+        tcp.data = this.wbuffer.read(maxSend);
+        const len = TCPConn.tcpSize(tcp);
+        this.wwnd -= len;
+        this.pushPBuffer(ip, tcp);
+    }
+
+    private processPBuffer() {
+        for (; this.pbufferoffset < this.pbuffer.length; this.pbufferoffset++) {
+            const pkt = this.pbuffer[this.pbufferoffset];
+            sendIPPacket(pkt.ip, pkt.tcp, this.iface);
         }
-        this.sendPacket(ip, tcp);
-        this.incWSeq(data ? data.byteLength : 0);
+    }
+
+    private static tcpSize(tcp: TCPPkt) {
+        let len = tcp.data?.byteLength || 0;
+        if (tcp.flags & TCP_FLAG_INCSEQ) {
+            len++;
+        }
+        return len;
+    }
+
+    public cycle() {
+        if (this.pbufferoffset < 1) {
+            return;
+        }
+
+        const pkt = this.pbuffer[0];
+        const now = Date.now();
+        if (pkt.nextSend <= now) {
+            sendIPPacket(pkt.ip, pkt.tcp, this.iface);
+            pkt.retries++;
+            if (pkt.retries > 3) {
+                this.kill();
+                return;
+            }
+            pkt.nextSend = this.calcNextSend(pkt.retries);
+        }
+    }
+
+    public delete() {
+        this.state = TCP_STATE.CLOSED;
+
+        this.pbuffer = [];
+        this.wbuffer.readAll();
+        this.pbufferoffset = 0;
+
+        this.emit("close", undefined);
+        tcpConns.delete(this.connId);
     }
 
     private makeIp(df = false) {
@@ -389,24 +408,12 @@ export class TCPConn extends EventEmitter {
 
     private makeTcp() {
         const tcp = new TCPPkt();
-        tcp.windowSize = this.wnd;
+        tcp.windowSize = this.rwnd;
         tcp.dport = this.dport;
         tcp.sport = this.sport;
-        let incSeq = false;
-        if (this.wseqno === undefined) {
-            this.wseqno = Math.floor(Math.random() * (1 << 30));
-            tcp.setFlag(TCP_FLAGS.SYN);
-            incSeq = true;
-            tcp.fillMSS(this.mss);
-        }
-        tcp.seqno = this.wseqno;
-        if (incSeq) {
-            this.incWSeq(1);
-        }
-        if (this.rseqno !== undefined) {
-            tcp.ackno = this.rseqno;
-            tcp.setFlag(TCP_FLAGS.ACK);
-        }
+        tcp.seqno = this.seqno;
+        tcp.ackno = this.ackno;
+        tcp.setFlag(TCP_FLAGS.ACK);
         return tcp;
     }
 
@@ -436,19 +443,6 @@ export function tcpCloseListener(port: number) {
     assertValidPort(port);
 
     return tcpListeners.delete(port);
-}
-
-export function tcpConnect(
-    ip: IPAddr, port: number,
-    iface?: IInterface) {
-
-    assertValidPort(port);
-
-    enableTCP();
-
-    const conn = new TCPConn();
-    conn.connect(port, ip, iface);
-    return conn;
 }
 
 // tslint:disable-next-line:max-classes-per-file

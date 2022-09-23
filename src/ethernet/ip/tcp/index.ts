@@ -22,7 +22,7 @@ export class TCPPkt implements IPacket {
         tcp.dport = data[3] + (data[2] << 8);
         tcp.seqno = data[7] + (data[6] << 8) | (data[5] << 16) | (data[4] << 24);
         tcp.ackno = data[11] + (data[10] << 8) | (data[9] << 16) | (data[8] << 24);
-        const dataOffset = (data[12] & 0b1111) << 2;
+        const dataOffset = (data[12] & 0b11110000) >> 2;
         tcp.flags = data[13] & 0b111111;
         tcp.windowSize = data[15] | (data[14] << 8);
         tcp.checksum = data[17] | (data[16] << 8);

@@ -1,6 +1,8 @@
 import { CheckpointStream } from "../../../../util/stream.js";
 import { arrayToString, buffersToBuffer, CHAR_CR, stringToBuffer } from "../../../../util/string.js";
-import { dnsTcpConnect } from "../../udp/dns/tcp_util.js";
+import { IPAddr } from "../../address.js";
+import { dnsResolveOrIp } from "../../udp/dns/stack.js";
+import { TCPConn } from "../stack.js";
 import { HTTPHeaders } from "./headers.js";
 
 export interface IHTTPResult {
@@ -218,33 +220,37 @@ function httpPromise(options: IHTTPOptionsFilled, resolve: (res: IHTTPResult) =>
 
     const stream = new HttpCheckpointStream(options, resolve);
 
-    dnsTcpConnect(url.hostname, url.port ? parseInt(url.port, 10) : 80)
-    .then((tcpConn) => {
-        tcpConn.on("data", (data) => {
-            try {
-                stream.add(data as Uint8Array);
-            } catch (e) {
-                stream.close();
-                reject(e as Error);
-            }
+    const tcpConn = new TCPConn();
 
-            if (stream.getState() === HttpParseState.Done) {
-                tcpConn.close();
+    tcpConn.on("data", (data) => {
+        try {
+            stream.add(data as Uint8Array);
+        } catch (e) {
+            stream.close();
+            reject(e as Error);
+        }
+
+        if (stream.getState() === HttpParseState.Done) {
+            tcpConn.close();
+        }
+    });
+    tcpConn.once("connect", () => {
+        const data = [`${options.method} ${url.pathname}${url.search} HTTP/1.1`];
+        const headersMap = headers.getAll();
+        for (const headerName of Object.keys(headersMap)) {
+            for (const header of headersMap[headerName]) {
+                data.push(`${headerName}: ${header}`);
             }
-        });
-        tcpConn.once("connect", () => {
-            const data = [`${options.method} ${url.pathname}${url.search} HTTP/1.1`];
-            const headersMap = headers.getAll();
-            for (const headerName of Object.keys(headersMap)) {
-                for (const header of headersMap[headerName]) {
-                    data.push(`${headerName}: ${header}`);
-                }
-            }
-            tcpConn.send(new Uint8Array(stringToBuffer(data.join("\r\n") + "\r\n\r\n")));
-            if (body) {
-                tcpConn.send(body);
-            }
-        });
+        }
+        tcpConn.send(new Uint8Array(stringToBuffer(data.join("\r\n") + "\r\n\r\n")));
+        if (body) {
+            tcpConn.send(body);
+        }
+    });
+
+    dnsResolveOrIp(url.hostname)
+    .then(ip => {
+        tcpConn.connect(ip as IPAddr, url.port ? parseInt(url.port, 10) : 80);
     })
     .catch(reject);
 }
