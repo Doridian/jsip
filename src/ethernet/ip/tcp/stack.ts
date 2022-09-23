@@ -44,6 +44,11 @@ const enum TCP_STATE {
 
 const TCP_FLAG_INCSEQ = ~(TCP_FLAGS.PSH | TCP_FLAGS.ACK);
 
+interface RPacket {
+    ip: IPHdr;
+    tcp: TCPPkt;
+}
+
 interface WPacket {
     ip: IPHdr;
     tcp: TCPPkt;
@@ -81,9 +86,11 @@ export class TCPConn extends EventEmitter {
 
     private seqno: number = Math.floor(Math.random() * (1 << 30));
     private ackno: number = NaN;
+    private ackno_sent: number = NaN;
 
     private wwnd = 0; // Max the remote end wants us to send
     private rwnd = 65535; // Max we want the remote end to send
+    private rwnd_ackd = 65535; // Max window ACK'd by the remote end
 
     private mss = -1;
 
@@ -97,6 +104,8 @@ export class TCPConn extends EventEmitter {
     private pbuffer: WPacket[] = []; // Packet sent buffer
     private pbufferoffset: number = 0; // Offset of last sent element within buffer (for resend)
     private pbufferbytes: number = 0;
+
+    private rbuffer: Map<number, RPacket> = new Map();
 
     public kill() {
         const ip = this.makeIp(true);
@@ -188,6 +197,7 @@ export class TCPConn extends EventEmitter {
         this.setId();
         tcpConns.set(this.connId, this);
         this.gotPacket(ipHdr, tcpPkt);
+        console.log(this.rwnd_ackd);
     }
 
     private isAllACK() {
@@ -198,15 +208,51 @@ export class TCPConn extends EventEmitter {
         console.log(`Rejecting packet: ${reason}`, this, ip, tcpPkt);
     }
 
-    private gotPacket(ipHdr: IPHdr, tcpPkt: TCPPkt) {
-        tcpPkt.unsetFlag(TCP_FLAGS.PSH);
+    private calcWindowDiff(seqno: number) {
+        return (seqno - this.ackno) | 0;
+    }
 
-        if (!isNaN(this.ackno) && tcpPkt.seqno !== this.ackno) {
-            // Buffer it for out-of-order reorder!
-            this.rejectPkt(ipHdr, tcpPkt, "Wrong sequence from remote end");
+    private isInWindow(seqno: number) {
+        const diff = this.calcWindowDiff(seqno);
+        return (diff >= 0) && (diff <= this.rwnd_ackd || diff <= this.rwnd);
+    }
+
+    private gotPacket(ipHdr: IPHdr, tcpPkt: TCPPkt) {
+        if (isNaN(this.ackno)) {
+            this.handlePacket(ipHdr, tcpPkt);
+            this.postHandlePacket();
             return;
         }
 
+        if (!this.isInWindow(tcpPkt.seqno)) {
+            this.rejectPkt(ipHdr, tcpPkt, `Out of window (${this.calcWindowDiff(tcpPkt.seqno)} > ${Math.max(this.rwnd, this.rwnd_ackd)}`);
+            return;
+        }
+
+        this.rbuffer.set(tcpPkt.seqno, {
+            ip: ipHdr,
+            tcp: tcpPkt,
+        });
+
+        let pkt: RPacket | undefined;
+        while(pkt = this.rbuffer.get(this.ackno)) {
+            this.rbuffer.delete(this.ackno);
+            this.handlePacket(pkt.ip, pkt.tcp);
+        }
+
+        this.postHandlePacket();
+    }
+
+    private postHandlePacket() {
+        this.processWPBuffer();
+
+        if (this.state === TCP_STATE.TIME_WAIT) {
+            this.delete();
+            return;
+        }
+    }
+
+    private handlePacket(ipHdr: IPHdr, tcpPkt: TCPPkt) {
         if (this.state !== TCP_STATE.LISTENING && this.state !== TCP_STATE.SYN_SENT && tcpPkt.hasFlag(TCP_FLAGS.SYN)) {
             this.rejectPkt(ipHdr, tcpPkt, "Unexpected SYN");
             return;
@@ -223,7 +269,10 @@ export class TCPConn extends EventEmitter {
                 const pkt = this.pbuffer[i];
                 if (pkt.seqend === tcpPkt.ackno) {
                     const toACK = i + 1;
+
                     this.pbufferoffset -= toACK;
+                    this.rwnd_ackd = pkt.tcp.windowSize;
+
                     const ackdPkts = this.pbuffer.splice(0, toACK);
                     for (const ackdPkt of ackdPkts) {
                         this.pbufferbytes -= TCPConn.tcpSize(ackdPkt.tcp);
@@ -306,30 +355,21 @@ export class TCPConn extends EventEmitter {
                 break;
         }
 
-        let needACK = false;
-
         const len = TCPConn.tcpSize(tcpPkt);
         if (len > 0) {
             this.ackno = (this.ackno + len) & 0xFFFFFFFF;
-            if (tcpPkt.data && tcpPkt.data.byteLength > 0) {
+            if (tcpPkt.data && tcpPkt.data.byteLength > 0 && this.state === TCP_STATE.ESTABLISHED) {
                 this.emit("data", tcpPkt.data);
             }
-            needACK = true;
         }
 
         this.wwnd = tcpPkt.windowSize;
-        this.processWPBuffer(needACK);
-
-        if (this.state === TCP_STATE.TIME_WAIT) {
-            this.delete();
-            return;
-        }
     }
 
-    private processWPBuffer(needACK: boolean = false) {
+    private processWPBuffer() {
         this.processWBuffer();
 
-        if (needACK && this.pbuffer.length <= this.pbufferoffset) {
+        if (this.ackno !== this.ackno_sent && this.pbuffer.length <= this.pbufferoffset) {
             const ip = this.makeIp(true);
             const tcp = this.makeTcp();
             this.pushPBuffer(ip, tcp);
@@ -362,6 +402,7 @@ export class TCPConn extends EventEmitter {
                 this.pbuffer.pop();
                 this.pbufferoffset--;
             }
+            this.ackno_sent = pkt.tcp.ackno;
         }
     }
 
@@ -374,6 +415,12 @@ export class TCPConn extends EventEmitter {
     }
 
     public cycle() {
+        for (const seqno of this.rbuffer.keys()) {
+            if (!this.isInWindow(seqno)) {
+                this.rbuffer.delete(seqno);
+            }
+        }
+
         if (this.pbufferoffset < 1) {
             return;
         }
@@ -398,6 +445,7 @@ export class TCPConn extends EventEmitter {
         this.wbuffer.reset();
         this.pbufferoffset = 0;
         this.pbufferbytes = 0;
+        this.rbuffer.clear();
 
         this.emit("close", undefined);
         tcpConns.delete(this.connId);
