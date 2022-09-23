@@ -80,7 +80,7 @@ export class TCPConn extends EventEmitter {
     private daddr?: IPAddr;
 
     private seqno: number = Math.floor(Math.random() * (1 << 30));
-    private ackno: number = -1;
+    private ackno: number = NaN;
 
     private wwnd = 0; // Max the remote end wants us to send
     private rwnd = 65535; // Max we want the remote end to send
@@ -92,9 +92,10 @@ export class TCPConn extends EventEmitter {
 
     private state = TCP_STATE.CLOSED;
 
-    private wbuffer = new Buffer();
-    private pbuffer: WPacket[] = [];
-    private pbufferoffset: number = 0;
+    private wbuffer = new Buffer(); // Data write buffer
+
+    private pbuffer: WPacket[] = []; // Packet sent buffer
+    private pbufferoffset: number = 0; // Offset of last sent element within buffer (for resend)
 
     public kill() {
         const ip = this.makeIp(true);
@@ -198,22 +199,39 @@ export class TCPConn extends EventEmitter {
     private gotPacket(ipHdr: IPHdr, tcpPkt: TCPPkt) {
         tcpPkt.unsetFlag(TCP_FLAGS.PSH);
 
-        if (this.ackno >= 0 && tcpPkt.seqno !== this.ackno) {
+        if (!isNaN(this.ackno) && tcpPkt.seqno !== this.ackno) {
             // Buffer it for out-of-order reorder!
             this.rejectPkt(ipHdr, tcpPkt, "Wrong sequence from remote end");
             return;
         }
 
+        if (this.state !== TCP_STATE.LISTENING && this.state !== TCP_STATE.SYN_SENT && tcpPkt.hasFlag(TCP_FLAGS.SYN)) {
+            this.rejectPkt(ipHdr, tcpPkt, "Unexpected SYN");
+            return;
+        }
+
         if (tcpPkt.hasFlag(TCP_FLAGS.ACK)) {
-            while (this.pbufferoffset > 0 && this.pbuffer[0].seqend <= tcpPkt.ackno) {
-                this.pbufferoffset--;
-                this.pbuffer.shift();
+            for (let i = 0; i < this.pbufferoffset; i++) {
+                const pkt = this.pbuffer[i];
+                if (pkt.seqend === tcpPkt.ackno) {
+                    const toACK = i + 1;
+                    this.pbufferoffset -= toACK;
+                    this.pbuffer.splice(0, toACK);
+                    break;
+                }
             }
+        }
+
+        if (tcpPkt.hasFlag(TCP_FLAGS.RST)) {
+            this.rejectPkt(ipHdr, tcpPkt, "RST received");
+            this.delete();
+            return;
         }
 
         switch (this.state) {
             case TCP_STATE.LISTENING:
                 if (tcpPkt.flags !== TCP_FLAGS.SYN) {
+                    this.rejectPkt(ipHdr, tcpPkt, "Expected SYN");
                     return;
                 }
                 this.ackno = tcpPkt.seqno;
@@ -246,14 +264,9 @@ export class TCPConn extends EventEmitter {
                 break;
 
             case TCP_STATE.ESTABLISHED:
-                if (tcpPkt.hasFlag(TCP_FLAGS.SYN)) {
-                    this.rejectPkt(ipHdr, tcpPkt, "Unexpected SYN");
-                    return;
-                }
-
                 if (tcpPkt.hasFlag(TCP_FLAGS.FIN)) {
                     this.state = TCP_STATE.CLOSE_WAIT;
-                    // Technically, do application layer close here
+                    this.emit("close", undefined);
 
                     this.state = TCP_STATE.LAST_ACK;
                     const ip = this.makeIp(true);
@@ -265,11 +278,6 @@ export class TCPConn extends EventEmitter {
                 break;
 
             case TCP_STATE.FIN_WAIT_1:
-                if (tcpPkt.hasFlag(TCP_FLAGS.SYN)) {
-                    this.rejectPkt(ipHdr, tcpPkt, "Unexpected SYN");
-                    return;
-                }
-
                 if (tcpPkt.hasFlag(TCP_FLAGS.FIN) && this.pbufferoffset === 0) {
                     this.state = TCP_STATE.TIME_WAIT;
                 } else if (tcpPkt.hasFlag(TCP_FLAGS.FIN)) {
@@ -280,11 +288,6 @@ export class TCPConn extends EventEmitter {
                 break;
 
             case TCP_STATE.FIN_WAIT_2:
-                if (tcpPkt.hasFlag(TCP_FLAGS.SYN)) {
-                    this.rejectPkt(ipHdr, tcpPkt, "Unexpected SYN");
-                    return;
-                }
-
                 if (tcpPkt.hasFlag(TCP_FLAGS.FIN)) {
                     this.state = TCP_STATE.TIME_WAIT;
                 }
@@ -292,11 +295,6 @@ export class TCPConn extends EventEmitter {
 
             case TCP_STATE.LAST_ACK:
             case TCP_STATE.CLOSING:
-                if (tcpPkt.hasFlag(TCP_FLAGS.SYN)) {
-                    this.rejectPkt(ipHdr, tcpPkt, "Unexpected SYN");
-                    return;
-                }
-
                 if (this.isAllACK()) {
                     this.state = TCP_STATE.TIME_WAIT;
                 }
@@ -357,6 +355,10 @@ export class TCPConn extends EventEmitter {
         for (; this.pbufferoffset < this.pbuffer.length; this.pbufferoffset++) {
             const pkt = this.pbuffer[this.pbufferoffset];
             sendIPPacket(pkt.ip, pkt.tcp, this.iface);
+            if (TCPConn.tcpSize(pkt.tcp) === 0) {
+                this.pbuffer.pop();
+                this.pbufferoffset--;
+            }
         }
     }
 
