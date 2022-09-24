@@ -106,7 +106,6 @@ export class TCPConn extends EventEmitter {
 
     private seqno: number = Math.floor(Math.random() * (1 << 30));
     private ackno: number = NaN;
-    //private ackno_sent: number = NaN;
 
     private wwnd = 0; // Max the remote end wants us to send
     private rwnd = 65535; // Max we want the remote end to send
@@ -570,10 +569,6 @@ export class TCPConn extends EventEmitter {
                 this.pbuffer.pop();
                 this.pbufferoffset--;
             }
-
-            //if (pkt.tcp.hasFlag(TCP_FLAGS.ACK)) {
-            //    this.ackno_sent = pkt.tcp.ackno;
-            //}
         }
     }
 
