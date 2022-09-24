@@ -1,6 +1,6 @@
 {
   "name": "@doridian/jsip",
-  "version": "1.6.5",
+  "version": "1.6.6",
   "private": false,
   "description": "",
   "main": "lib/index.js",
