@@ -14,6 +14,12 @@ export const enum TCP_FLAGS {
     FIN = 0x01,
 }
 
+export const enum TCP_OPTIONS {
+    MSS = 0x02,
+    SACK_SUPPORT = 0x04,
+    SACK = 0x05,
+}
+
 export class TCPPkt implements IPacket {
     public static fromPacket(packet: ArrayBuffer, offset: number, len: number, ipHdr: IPHdr) {
         const tcp = new TCPPkt();
@@ -78,10 +84,6 @@ export class TCPPkt implements IPacket {
 
     public getProto() {
         return IPPROTO.TCP;
-    }
-
-    public fillMSS(mss: number) {
-        this.setOption(0x02, new Uint8Array([(mss >>> 8) & 0xFF, mss & 0xFF]));
     }
 
     public setOption(typ: number, data: Uint8Array) {

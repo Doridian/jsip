@@ -7,7 +7,7 @@ import { IPHdr, IPPROTO } from "../index.js";
 import { getRoute } from "../router.js";
 import { sendIPPacket } from "../send.js";
 import { registerIpHandler } from "../stack.js";
-import { TCP_FLAGS, TCPPkt } from "./index.js";
+import { TCP_FLAGS, TCPPkt, TCP_OPTIONS } from "./index.js";
 
 export interface ITCPListener {
     gotConnection(tcpConn: TCPConn): void;
@@ -181,12 +181,7 @@ export class TCPConn extends EventEmitter {
         } while (tcpConns.has(this.connId) || tcpListeners.has(this.sport));
         tcpConns.set(this.connId, this);
 
-        const synPkt = this.makeTcp();
-        synPkt.setFlag(TCP_FLAGS.SYN);
-        synPkt.setOption(0x04, new Uint8Array()); // SACK
-        synPkt.fillMSS(this.mss);
-        const ip = this.makeIp(true);
-        this.pushPBuffer(ip, synPkt);
+        this.sendSYN();
         this.state = TCP_STATE.SYN_SENT;
         this.processWPBuffer();
     }
@@ -264,6 +259,7 @@ export class TCPConn extends EventEmitter {
 
     private gotPacket(ipHdr: IPHdr, tcpPkt: TCPPkt) {
         const isEmptyPacket = TCPConn.tcpSize(tcpPkt) === 0;
+
         this.ack_sent = false;
 
         if (isNaN(this.ackno)) {
@@ -280,7 +276,7 @@ export class TCPConn extends EventEmitter {
 
         if (this.sackSupported) {
             const options = tcpPkt.decodeOptions();
-            const sackOption = options.get(0x05);
+            const sackOption = options.get(TCP_OPTIONS.SACK);
             if (sackOption) {
                 const ackno = tcpPkt.ackno;
 
@@ -331,6 +327,30 @@ export class TCPConn extends EventEmitter {
         }
 
         this.postHandlePacket(false);
+    }
+
+    private handleRemoteSYN(tcpPkt: TCPPkt) {
+        const opts = tcpPkt.decodeOptions();
+        if (opts.has(TCP_OPTIONS.SACK_SUPPORT)) {
+            this.sackSupported = true;
+        }
+
+        const remoteMSSU8 = opts.get(TCP_OPTIONS.MSS);
+        if (remoteMSSU8) {
+            const remoteMSS = remoteMSSU8[1] | (remoteMSSU8[0] << 8);
+            if (remoteMSS < this.mss) {
+                this.mss = remoteMSS;
+            }
+        }
+    }
+
+    private sendSYN() {
+        const synPkt = this.makeTcp();
+        synPkt.setFlag(TCP_FLAGS.SYN);
+        synPkt.setOption(TCP_OPTIONS.SACK_SUPPORT, new Uint8Array());
+        synPkt.setOption(TCP_OPTIONS.MSS, new Uint8Array([(this.mss >>> 8) & 0xFF, this.mss & 0xFF]));
+        const ip = this.makeIp(true);
+        this.pushPBuffer(ip, synPkt);
     }
 
     private postHandlePacket(onlyEmptyPackets: boolean) {
@@ -390,7 +410,7 @@ export class TCPConn extends EventEmitter {
 
             const ipPkt = this.makeIp(true);
             const tcpPkt = this.makeTcp();
-            tcpPkt.setOption(0x05, sackRegionsU8);
+            tcpPkt.setOption(TCP_OPTIONS.SACK, sackRegionsU8);
             this.pushPBuffer(ipPkt, tcpPkt);
             needACK = false;
         }
@@ -399,10 +419,10 @@ export class TCPConn extends EventEmitter {
     }
 
     private handlePacket(ipHdr: IPHdr, tcpPkt: TCPPkt) {
-        if (this.state !== TCP_STATE.LISTENING && this.state !== TCP_STATE.SYN_SENT && tcpPkt.hasFlag(TCP_FLAGS.SYN)) {
-            this.rejectPkt(ipHdr, tcpPkt, "Unexpected SYN");
-            return;
-        }
+        const len = TCPConn.tcpSize(tcpPkt);
+
+        this.wwnd = tcpPkt.windowSize;
+        this.ackno = (tcpPkt.seqno + len) & 0xFFFFFFFF;
 
         if (tcpPkt.hasFlag(TCP_FLAGS.RST)) {
             this.rejectPkt(ipHdr, tcpPkt, "RST received");
@@ -421,38 +441,26 @@ export class TCPConn extends EventEmitter {
                 this.pbufferoffset -= 1;
                 this.rwnd_ackd = pkt.tcp.windowSize;
                 this.pbuffer.shift();
-                this.pbufferbytes -= TCPConn.tcpSize(pkt.tcp);
+                this.pbufferbytes -= len;
             }
         }
 
-        const len = TCPConn.tcpSize(tcpPkt);
-        this.wwnd = tcpPkt.windowSize;
-        this.ackno = (tcpPkt.seqno + len) & 0xFFFFFFFF;
-
         switch (this.state) {
             case TCP_STATE.LISTENING:
-                if (tcpPkt.flags !== TCP_FLAGS.SYN) {
+                if (!tcpPkt.hasFlag(TCP_FLAGS.SYN)) {
                     this.rejectPkt(ipHdr, tcpPkt, "Expected SYN");
-                    return;
+                    break;
                 }
 
                 this.state = TCP_STATE.SYN_RECEIVED;
-
-                const replyPkt = this.makeTcp();
-                replyPkt.setFlag(TCP_FLAGS.SYN);
-                replyPkt.fillMSS(this.mss);
-                replyPkt.setOption(0x04, new Uint8Array()); // SACK
-                this.pushPBuffer(this.makeIp(true), replyPkt);
-
-                if (tcpPkt.decodeOptions().has(0x04)) {
-                    this.sackSupported = true;
-                }
+                this.sendSYN();
+                this.handleRemoteSYN(tcpPkt);
                 break;
 
             case TCP_STATE.SYN_RECEIVED:
-                if (tcpPkt.flags !== TCP_FLAGS.ACK) {
+                if (!tcpPkt.hasFlag(TCP_FLAGS.ACK)) {
                     this.rejectPkt(ipHdr, tcpPkt, "Expected ACK");
-                    return;
+                    break;
                 }
 
                 this.state = TCP_STATE.ESTABLISHED;
@@ -460,15 +468,13 @@ export class TCPConn extends EventEmitter {
                 break;
 
             case TCP_STATE.SYN_SENT:
-                if (tcpPkt.flags !== (TCP_FLAGS.SYN | TCP_FLAGS.ACK)) {
-                    this.rejectPkt(ipHdr, tcpPkt, "Expected SYN+ACK");
-                    return;
+                if (!tcpPkt.hasFlag(TCP_FLAGS.SYN)) {
+                    this.rejectPkt(ipHdr, tcpPkt, "Expected SYN");
+                    break;
                 }
 
                 this.state = TCP_STATE.ESTABLISHED;
-                if (tcpPkt.decodeOptions().has(0x04)) {
-                    this.sackSupported = true;
-                }
+                this.handleRemoteSYN(tcpPkt);
 
                 this.emit("connect", undefined);
                 break;
@@ -482,7 +488,6 @@ export class TCPConn extends EventEmitter {
                     const replyPkt = this.makeTcp();
                     replyPkt.setFlag(TCP_FLAGS.FIN);
                     this.pushPBuffer(this.makeIp(true), replyPkt);
-                    return;
                 }
                 break;
 
@@ -512,7 +517,6 @@ export class TCPConn extends EventEmitter {
 
         if (this.state === TCP_STATE.TIME_WAIT) {
             this.delete();
-            return;
         }
 
         if (tcpPkt.data && tcpPkt.data.byteLength > 0 && this.state === TCP_STATE.ESTABLISHED) {
