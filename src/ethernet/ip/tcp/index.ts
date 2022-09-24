@@ -22,8 +22,8 @@ export class TCPPkt implements IPacket {
         tcp.dport = data[3] + (data[2] << 8);
         tcp.seqno = data[7] + (data[6] << 8) | (data[5] << 16) | (data[4] << 24);
         tcp.ackno = data[11] + (data[10] << 8) | (data[9] << 16) | (data[8] << 24);
-        const dataOffset = (data[12] & 0b11110000) >> 2;
-        tcp.flags = data[13] & 0b111111;
+        const dataOffset = (data[12] & 0b11110000) >>> 2;
+        tcp.flags = data[13] || (data[12] & 0b00000001) << 8;
         tcp.windowSize = data[15] | (data[14] << 8);
         tcp.checksum = data[17] | (data[16] << 8);
         tcp.urgptr = data[19] | (data[18] << 8);
@@ -93,6 +93,7 @@ export class TCPPkt implements IPacket {
         }
         
         this.options = new Uint8Array(base.byteLength + len);
+        this.options.set(base, 0);
         this.options[base.byteLength] = typ;
         this.options[base.byteLength + 1] = len;
         this.options.set(data, base.byteLength + 2);
@@ -137,20 +138,24 @@ export class TCPPkt implements IPacket {
         return (this.flags & flag) === flag;
     }
 
+    private getDataOffset() {
+        let dataOffset = (this.options ? (this.options.byteLength+1) : 0) + 20;
+        dataOffset += dataOffset % 4;
+        return dataOffset;
+    }
+
     public getFullLength() {
-        let len = 20;
+        let len = this.getDataOffset();
         if (this.data) {
             len += this.data.byteLength;
-        }
-        if (this.options) {
-            len += this.options.byteLength;
         }
         return len;
     }
 
     public toPacket(array: ArrayBuffer, offset: number, ipHdr?: IPHdr) {
         const packet = new Uint8Array(array, offset, this.getFullLength());
-        const dataOffset = (this.options ? this.options.byteLength : 0) + 20;
+        const dataOffset = this.getDataOffset();
+
         packet[0] = (this.sport >>> 8) & 0xFF;
         packet[1] = this.sport & 0xFF;
         packet[2] = (this.dport >>> 8) & 0xFF;
@@ -163,7 +168,7 @@ export class TCPPkt implements IPacket {
         packet[9] = (this.ackno >>> 16) & 0xFF;
         packet[10] = (this.ackno >>> 8) & 0xFF;
         packet[11] = this.ackno & 0xFF;
-        packet[12] = ((dataOffset >>> 2) << 4) | ((this.flags >>> 8) & 0x0F);
+        packet[12] = ((dataOffset << 2) & 0xF0) | ((this.flags >>> 8) & 0x0F);
         packet[13] = this.flags & 0xFF;
         packet[14] = (this.windowSize >>> 8) & 0xFF;
         packet[15] = this.windowSize & 0xFF;
@@ -171,15 +176,19 @@ export class TCPPkt implements IPacket {
         packet[17] = 0; // Checksum B
         packet[18] = (this.urgptr >>> 8) & 0xFF;
         packet[19] = this.urgptr & 0xFF;
-        if (this.options && this.options.byteLength > 0) {
-            const o8 = new Uint8Array(this.options);
-            for (let i = 0; i < o8.length; i++) {
+
+        if (dataOffset > 20) {
+            const o8 = new Uint8Array(this.options!);
+            for (let i = 0; i < o8.byteLength; i++) {
                 packet[20 + i] = o8[i];
+            }
+            for (let i = o8.byteLength+20; i < dataOffset; i++) {
+                packet[i] = 0x00;
             }
         }
         if (this.data && this.data.byteLength > 0) {
             const d8 = new Uint8Array(this.data);
-            for (let i = 0; i < d8.length; i++) {
+            for (let i = 0; i < d8.byteLength; i++) {
                 packet[dataOffset + i] = d8[i];
             }
         }
