@@ -351,13 +351,13 @@ export class TCPConn extends EventEmitter {
                     const len = TCPConn.tcpSize(val.tcp);
 
                     if (key === sackRegionEnd) {
-                        sackRegionEnd = key + (len - 1);
+                        sackRegionEnd = key + len;
                     } else {
                         if (!isNaN(sackRegionBegin)) {
                             sackRegions.push({begin: sackRegionBegin, end: sackRegionEnd});
                         }
                         sackRegionBegin = key;
-                        sackRegionEnd = key + (len - 1);
+                        sackRegionEnd = key + len;
                     }
                 }
                 if (!isNaN(sackRegionBegin)) {
