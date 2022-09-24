@@ -130,6 +130,8 @@ export class TCPConn extends EventEmitter {
     public noDelay: boolean = false;
     private lastSend: number = 0;
 
+    private sackSupported: boolean = false;
+
     public kill() {
         const ip = this.makeIp(true);
         const tcp = this.makeTcp();
@@ -179,11 +181,11 @@ export class TCPConn extends EventEmitter {
         } while (tcpConns.has(this.connId) || tcpListeners.has(this.sport));
         tcpConns.set(this.connId, this);
 
-        const syn = this.makeTcp();
-        syn.unsetFlag(TCP_FLAGS.ACK);
-        syn.setFlag(TCP_FLAGS.SYN);
+        const synPkt = this.makeTcp();
+        synPkt.setFlag(TCP_FLAGS.SYN);
+        synPkt.setOption(0x04, new Uint8Array()); // SACK
         const ip = this.makeIp(true);
-        this.pushPBuffer(ip, syn);
+        this.pushPBuffer(ip, synPkt);
         this.state = TCP_STATE.SYN_SENT;
         this.processWPBuffer();
     }
@@ -266,6 +268,16 @@ export class TCPConn extends EventEmitter {
             return;
         }
 
+        if (this.sackSupported) {
+            const options = tcpPkt.decodeOptions();
+            const sackOption = options.get(0x05);
+            if (sackOption) {
+                for (let i = 0; i < this.pbufferoffset; i++) {
+                    const pkt = this.pbuffer[i]l
+                }
+            }
+        }
+
         this.rbuffer.set(tcpPkt.seqno, {
             ip: ipHdr,
             tcp: tcpPkt,
@@ -319,7 +331,15 @@ export class TCPConn extends EventEmitter {
             }
         }
 
-        let replyPktFlags = 0;
+        const len = TCPConn.tcpSize(tcpPkt);
+        if (len > 0) {
+            this.ackno = (this.ackno + len) & 0xFFFFFFFF;
+            if (tcpPkt.data && tcpPkt.data.byteLength > 0 && this.state === TCP_STATE.ESTABLISHED) {
+                this.emit("data", tcpPkt.data);
+            }
+        }
+
+        this.wwnd = tcpPkt.windowSize;
 
         switch (this.state) {
             case TCP_STATE.LISTENING:
@@ -331,7 +351,14 @@ export class TCPConn extends EventEmitter {
                 this.ackno = tcpPkt.seqno;
                 this.state = TCP_STATE.SYN_RECEIVED;
 
-                replyPktFlags |= TCP_FLAGS.SYN;
+                const replyPkt = this.makeTcp();
+                replyPkt.flags |= TCP_FLAGS.SYN;
+                replyPkt.setOption(0x04, new Uint8Array()); // SACK
+                this.pushPBuffer(this.makeIp(true), replyPkt);
+
+                if (tcpPkt.decodeOptions().has(0x04)) {
+                    this.sackSupported = true;
+                }
                 break;
 
             case TCP_STATE.SYN_RECEIVED:
@@ -352,7 +379,11 @@ export class TCPConn extends EventEmitter {
 
                 this.ackno = tcpPkt.seqno;
 
-                this.state = TCP_STATE.ESTABLISHED;
+                this.state = TCP_STATE.ESTABLISHED;                
+                if (tcpPkt.decodeOptions().has(0x04)) {
+                    this.sackSupported = true;
+                }
+
                 this.emit("connect", undefined);
                 break;
 
@@ -362,7 +393,9 @@ export class TCPConn extends EventEmitter {
                     this.emit("close", undefined);
 
                     this.state = TCP_STATE.LAST_ACK;
-                    replyPktFlags |= TCP_FLAGS.FIN;
+                    const replyPkt = this.makeTcp();
+                    replyPkt.flags |= TCP_FLAGS.FIN;
+                    this.pushPBuffer(this.makeIp(true), replyPkt);
                     return;
                 }
                 break;
@@ -390,23 +423,6 @@ export class TCPConn extends EventEmitter {
                 }
                 break;
         }
-
-        const len = TCPConn.tcpSize(tcpPkt);
-        if (len > 0) {
-            this.ackno = (this.ackno + len) & 0xFFFFFFFF;
-            if (tcpPkt.data && tcpPkt.data.byteLength > 0 && this.state === TCP_STATE.ESTABLISHED) {
-                this.emit("data", tcpPkt.data);
-            }
-
-            if (replyPktFlags) {
-                const ipReply = this.makeIp(true)
-                const tcpReply = this.makeTcp();
-                tcpReply.setFlag(replyPktFlags);
-                this.pushPBuffer(ipReply, tcpReply);
-            }
-        }
-
-        this.wwnd = tcpPkt.windowSize;
     }
 
     private processWPBuffer() {
@@ -531,8 +547,12 @@ export class TCPConn extends EventEmitter {
         tcp.dport = this.dport;
         tcp.sport = this.sport;
         tcp.seqno = this.seqno;
-        tcp.ackno = this.ackno;
-        tcp.setFlag(TCP_FLAGS.ACK);
+        if (!isNaN(this.ackno)) {
+            tcp.ackno = this.ackno;
+            tcp.setFlag(TCP_FLAGS.ACK);
+        } else {
+            this.ackno = 0;
+        }
         return tcp;
     }
 

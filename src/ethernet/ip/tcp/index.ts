@@ -81,7 +81,48 @@ export class TCPPkt implements IPacket {
     }
 
     public fillMSS(mss: number) {
-        this.options = new Uint8Array([2, 4, (mss >>> 8) & 0xFF, mss & 0xFF]);
+        this.setOption(0x02, new Uint8Array([(mss >>> 8) & 0xFF, mss & 0xFF]));
+    }
+
+    public setOption(typ: number, data: Uint8Array) {
+        const len = data.byteLength + 2;
+
+        let base = this.options;
+        if (!base) {
+            base = new Uint8Array();
+        }
+        
+        this.options = new Uint8Array(base.byteLength + len);
+        this.options[base.byteLength] = typ;
+        this.options[base.byteLength + 1] = len;
+        this.options.set(data, base.byteLength + 2);
+    }
+
+    public decodeOptions() {
+        if (!this.options) {
+            return new Map<number, Uint8Array>();
+        }
+
+        const options = new Map<number, Uint8Array>();
+
+        let i = 0;
+        while(i < this.options.byteLength) {
+            const typ = this.options[i];
+            if (typ == 0x01 || typ == 0x00) {
+                i++;
+                continue;
+            }
+
+            const len = this.options[i + 1];
+            if (len < 1) {
+                break;
+            }
+
+            options.set(typ, this.options.slice(i + 2, len - 2));
+            i += len;
+        }
+
+        return options;
     }
 
     public setFlag(flag: TCP_FLAGS) {
