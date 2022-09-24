@@ -242,7 +242,7 @@ function httpPromise(options: IHTTPOptionsFilled, resolve: (res: IHTTPResult) =>
                 data.push(`${headerName}: ${header}`);
             }
         }
-        tcpConn.send(new Uint8Array(stringToBuffer(data.join("\r\n") + "\r\n\r\n")));
+        tcpConn.send(new Uint8Array(stringToBuffer(data.join("\r\n") + "\r\n\r\n")), true);
         if (body) {
             tcpConn.send(body);
         }

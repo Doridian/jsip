@@ -139,7 +139,7 @@ export class TCPPkt implements IPacket {
     }
 
     private getDataOffset() {
-        let dataOffset = (this.options ? (this.options.byteLength+1) : 0) + 20;
+        let dataOffset = (this.options ? this.options.byteLength : 0) + 20;
         dataOffset += dataOffset % 4;
         return dataOffset;
     }

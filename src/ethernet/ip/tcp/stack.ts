@@ -47,6 +47,7 @@ const TCP_FLAG_INCSEQ = TCP_FLAGS.RST | TCP_FLAGS.FIN | TCP_FLAGS.SYN;
 interface RPacket {
     ip: IPHdr;
     tcp: TCPPkt;
+    sackd: boolean;
 }
 
 interface WPacket {
@@ -105,8 +106,7 @@ export class TCPConn extends EventEmitter {
 
     private seqno: number = Math.floor(Math.random() * (1 << 30));
     private ackno: number = NaN;
-    private ackno_sent: number = NaN;
-    private got_packet_since_ack: boolean = false;
+    //private ackno_sent: number = NaN;
 
     private wwnd = 0; // Max the remote end wants us to send
     private rwnd = 65535; // Max we want the remote end to send
@@ -127,7 +127,7 @@ export class TCPConn extends EventEmitter {
 
     private rbuffer: Map<number, RPacket> = new Map();
 
-    public noDelay: boolean = false;
+    public noDelay: boolean = true;
     private lastSend: number = 0;
 
     private sackSupported: boolean = false;
@@ -191,9 +191,15 @@ export class TCPConn extends EventEmitter {
         this.processWPBuffer();
     }
 
-    public send(data: Uint8Array) {
+    public send(data: Uint8Array, zeroCopy: boolean = false) {
         if (!data || !data.byteLength) {
             return;
+        }
+
+        if (!zeroCopy) {
+            const dataReal = data;
+            data = new Uint8Array(dataReal.byteLength);
+            data.set(dataReal, 0);
         }
 
         this.wbuffer.add(data);
@@ -256,16 +262,17 @@ export class TCPConn extends EventEmitter {
     }
 
     private gotPacket(ipHdr: IPHdr, tcpPkt: TCPPkt) {
-        this.got_packet_since_ack = true;
+        const isEmptyPacket = TCPConn.tcpSize(tcpPkt) === 0;
 
         if (isNaN(this.ackno)) {
             this.handlePacket(ipHdr, tcpPkt);
-            this.postHandlePacket();
+            this.postHandlePacket(isEmptyPacket);
             return;
         }
 
         if (!this.isInEitherWindow(tcpPkt.seqno)) {
             this.rejectPkt(ipHdr, tcpPkt, `Out of window (${this.calcWindowDiff(tcpPkt.seqno)} > ${Math.max(this.rwnd, this.rwnd_ackd)}`);
+            this.postHandlePacket(isEmptyPacket);
             return;
         }
 
@@ -279,7 +286,7 @@ export class TCPConn extends EventEmitter {
                     const end = sackOption[i+7] | (sackOption[i+6] << 8) | (sackOption[i+5] << 16) | (sackOption[i+4] << 24);
                     sackWindows.push({
                         begin: (begin - this.ackno) | 0,
-                        end: (end - this.ackno) | 0,
+                        end: ((end - this.ackno) | 0) + 1,
                     });
                 }
 
@@ -293,18 +300,24 @@ export class TCPConn extends EventEmitter {
                             this.pbuffer.splice(i, 1);
                             this.pbufferoffset -= 1;
                             this.pbufferbytes -= TCPConn.tcpSize(pkt.tcp);
-                            console.log('SACK got', i);
                         }
                     }
                 }
-
-                console.log('RX SACK', sackWindows);
             }
+        }
+
+        if (isEmptyPacket) {
+            if (tcpPkt.seqno === this.ackno) {
+                this.handlePacket(ipHdr, tcpPkt);
+                this.postHandlePacket(true);
+            }
+            return;
         }
 
         this.rbuffer.set(tcpPkt.seqno, {
             ip: ipHdr,
             tcp: tcpPkt,
+            sackd: false,
         });
 
         let pkt: RPacket | undefined;
@@ -313,60 +326,75 @@ export class TCPConn extends EventEmitter {
             this.handlePacket(pkt.ip, pkt.tcp);
         }
 
-        this.postHandlePacket();
+        this.postHandlePacket(false);
     }
 
-    private postHandlePacket() {
-        if (this.rbuffer.size > 0 && this.sackSupported) {
-            const sackRegions = [];
-            const ipPkt = this.makeIp(true);
-            const tcpPkt = this.makeTcp();
+    private postHandlePacket(onlyEmptyPackets: boolean) {
+        if (onlyEmptyPackets) {
+            this.processWPBuffer();
+            return;
+        }
 
-            const rbufferKeysSorted = [...this.rbuffer.keys()].sort((a,b) => a-b);
-            let sackRegionBegin = NaN; let sackRegionEnd = NaN;
-            for (const key of rbufferKeysSorted) {
-                const val = this.rbuffer.get(key)!;
-                const len = TCPConn.tcpSize(val.tcp);
+        if (!isNaN(this.ackno)) {
+            if (this.sackSupported && this.rbuffer.size > 0) {
+                let sackRegions = [];
 
-                if (((key + 1) | 0) === sackRegionEnd) {
-                    sackRegionEnd = key + len;
-                } else {
-                    if (!isNaN(sackRegionBegin)) {
-                        sackRegions.push({begin: sackRegionBegin, end: sackRegionEnd});
+                const rbufferKeysSorted = [...this.rbuffer.keys()].sort((a,b) => a-b);
+
+                let sackRegionBegin = NaN; let sackRegionEnd = NaN;
+                for (const key of rbufferKeysSorted) {
+                    const val = this.rbuffer.get(key)!;
+                    if (val.sackd) {
+                        continue;
                     }
-                    sackRegionBegin = key;
-                    sackRegionEnd = key + len;
+                    val.sackd = true;
+
+                    const len = TCPConn.tcpSize(val.tcp);
+
+                    if (key === sackRegionEnd) {
+                        sackRegionEnd = key + (len - 1);
+                    } else {
+                        if (!isNaN(sackRegionBegin)) {
+                            sackRegions.push({begin: sackRegionBegin, end: sackRegionEnd});
+                        }
+                        sackRegionBegin = key;
+                        sackRegionEnd = key + (len - 1);
+                    }
                 }
-            }
-            if (!isNaN(sackRegionBegin)) {
-                sackRegions.push({begin: sackRegionBegin, end: sackRegionEnd});
-            }
+                if (!isNaN(sackRegionBegin)) {
+                    sackRegions.push({begin: sackRegionBegin, end: sackRegionEnd});
+                }
 
-            const sackRegionsU8 = new  Uint8Array(sackRegions.length * 8);
-            let i = 0;
-            for (const region of sackRegions) {
-                sackRegionsU8[i] = region.begin & 0xFF;
-                sackRegionsU8[i+1] = (region.begin >>> 24) & 0xFF;
-                sackRegionsU8[i+2] = (region.begin >>> 16) & 0xFF;
-                sackRegionsU8[i+3] = (region.begin >>> 8) & 0xFF;
-                sackRegionsU8[i+4] = region.end & 0xFF;
-                sackRegionsU8[i+5] = (region.end >>> 24) & 0xFF;
-                sackRegionsU8[i+6] = (region.end >>> 16) & 0xFF;
-                sackRegionsU8[i+7] = (region.end >>> 8) & 0xFF;
-                i += 8;
-            }
+                if (sackRegions.length > 3) {
+                    sackRegions = sackRegions.slice(0, 3);
+                }
 
-            tcpPkt.setOption(0x05, sackRegionsU8);
-            console.log('TX SACK', sackRegions);
-            this.pushPBuffer(ipPkt, tcpPkt);
+                const sackRegionsU8 = new  Uint8Array(sackRegions.length * 8);
+                let i = 0;
+                for (const region of sackRegions) {
+                    sackRegionsU8[i+0] = (region.begin >>> 24) & 0xFF;
+                    sackRegionsU8[i+1] = (region.begin >>> 16) & 0xFF;
+                    sackRegionsU8[i+2] = (region.begin >>> 8) & 0xFF;
+                    sackRegionsU8[i+3] = region.begin & 0xFF;
+                    sackRegionsU8[i+4] = (region.end >>> 24) & 0xFF;
+                    sackRegionsU8[i+5] = (region.end >>> 16) & 0xFF;
+                    sackRegionsU8[i+6] = (region.end >>> 8) & 0xFF;
+                    sackRegionsU8[i+7] = region.end & 0xFF;
+                    i += 8;
+                }
+
+                const ipPkt = this.makeIp(true);
+                const tcpPkt = this.makeTcp();
+                tcpPkt.setOption(0x05, sackRegionsU8);
+                this.pushPBuffer(ipPkt, tcpPkt);
+            } else {
+                const ipPkt = this.makeIp(true);
+                const tcpPkt = this.makeTcp();
+                this.pushPBuffer(ipPkt, tcpPkt);
+            }
         }
 
         this.processWPBuffer();
-
-        if (this.state === TCP_STATE.TIME_WAIT) {
-            this.delete();
-            return;
-        }
     }
 
     private handlePacket(ipHdr: IPHdr, tcpPkt: TCPPkt) {
@@ -403,9 +431,6 @@ export class TCPConn extends EventEmitter {
         this.wwnd = tcpPkt.windowSize;
         if (len > 0) {
             this.ackno = (this.ackno + len) & 0xFFFFFFFF;
-            if (tcpPkt.data && tcpPkt.data.byteLength > 0 && this.state === TCP_STATE.ESTABLISHED) {
-                this.emit("data", tcpPkt.data);
-            }
         }
 
         switch (this.state) {
@@ -415,7 +440,7 @@ export class TCPConn extends EventEmitter {
                     return;
                 }
 
-                this.ackno = tcpPkt.seqno + len;
+                this.ackno = (tcpPkt.seqno + len) & 0xFFFFFFFF;
                 this.state = TCP_STATE.SYN_RECEIVED;
 
                 const replyPkt = this.makeTcp();
@@ -445,7 +470,7 @@ export class TCPConn extends EventEmitter {
                     return;
                 }
 
-                this.ackno = tcpPkt.seqno + len;
+                this.ackno = (tcpPkt.seqno + len) & 0xFFFFFFFF;
 
                 this.state = TCP_STATE.ESTABLISHED;
                 if (tcpPkt.decodeOptions().has(0x04)) {
@@ -491,52 +516,49 @@ export class TCPConn extends EventEmitter {
                 }
                 break;
         }
+
+        if (tcpPkt.data && tcpPkt.data.byteLength > 0 && this.state === TCP_STATE.ESTABLISHED) {
+            this.emit("data", tcpPkt.data);
+        }
     }
 
     private processWPBuffer() {
         this.processPBuffer();
+        this.processWBuffer();
 
-        const needACK = this.got_packet_since_ack || (!isNaN(this.ackno) && this.ackno !== this.ackno_sent);
-
-        const now = Date.now();
-        if (this.processWBuffer(needACK || (now - this.lastSend) > 100)) {
-            this.processPBuffer();
+        if (this.state === TCP_STATE.TIME_WAIT) {
+            this.delete();
             return;
         }
-
-        if (needACK) {
-            const ip = this.makeIp(true);
-            const tcp = this.makeTcp();
-            this.pushPBuffer(ip, tcp);
-        }
-
-        this.processPBuffer();
     }
 
-    private processWBuffer(noBuffer: boolean) {
+
+    private processWBuffer() {
         if (this.state !== TCP_STATE.ESTABLISHED) {
-            return false;
+            return;
         }
 
         const maxSend = Math.min(this.wwnd - this.pbufferbytes, this.mss);
         if (maxSend <= 0) {
-            return false;
+            return;
         }
 
         const avail = this.wbuffer.length();
         if (avail <= 0) {
-            return false;
+            return;
         }
 
-        if (!this.noDelay && !noBuffer && avail < maxSend) {
-            return false;
+        const now = Date.now();
+        if (!this.noDelay && (now - this.lastSend) < 100 && avail < maxSend) {
+            return;
         }
+        this.lastSend = now;
 
         const ip = this.makeIp();
         const tcp = this.makeTcp();
         tcp.data = this.wbuffer.read(Math.min(avail, maxSend));
         this.pushPBuffer(ip, tcp);
-        return true;
+        this.processPBuffer();
     }
 
     private processPBuffer() {
@@ -544,16 +566,14 @@ export class TCPConn extends EventEmitter {
             const pkt = this.pbuffer[this.pbufferoffset];
 
             sendIPPacket(pkt.ip, pkt.tcp, this.iface);
-            this.lastSend = Date.now();
             if (TCPConn.tcpSize(pkt.tcp) === 0) {
                 this.pbuffer.pop();
                 this.pbufferoffset--;
             }
 
-            this.ackno_sent = pkt.tcp.ackno;
-            if (this.ackno_sent === this.ackno) {
-                this.got_packet_since_ack = false;
-            }
+            //if (pkt.tcp.hasFlag(TCP_FLAGS.ACK)) {
+            //    this.ackno_sent = pkt.tcp.ackno;
+            //}
         }
     }
 
@@ -580,7 +600,6 @@ export class TCPConn extends EventEmitter {
             const pkt = this.pbuffer[0];
             if (pkt.nextSend <= now) {
                 sendIPPacket(pkt.ip, pkt.tcp, this.iface);
-                this.lastSend = Date.now();
                 pkt.retries++;
                 if (pkt.retries > 3) {
                     this.kill();
@@ -669,7 +688,7 @@ class TCPEchoListener {
             if (data.byteLength > 0 && data.byteLength <= 2 && (data[0] === 10 || data[0] === 13)) {
                 tcpConn.close();
             } else {
-                tcpConn.send(data);
+                tcpConn.send(data, true);
             }
         });
     }
