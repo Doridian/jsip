@@ -26,20 +26,21 @@ const enum TCP_STATE {
 
     // Handshaking
     SYN_SENT = 2,
-    SYN_RECEIVED = 3,
+    SYN_RECEIVED_1 = 3,
+    SYN_RECEIVED_2 = 4,
 
     // Ready
-    ESTABLISHED = 4,
+    ESTABLISHED = 5,
 
     // Local close
-    FIN_WAIT_1 = 5, // FIN sent
-    FIN_WAIT_2 = 6, // FIN ACK'd
-    CLOSING = 7,
-    TIME_WAIT = 8,
+    FIN_WAIT_1 = 6, // FIN sent
+    FIN_WAIT_2 = 7, // FIN ACK'd
+    CLOSING = 8,
+    TIME_WAIT = 9,
 
     // Remote close
-    CLOSE_WAIT = 9,
-    LAST_ACK = 10,
+    CLOSE_WAIT = 10,
+    LAST_ACK = 11,
 }
 
 const TCP_FLAG_INCSEQ = ~(TCP_FLAGS.PSH | TCP_FLAGS.ACK);
@@ -63,7 +64,7 @@ export class TCPConn extends EventEmitter {
     public static gotPacket(data: ArrayBuffer, offset: number, len: number, ipHdr: IPHdr, iface: IInterface) {
         const tcpPkt = TCPPkt.fromPacket(data, offset, len, ipHdr);
 
-        const id = tcpMakeId(ipHdr.saddr!, tcpPkt.dport, tcpPkt.sport);
+        const id = tcpMakeId(ipHdr.daddr!, ipHdr.saddr!, tcpPkt.dport, tcpPkt.sport);
         const gotConn = tcpConns.get(id);
         if (gotConn) {
             return gotConn.gotPacket(ipHdr, tcpPkt);
@@ -78,10 +79,29 @@ export class TCPConn extends EventEmitter {
                 return;
             }
         }
+
+        // Refuse packet actively
+        const rstIpHdr = new IPHdr();
+        rstIpHdr.protocol = IPPROTO.TCP;
+        rstIpHdr.saddr = ipHdr.daddr;
+        rstIpHdr.daddr = ipHdr.saddr;
+        rstIpHdr.df = true;
+
+        const rstTcpPkt = new TCPPkt();
+        rstTcpPkt.windowSize = 0;
+        rstTcpPkt.dport = tcpPkt.sport;
+        rstTcpPkt.sport = tcpPkt.dport;
+        rstTcpPkt.seqno = tcpPkt.ackno;
+        rstTcpPkt.ackno = (tcpPkt.seqno + TCPConn.tcpSize(tcpPkt)) & 0xFFFFFFFF;
+        rstTcpPkt.setFlag(TCP_FLAGS.RST);
+        rstTcpPkt.setFlag(TCP_FLAGS.ACK);
+
+        sendIPPacket(rstIpHdr, rstTcpPkt, iface);
     }
 
     public sport = 0;
     public dport = 0;
+    private saddr?: IPAddr;
     private daddr?: IPAddr;
 
     private seqno: number = Math.floor(Math.random() * (1 << 30));
@@ -132,9 +152,14 @@ export class TCPConn extends EventEmitter {
         this.iface = iface;
         if (!this.iface) {
             const route = getRoute(daddr, iface);
-            if (route && route.iface) {
-                this.iface = route.iface;
+            if (!route) {
+                this.emit("error", new Error("No route to host"));
+                return;
             }
+            this.iface = route.iface;
+            this.saddr = route.src;
+        } else {
+            this.saddr = this.iface.getIP();
         }
 
         this.mss = (this.iface?.getMTU() || 1280) - 40;
@@ -189,6 +214,7 @@ export class TCPConn extends EventEmitter {
 
     private accept(ipHdr: IPHdr, tcpPkt: TCPPkt, iface: IInterface) {
         this.state =  TCP_STATE.LISTENING;
+        this.saddr = ipHdr.daddr;
         this.daddr = ipHdr.saddr;
         this.dport = tcpPkt.sport;
         this.sport = tcpPkt.dport;
@@ -287,16 +313,16 @@ export class TCPConn extends EventEmitter {
                     this.rejectPkt(ipHdr, tcpPkt, "Expected SYN");
                     return;
                 }
-                this.ackno = tcpPkt.seqno + TCPConn.tcpSize(tcpPkt);
-                this.state = TCP_STATE.SYN_RECEIVED;
 
-                const ip = this.makeIp(true);
-                const tcp = this.makeTcp();
-                tcp.setFlag(TCP_FLAGS.SYN);
-                this.pushPBuffer(ip, tcp);
+                this.ackno = tcpPkt.seqno;
+                this.state = TCP_STATE.SYN_RECEIVED_1;
+                break;
+
+            case TCP_STATE.SYN_RECEIVED_1:
+                this.rejectPkt(ipHdr, tcpPkt, "Packet in SYN_RECEIVED_1. This should never happen!");
                 return;
 
-            case TCP_STATE.SYN_RECEIVED:
+            case TCP_STATE.SYN_RECEIVED_2:
                 if (tcpPkt.flags !== TCP_FLAGS.ACK) {
                     this.rejectPkt(ipHdr, tcpPkt, "Expected ACK");
                     return;
@@ -311,7 +337,9 @@ export class TCPConn extends EventEmitter {
                     this.rejectPkt(ipHdr, tcpPkt, "Expected SYN+ACK");
                     return;
                 }
+
                 this.ackno = tcpPkt.seqno;
+
                 this.state = TCP_STATE.ESTABLISHED;
                 this.emit("connect", undefined);
                 break;
@@ -371,6 +399,10 @@ export class TCPConn extends EventEmitter {
         if (this.ackno !== this.ackno_sent && this.pbuffer.length <= this.pbufferoffset) {
             const ip = this.makeIp(true);
             const tcp = this.makeTcp();
+            if (this.state === TCP_STATE.SYN_RECEIVED_1) {
+                tcp.setFlag(TCP_FLAGS.SYN);
+                this.state = TCP_STATE.SYN_RECEIVED_2;
+            }
             this.pushPBuffer(ip, tcp);
         }
 
@@ -453,7 +485,7 @@ export class TCPConn extends EventEmitter {
     private makeIp(df = false) {
         const ip = new IPHdr();
         ip.protocol = IPPROTO.TCP;
-        ip.saddr = undefined;
+        ip.saddr = this.saddr;
         ip.daddr = this.daddr;
         ip.df = df;
         return ip;
@@ -471,12 +503,12 @@ export class TCPConn extends EventEmitter {
     }
 
     private setId() {
-        this.connId = tcpMakeId(this.daddr!, this.sport, this.dport);
+        this.connId = tcpMakeId(this.saddr!, this.daddr!, this.sport, this.dport);
     }
 }
 
-function tcpMakeId(daddr: IPAddr, sport: number, dport: number) {
-    return `${daddr}|${sport}|${dport}`;
+function tcpMakeId(saddr: IPAddr, daddr: IPAddr, sport: number, dport: number) {
+    return `${saddr}|${daddr}|${sport}|${dport}`;
 }
 
 export function tcpListen(port: number, func: ITCPListener) {

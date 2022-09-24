@@ -1,4 +1,5 @@
 import { MACAddr } from "../ethernet/address.js";
+import { sendGratuitousARP } from "../ethernet/arp/stack.js";
 import { IPAddr } from "../ethernet/ip/address.js";
 import { addRoute, clearRoutesFor, IPRoute, Metric, recomputeRoutes, removeRoute } from "../ethernet/ip/router.js";
 import { IPNet } from "../ethernet/ip/subnet.js";
@@ -42,6 +43,7 @@ export abstract class Interface implements IInterface {
     public setIP(ip: IPAddr) {
         this.ip = ip;
         recomputeRoutes();
+        sendGratuitousARP(this);
     }
 
     public getSubnet() {

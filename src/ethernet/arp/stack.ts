@@ -73,11 +73,11 @@ export async function makeEthIPHdr(destIp: IPAddr, iface: IInterface): Promise<E
     return promise;
 }
 
-function sendARPPkt(arpPkt: ARPPkt, fromAddr: MACAddr, iface: IInterface) {
+function sendARPPkt(arpPkt: ARPPkt, toAddr: MACAddr, iface: IInterface) {
     const pkt = new ArrayBuffer(ETH_LEN + ARP_LEN);
 
     const ethHdr = new EthHdr();
-    ethHdr.daddr = fromAddr;
+    ethHdr.daddr = toAddr;
     ethHdr.saddr = iface.getMAC();
     ethHdr.ethtype = ETH_TYPE.ARP;
 
@@ -85,6 +85,16 @@ function sendARPPkt(arpPkt: ARPPkt, fromAddr: MACAddr, iface: IInterface) {
     arpPkt.toPacket(pkt, ETH_LEN);
 
     iface.sendPacket(pkt);
+}
+
+export function sendGratuitousARP(iface: IInterface) {
+    const arpResp = new ARPPkt();
+    arpResp.operation = ARP_REPLY;
+    arpResp.sha = iface.getMAC();
+    arpResp.spa = iface.getIP();
+    arpResp.tha = MAC_BROADCAST;
+    arpResp.tpa = arpResp.spa;
+    sendARPPkt(arpResp, MAC_BROADCAST, iface);
 }
 
 class EthARPListener {
