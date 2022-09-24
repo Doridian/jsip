@@ -273,7 +273,7 @@ export class TCPConn extends EventEmitter {
             const sackOption = options.get(0x05);
             if (sackOption) {
                 for (let i = 0; i < this.pbufferoffset; i++) {
-                    const pkt = this.pbuffer[i]l
+                    const pkt = this.pbuffer[i];
                 }
             }
         }
@@ -284,7 +284,7 @@ export class TCPConn extends EventEmitter {
         });
 
         let pkt: RPacket | undefined;
-        while(pkt = this.rbuffer.get(this.ackno)) {
+        while (pkt = this.rbuffer.get(this.ackno)) {
             this.rbuffer.delete(this.ackno);
             this.handlePacket(pkt.ip, pkt.tcp);
         }
