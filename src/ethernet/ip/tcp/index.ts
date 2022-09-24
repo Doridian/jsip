@@ -119,7 +119,7 @@ export class TCPPkt implements IPacket {
                 break;
             }
 
-            options.set(typ, this.options.slice(i + 2, len - 2));
+            options.set(typ, this.options.slice(i + 2, i + len));
             i += len;
         }
 

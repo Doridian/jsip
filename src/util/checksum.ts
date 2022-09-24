@@ -20,6 +20,8 @@ export function computeChecksumPseudo(ipHdr: IPHdr, proto: number, fullLen: numb
 
 export function computeChecksum(array: Uint8Array, csum = 0) {
     csum = computeChecksumIntermediate(array, csum);
-    csum = (csum >>> 16) + (csum & 0xFFFF);
+    while (csum > 0xFFFF) {
+        csum = (csum >>> 16) + (csum & 0xFFFF);
+    }
     return ~csum & 0xFFFF;
 }
