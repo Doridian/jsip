@@ -570,10 +570,6 @@ export class TCPConn extends EventEmitter {
             const pkt = this.pbuffer[this.pbufferoffset];
             const isEmptyPacket = TCPConn.tcpSize(pkt.tcp) === 0;
 
-            if (!isEmptyPacket && Math.random() <= 0.01) {
-                continue;
-            }
-
             sendIPPacket(pkt.ip, pkt.tcp, this.iface);
             if (isEmptyPacket) {
                 this.pbuffer.pop();
