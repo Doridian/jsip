@@ -43,7 +43,9 @@ export abstract class Interface implements IInterface {
     public setIP(ip: IPAddr) {
         this.ip = ip;
         recomputeRoutes();
-        sendGratuitousARP(this);
+        if (this.isEthernet()) {
+            sendGratuitousARP(this);
+        }
     }
 
     public getSubnet() {
