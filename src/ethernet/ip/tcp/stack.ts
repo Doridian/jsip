@@ -355,6 +355,11 @@ export class TCPConn extends EventEmitter {
                     } else {
                         if (!isNaN(sackRegionBegin)) {
                             sackRegions.push({begin: sackRegionBegin, end: sackRegionEnd});
+                            if (sackRegions.length >= 3) {
+                                sackRegionBegin = NaN;
+                                sackRegionEnd = NaN;
+                                break;
+                            }
                         }
                         sackRegionBegin = key;
                         sackRegionEnd = key + len;
@@ -362,10 +367,6 @@ export class TCPConn extends EventEmitter {
                 }
                 if (!isNaN(sackRegionBegin)) {
                     sackRegions.push({begin: sackRegionBegin, end: sackRegionEnd});
-                }
-
-                if (sackRegions.length > 3) {
-                    sackRegions = sackRegions.slice(0, 3);
                 }
 
                 const sackRegionsU8 = new  Uint8Array(sackRegions.length * 8);
