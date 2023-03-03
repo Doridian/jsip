@@ -27,7 +27,7 @@
   "homepage": "https://github.com/Doridian/jsip#readme",
   "devDependencies": {
     "@types/chai": "4.3.4",
-    "rimraf": "4.1.3",
+    "rimraf": "4.2.0",
     "tslint": "6.1.3",
     "typescript": "4.9.5"
   }
