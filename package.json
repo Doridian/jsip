@@ -29,6 +29,6 @@
     "@types/chai": "4.3.16",
     "rimraf": "5.0.7",
     "tslint": "6.1.3",
-    "typescript": "5.5.2"
+    "typescript": "5.5.3"
   }
 }
