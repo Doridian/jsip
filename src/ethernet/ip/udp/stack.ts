@@ -8,79 +8,96 @@ import { UDPPkt } from "./index.js";
 
 export type UDPReplyFunc = (data: Uint8Array) => void;
 export interface IUDPListener {
-    gotPacket(pkt: UDPPkt, ip: IPHdr, iface: IInterface): Uint8Array | PromiseLike<Uint8Array> |
-                                                          undefined | PromiseLike<undefined> |
-                                                          void | PromiseLike<void>;
+  gotPacket(
+    pkt: UDPPkt,
+    ip: IPHdr,
+    iface: IInterface,
+  ):
+    | PromiseLike<Uint8Array>
+    | PromiseLike<undefined>
+    | PromiseLike<void>
+    | Uint8Array
+    | undefined
+    | void;
 }
 
 const udpListeners = new Map<number, IUDPListener>();
 
 class UDPEchoListener {
-    public static gotPacket(pkt: UDPPkt, _: IPHdr, __: IInterface) {
-        return pkt.data;
-    }
+  public static gotPacket(pkt: UDPPkt, _: IPHdr, __: IInterface) {
+    return pkt.data;
+  }
 }
 
-// tslint:disable-next-line:max-classes-per-file
 class IPUDPListener {
-    public static gotPacket(data: ArrayBuffer, offset: number, len: number, ipHdr: IPHdr, iface: IInterface) {
-        const udpPkt = UDPPkt.fromPacket(data, offset, len, ipHdr);
+  public static gotPacket(
+    data: ArrayBuffer,
+    offset: number,
+    len: number,
+    ipHdr: IPHdr,
+    iface: IInterface,
+  ) {
+    const udpPkt = UDPPkt.fromPacket(data, offset, len, ipHdr);
 
-        const listener = udpListeners.get(udpPkt.dport);
-        if (listener && udpPkt.data) {
-            try {
-                Promise.resolve<Uint8Array | undefined | void>(listener.gotPacket(udpPkt, ipHdr, iface))
-                .then((reply?: Uint8Array | void) => {
-                    if (!reply) {
-                        return;
-                    }
-
-                    const ip = ipHdr.makeReply();
-                    const udp = new UDPPkt();
-                    udp.sport = udpPkt.dport;
-                    udp.dport = udpPkt.sport;
-                    udp.data = reply;
-                    return sendIPPacket(ip, udp, iface);
-                })
-                .catch((e) => logPacketError(e as Error, data));
-            } catch (e) {
-                logPacketError(e as Error, data);
+    const listener = udpListeners.get(udpPkt.dport);
+    if (listener && udpPkt.data) {
+      try {
+        Promise.resolve<Uint8Array | undefined | void>(
+          listener.gotPacket(udpPkt, ipHdr, iface),
+        )
+          .then((reply?: Uint8Array | void) => {
+            if (!reply) {
+              return;
             }
-        }
+
+            const ip = ipHdr.makeReply();
+            const udp = new UDPPkt();
+            udp.sport = udpPkt.dport;
+            udp.dport = udpPkt.sport;
+            udp.data = reply;
+            sendIPPacket(ip, udp, iface);
+          })
+          .catch((error) => {
+            logPacketError(error as Error, data);
+          });
+      } catch (error) {
+        logPacketError(error as Error, data);
+      }
     }
+  }
 }
 
 export function udpListenRandom(func: IUDPListener) {
-    let port = 0;
-    do {
-        port = makeRandomPort();
-    } while (udpListeners.has(port));
+  let port = 0;
+  do {
+    port = makeRandomPort();
+  } while (udpListeners.has(port));
 
-    return udpListen(port, func);
+  return udpListen(port, func);
 }
 
 export function udpListen(port: number, func: IUDPListener) {
-    assertValidPort(port);
+  assertValidPort(port);
 
-    if (udpListeners.has(port)) {
-        return false;
-    }
+  if (udpListeners.has(port)) {
+    return false;
+  }
 
-    enableUDP();
-    udpListeners.set(port, func);
-    return true;
+  enableUDP();
+  udpListeners.set(port, func);
+  return true;
 }
 
 export function udpCloseListener(port: number) {
-    assertValidPort(port);
+  assertValidPort(port);
 
-    return udpListeners.delete(port);
+  return udpListeners.delete(port);
 }
 
 export function enableUDP() {
-    registerIpHandler(IPPROTO.UDP, IPUDPListener);
+  registerIpHandler(IPPROTO.UDP, IPUDPListener);
 }
 
 export function enableUDPEcho() {
-    udpListen(7, UDPEchoListener);
+  udpListen(7, UDPEchoListener);
 }

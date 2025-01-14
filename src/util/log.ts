@@ -1,15 +1,12 @@
 export function logDebug(text: string) {
-    // tslint:disable-next-line:no-console
-    console.log(text);
+  console.log(text);
 }
 
 export function logError(text: Error) {
-    // tslint:disable-next-line:no-console
-    console.error(text);
+  console.error(text);
 }
 
 export function logPacketError(text: Error, packet: ArrayBuffer) {
-    logError(text);
-    // tslint:disable-next-line:no-console
-    console.log(packet);
+  logError(text);
+  console.log(packet);
 }

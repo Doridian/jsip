@@ -6,9 +6,9 @@ import { IInterface } from "../interface/index.js";
 const ethDummy = new EthHdr();
 
 export function handlePacket(data: ArrayBuffer, iface: IInterface) {
-    if (iface.isEthernet()) {
-        handleEthernet(data, iface);
-    } else {
-        EthIPListener.gotPacket(data, 0, ethDummy, iface);
-    }
+  if (iface.isEthernet()) {
+    handleEthernet(data, iface);
+  } else {
+    EthIPListener.gotPacket(data, 0, ethDummy, iface);
+  }
 }

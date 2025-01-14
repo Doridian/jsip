@@ -6,10 +6,13 @@ import { DNS_CLASS, DNS_TYPE } from "../ethernet/ip/udp/dns/index.js";
 import { logDebug } from "../util/log.js";
 import { decodeHexString, expect, parsePacketParts } from "./util.js";
 
-// tslint:disable-next-line:max-line-length
-const DNS_REQUEST = decodeHexString("b8aeed7c1e719c5c8ec0ee8a080045000039760a000080113f41c0a80214c0a80204e6280035002511a1b2ce01000001000000000000076578616d706c6503636f6d0000010001");
-// tslint:disable-next-line:max-line-length
-const DNS_REPLY = decodeHexString("9c5c8ec0ee8ab8aeed7c1e7108004500005ff2d640004011c24ec0a80204c0a802140035f06c004bb24ae60081800001000100000001076578616d706c6503636f6d0000010001076578616d706c6503636f6d00000100010000295e00045db8d82200002905ac000000000000");
+const DNS_REQUEST = decodeHexString(
+  "b8aeed7c1e719c5c8ec0ee8a080045000039760a000080113f41c0a80214c0a80204e6280035002511a1b2ce01000001000000000000076578616d706c6503636f6d0000010001",
+);
+
+const DNS_REPLY = decodeHexString(
+  "9c5c8ec0ee8ab8aeed7c1e7108004500005ff2d640004011c24ec0a80204c0a802140035f06c004bb24ae60081800001000100000001076578616d706c6503636f6d0000010001076578616d706c6503636f6d00000100010000295e00045db8d82200002905ac000000000000",
+);
 
 const DNS_DOMAIN = "example.com";
 const DNS_ADDR = IPAddr.fromString("93.184.216.34");
@@ -29,7 +32,7 @@ expect(requestParts.ip!.saddr).to.deep.equal(IP_CLIENT);
 expect(requestParts.ip!.daddr).to.deep.equal(IP_SERVER);
 expect(requestParts.ip!.protocol).to.equal(IPPROTO.UDP);
 
-expect(requestParts.udp!.sport).to.equal(58920);
+expect(requestParts.udp!.sport).to.equal(58_920);
 expect(requestParts.udp!.dport).to.equal(PORT_SERVER);
 
 expect(requestParts.dns!.questions[0]!.name).to.equal(DNS_DOMAIN);
@@ -49,7 +52,7 @@ expect(replyParts.ip!.daddr).to.deep.equal(IP_CLIENT);
 expect(replyParts.ip!.protocol).to.equal(IPPROTO.UDP);
 
 expect(replyParts.udp!.sport).to.equal(PORT_SERVER);
-expect(replyParts.udp!.dport).to.equal(61548);
+expect(replyParts.udp!.dport).to.equal(61_548);
 
 expect(replyParts.dns!.questions[0]!.name).to.equal(DNS_DOMAIN);
 expect(replyParts.dns!.questions[0]!.class).to.equal(DNS_CLASS.IN);
