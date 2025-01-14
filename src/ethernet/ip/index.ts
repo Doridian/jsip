@@ -15,35 +15,35 @@ export class IPHdr {
         const data = new Uint8Array(packet, offset);
 
         // [0]
-        ipv4.version = (data[0] >>> 4);
+        ipv4.version = (data[0]! >>> 4);
         if (ipv4.version !== 4) {
             logDebug(`Ignoring IP version: ${ipv4.version}`);
             return undefined;
         }
 
-        ipv4.ihl = data[0] & 0b1111;
+        ipv4.ihl = data[0]! & 0b1111;
         const ipHdrLen = ipv4.ihl << 2;
 
         // [1]
-        const flag1Data = data[1];
+        const flag1Data = data[1]!;
         ipv4.dscp = flag1Data >>> 2;
         ipv4.ecn = flag1Data & 0b11;
 
         // [2]
-        ipv4.len = data[3] | (data[2] << 8);
-        ipv4.id = data[5] | (data[4] << 8);
+        ipv4.len = data[3]! | (data[2]! << 8);
+        ipv4.id = data[5]! | (data[4]! << 8);
 
         // [6]
-        const flags = (data[6] >>> 5);
+        const flags = (data[6]! >>> 5);
         ipv4.df = (flags & 0x2) === 0x2;
         ipv4.mf = (flags & 0x1) === 0x1;
 
-        ipv4.fragOffset = ((data[6] & 0b11111) << 8) | data[7];
+        ipv4.fragOffset = ((data[6]! & 0b11111) << 8) | data[7]!;
 
         // [8]
-        ipv4.ttl = data[8];
-        ipv4.protocol = data[9];
-        ipv4.checksum = data[11] | (data[10] << 8);
+        ipv4.ttl = data[8]!;
+        ipv4.protocol = data[9]!;
+        ipv4.checksum = data[11]! | (data[10]! << 8);
         ipv4.saddr = IPAddr.fromByteArray(data, 12);
         ipv4.daddr = IPAddr.fromByteArray(data, 16);
 
@@ -123,7 +123,7 @@ export class IPHdr {
         if (this.options && this.options.byteLength > 0) {
             const o8 = new Uint8Array(this.options);
             for (let i = 0; i < o8.length; i++) {
-                packet[i + 12] = o8[i];
+                packet[i + 12] = o8[i]!;
             }
         }
         this.checksum = computeChecksum(packet);

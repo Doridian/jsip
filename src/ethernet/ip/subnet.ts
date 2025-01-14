@@ -15,13 +15,20 @@ for (let subnetLen = 1; subnetLen <= 32; subnetLen++) {
 export class IPNet {
     public static fromString(ipStr: string) {
         const ipS = ipStr.split("/");
-        const ip = IPAddr.fromString(ipS[0]);
-        const subnetLen = parseInt(ipS[1], 10);
+        if (ipS.length !== 2) {
+            throw new Error("Invalid IPv4 CIDR");
+        }
+        const ip = IPAddr.fromString(ipS[0]!);
+        const subnetLen = parseInt(ipS[1]!, 10);
         return IPNet.fromIPAndSubnet(ip, subnetLen);
     }
 
     public static fromIPAndSubnet(ip: IPAddr, subnetLen: number) {
-        return new IPNet(ip, subnetLenToBitmask[subnetLen]);
+        const bitmask = subnetLenToBitmask[subnetLen];
+        if (!bitmask) {
+            throw new Error("Invalid subnet length");
+        }
+        return new IPNet(ip, bitmask);
     }
 
     private bitmask: number;

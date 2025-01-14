@@ -24,15 +24,15 @@ export class TCPPkt implements IPacket {
     public static fromPacket(packet: ArrayBuffer, offset: number, len: number, ipHdr: IPHdr) {
         const tcp = new TCPPkt();
         const data = new Uint8Array(packet, offset, len);
-        tcp.sport = data[1] + (data[0] << 8);
-        tcp.dport = data[3] + (data[2] << 8);
-        tcp.seqno = data[7] + (data[6] << 8) | (data[5] << 16) | (data[4] << 24);
-        tcp.ackno = data[11] + (data[10] << 8) | (data[9] << 16) | (data[8] << 24);
-        const dataOffset = (data[12] & 0b11110000) >>> 2;
-        tcp.flags = data[13] || (data[12] & 0b00000001) << 8;
-        tcp.windowSize = data[15] | (data[14] << 8);
-        tcp.checksum = data[17] | (data[16] << 8);
-        tcp.urgptr = data[19] | (data[18] << 8);
+        tcp.sport = data[1]! + (data[0]! << 8);
+        tcp.dport = data[3]! + (data[2]! << 8);
+        tcp.seqno = data[7]! + (data[6]! << 8) | (data[5]! << 16) | (data[4]! << 24);
+        tcp.ackno = data[11]! + (data[10]! << 8) | (data[9]! << 16) | (data[8]! << 24);
+        const dataOffset = (data[12]! & 0b11110000) >>> 2;
+        tcp.flags = data[13]! || (data[12]! & 0b00000001) << 8;
+        tcp.windowSize = data[15]! | (data[14]! << 8);
+        tcp.checksum = data[17]! | (data[16]! << 8);
+        tcp.urgptr = data[19]! | (data[18]! << 8);
         tcp.mss = -1;
 
         if (dataOffset > 20) {
@@ -41,7 +41,7 @@ export class TCPPkt implements IPacket {
 
             const o8 = new Uint8Array(tcp.options);
             for (let i = 0; i < o8.length;) {
-                let optLen = o8[i + 1];
+                let optLen = o8[i + 1]!;
                 if (optLen <= 0) {
                     break;
                 }
@@ -53,7 +53,7 @@ export class TCPPkt implements IPacket {
                         optLen = 1;
                         break;
                     case 2:
-                        tcp.mss = o8[i + 3] | (o8[i + 2] << 8);
+                        tcp.mss = o8[i + 3]! | (o8[i + 2]! << 8);
                         break;
                 }
                 i += optLen;
@@ -64,7 +64,7 @@ export class TCPPkt implements IPacket {
         }
 
         const checksum = tcp.computeChecksum(ipHdr, data);
-        if (ipHdr && checksum !== 0) {
+        if (checksum !== 0) {
             throw new Error(`Invalid TCP checksum: ${checksum} != 0`);
         }
         return tcp;
@@ -110,13 +110,13 @@ export class TCPPkt implements IPacket {
 
         let i = 0;
         while(i < this.options.byteLength) {
-            const typ = this.options[i];
+            const typ = this.options[i]!;
             if (typ == 0x01 || typ == 0x00) {
                 i++;
                 continue;
             }
 
-            const len = this.options[i + 1];
+            const len = this.options[i + 1]!;
             if (len < 1) {
                 break;
             }
@@ -182,7 +182,7 @@ export class TCPPkt implements IPacket {
         if (dataOffset > 20) {
             const o8 = new Uint8Array(this.options!);
             for (let i = 0; i < o8.byteLength; i++) {
-                packet[20 + i] = o8[i];
+                packet[20 + i] = o8[i]!;
             }
             for (let i = o8.byteLength+20; i < dataOffset; i++) {
                 packet[i] = 0x00;
@@ -191,7 +191,7 @@ export class TCPPkt implements IPacket {
         if (this.data && this.data.byteLength > 0) {
             const d8 = new Uint8Array(this.data);
             for (let i = 0; i < d8.byteLength; i++) {
-                packet[dataOffset + i] = d8[i];
+                packet[dataOffset + i] = d8[i]!;
             }
         }
         if (ipHdr) {

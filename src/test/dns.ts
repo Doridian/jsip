@@ -32,9 +32,9 @@ expect(requestParts.ip!.protocol).to.equal(IPPROTO.UDP);
 expect(requestParts.udp!.sport).to.equal(58920);
 expect(requestParts.udp!.dport).to.equal(PORT_SERVER);
 
-expect(requestParts.dns!.questions[0].name).to.equal(DNS_DOMAIN);
-expect(requestParts.dns!.questions[0].class).to.equal(DNS_CLASS.IN);
-expect(requestParts.dns!.questions[0].type).to.equal(DNS_TYPE.A);
+expect(requestParts.dns!.questions[0]!.name).to.equal(DNS_DOMAIN);
+expect(requestParts.dns!.questions[0]!.class).to.equal(DNS_CLASS.IN);
+expect(requestParts.dns!.questions[0]!.type).to.equal(DNS_TYPE.A);
 
 requestParts.udp!.data = requestParts.dns!.toBytes();
 
@@ -51,13 +51,13 @@ expect(replyParts.ip!.protocol).to.equal(IPPROTO.UDP);
 expect(replyParts.udp!.sport).to.equal(PORT_SERVER);
 expect(replyParts.udp!.dport).to.equal(61548);
 
-expect(replyParts.dns!.questions[0].name).to.equal(DNS_DOMAIN);
-expect(replyParts.dns!.questions[0].class).to.equal(DNS_CLASS.IN);
-expect(replyParts.dns!.questions[0].type).to.equal(DNS_TYPE.A);
+expect(replyParts.dns!.questions[0]!.name).to.equal(DNS_DOMAIN);
+expect(replyParts.dns!.questions[0]!.class).to.equal(DNS_CLASS.IN);
+expect(replyParts.dns!.questions[0]!.type).to.equal(DNS_TYPE.A);
 
-expect(replyParts.dns!.answers[0].name).to.equal(DNS_DOMAIN);
-expect(replyParts.dns!.answers[0].class).to.equal(DNS_CLASS.IN);
-expect(replyParts.dns!.answers[0].type).to.equal(DNS_TYPE.A);
-expect(replyParts.dns!.answers[0].getData()).to.deep.equal(DNS_ADDR);
+expect(replyParts.dns!.answers[0]!.name).to.equal(DNS_DOMAIN);
+expect(replyParts.dns!.answers[0]!.class).to.equal(DNS_CLASS.IN);
+expect(replyParts.dns!.answers[0]!.type).to.equal(DNS_TYPE.A);
+expect(replyParts.dns!.answers[0]!.getData()).to.deep.equal(DNS_ADDR);
 
 logDebug("DNS test passed!");

@@ -91,7 +91,7 @@ export function getRoutes() {
 export function clearRoutesFor(iface: IInterface) {
     let needCompute = false;
     for (const key of Array.from(staticRoutes.keys())) {
-        if (routes[key].iface === iface) {
+        if (routes[key] && routes[key].iface === iface) {
             needCompute = true;
             staticRoutes.splice(key, 1);
         }

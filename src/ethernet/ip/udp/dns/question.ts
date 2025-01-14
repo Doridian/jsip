@@ -9,7 +9,7 @@ export class DNSQuestion {
     public write(packet: Uint8Array, pos: number) {
         const nameLbL = makeDNSLabel(this.name);
         for (let i = 0; i < nameLbL.byteLength; i++) {
-            packet[pos + i] = nameLbL[i];
+            packet[pos + i] = nameLbL[i]!;
         }
         pos += nameLbL.byteLength;
 

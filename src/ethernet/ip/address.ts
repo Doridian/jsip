@@ -1,19 +1,22 @@
 export class IPAddr {
     public static fromString(ipStr: string) {
         const ip = new IPAddr();
-        const ipS = ipStr.split(".");
+        const ipS = ipStr.split('.');
+        if (ipS.length !== 4) {
+            throw new Error("Invalid IPv4 address");
+        }
         for (let i = 0; i < 4; i++) {
-            ip.raw[3 - i] = parseInt(ipS[i], 10);
+            ip.raw[3 - i] = parseInt(ipS[i]!, 10);
         }
         return ip;
     }
 
     public static fromByteArray(array: ArrayLike<number>, offset = 0) {
         const ip = new IPAddr();
-        ip.raw[3] = array[offset];
-        ip.raw[2] = array[1 + offset];
-        ip.raw[1] = array[2 + offset];
-        ip.raw[0] = array[3 + offset];
+        ip.raw[3] = array[offset]!;
+        ip.raw[2] = array[1 + offset]!;
+        ip.raw[1] = array[2 + offset]!;
+        ip.raw[0] = array[3 + offset]!;
         return ip;
     }
 
@@ -40,10 +43,10 @@ export class IPAddr {
     }
 
     public toBytes(array: Uint8Array, offset: number) {
-        array[offset] = this.raw[3];
-        array[1 + offset] = this.raw[2];
-        array[2 + offset] = this.raw[1];
-        array[3 + offset] = this.raw[0];
+        array[offset] = this.raw[3]!;
+        array[1 + offset] = this.raw[2]!;
+        array[2 + offset] = this.raw[1]!;
+        array[3 + offset] = this.raw[0]!;
     }
 
     public toByteArray() {
@@ -53,7 +56,7 @@ export class IPAddr {
     }
 
     public toInt32() {
-        return this.raw32[0];
+        return this.raw32[0]!;
     }
 
     public toString() {
@@ -61,7 +64,7 @@ export class IPAddr {
     }
 
     public isMulticast() {
-        return this.raw[3] >= 224 && this.raw[3] <= 239;
+        return this.raw[3]! >= 224 && this.raw[3]! <= 239;
     }
 
     public isBroadcast() {

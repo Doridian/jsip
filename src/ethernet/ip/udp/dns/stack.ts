@@ -203,7 +203,7 @@ export function clearDNSServersFor(iface: IInterface) {
 }
 
 export function getDNSServer(): IPAddr {
-    return dnsServerIps[Math.floor(Math.random() * dnsServerIps.length)];
+    return dnsServerIps[Math.floor(Math.random() * dnsServerIps.length)]!;
 }
 
 export function getDNSServers(iface?: IInterface): IPAddr[] {

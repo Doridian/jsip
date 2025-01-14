@@ -282,8 +282,8 @@ export class TCPConn extends EventEmitter {
 
                 const sackWindows = [];
                 for (let i = 0; i < sackOption.byteLength; i += 8) {
-                    const begin = sackOption[i+3] | (sackOption[i+2] << 8) | (sackOption[i+1] << 16) | (sackOption[i+0] << 24);
-                    const end = sackOption[i+7] | (sackOption[i+6] << 8) | (sackOption[i+5] << 16) | (sackOption[i+4] << 24);
+                    const begin = sackOption[i+3]! | (sackOption[i+2]! << 8) | (sackOption[i+1]! << 16) | (sackOption[i+0]! << 24);
+                    const end = sackOption[i+7]! | (sackOption[i+6]! << 8) | (sackOption[i+5]! << 16) | (sackOption[i+4]! << 24);
                     sackWindows.push({
                         begin: (begin - ackno) | 0,
                         end: (end - ackno) | 0,
@@ -291,7 +291,7 @@ export class TCPConn extends EventEmitter {
                 }
 
                 for (let i = 0; i < this.pbufferoffset; i++) {
-                    const pkt = this.pbuffer[i];
+                    const pkt = this.pbuffer[i]!;
                     const pktBegin = (pkt.tcp.seqno - ackno) | 0;
                     const pktEnd = (pkt.seqend - ackno) | 0;
 
@@ -337,7 +337,7 @@ export class TCPConn extends EventEmitter {
 
         const remoteMSSU8 = opts.get(TCP_OPTIONS.MSS);
         if (remoteMSSU8) {
-            const remoteMSS = remoteMSSU8[1] | (remoteMSSU8[0] << 8);
+            const remoteMSS = remoteMSSU8[1]! | (remoteMSSU8[0]! << 8);
             if (remoteMSS < this.mss) {
                 this.mss = remoteMSS;
             }
@@ -432,7 +432,7 @@ export class TCPConn extends EventEmitter {
 
         if (tcpPkt.hasFlag(TCP_FLAGS.ACK)) {
             while (this.pbufferoffset > 0) {
-                const pkt = this.pbuffer[0];
+                const pkt = this.pbuffer[0]!;
 
                 if (((tcpPkt.ackno - pkt.seqend) | 0) < 0) {
                     break;
@@ -571,7 +571,7 @@ export class TCPConn extends EventEmitter {
 
     private processPBuffer() {
         for (; this.pbufferoffset < this.pbuffer.length; this.pbufferoffset++) {
-            const pkt = this.pbuffer[this.pbufferoffset];
+            const pkt = this.pbuffer[this.pbufferoffset]!;
             const isEmptyPacket = TCPConn.tcpSize(pkt.tcp) === 0;
 
             sendIPPacket(pkt.ip, pkt.tcp, this.iface);
@@ -602,7 +602,7 @@ export class TCPConn extends EventEmitter {
         this.processWPBuffer();
 
         if (this.pbufferoffset >= 1) {
-            const pkt = this.pbuffer[0];
+            const pkt = this.pbuffer[0]!;
             if (pkt.nextSend <= now) {
                 pkt.retries++;
                 if (pkt.retries > 3) {

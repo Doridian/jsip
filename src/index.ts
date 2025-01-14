@@ -7,7 +7,8 @@ import { enableDHCP } from "./ethernet/ip/udp/dhcp/stack.js";
 import { enableDNS } from "./ethernet/ip/udp/dns/stack.js";
 import { addLoopback } from "./interface/loopback.js";
 
-export { Interface, IInterface } from "./interface/index.js";
+export { Interface } from "./interface/index.js";
+export type { IInterface } from "./interface/index.js";
 
 export function initialize() {
     addLoopback();

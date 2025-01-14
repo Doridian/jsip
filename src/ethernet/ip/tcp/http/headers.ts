@@ -11,7 +11,7 @@ export class HTTPHeaders {
             if (!this.headerMap.hasOwnProperty(name)) {
                 continue;
             }
-            clone.headerMap[name] = this.headerMap[name].slice(0);
+            clone.headerMap[name] = this.headerMap[name]!.slice(0);
         }
         return clone;
     }

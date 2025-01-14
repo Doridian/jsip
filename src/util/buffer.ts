@@ -42,7 +42,7 @@ export class Buffer {
         }
 
         for (let i = reuseLast ? this.lastReadEnd : 0; i < this.data.length; i++) {
-            const data = this.data[i];
+            const data = this.data[i]!;
 
             const startPos = data.indexOf(delim);
             if (startPos >= 0) {
@@ -87,7 +87,7 @@ export class Buffer {
         let dataLeft = len;
         let pos = 0;
         while (dataLeft > 0) {
-            const d = this.data[0];
+            const d = this.data[0]!;
             if (d.length > dataLeft) {
                 res.set(new Uint8Array(d.buffer, d.byteOffset, dataLeft), pos);
                 this.data[0] = new Uint8Array(d.buffer, d.byteOffset + dataLeft, d.length - dataLeft);

@@ -5,10 +5,10 @@ export class ICMPPkt {
     public static fromPacket(packet: ArrayBuffer, offset: number, len: number) {
         const icmp = new ICMPPkt();
         const data = new Uint8Array(packet, offset, len);
-        icmp.type = data[0];
-        icmp.code = data[1];
-        icmp.checksum = data[3] | (data[2] << 8);
-        icmp.rest = data[7] | (data[6] << 8) | (data[5] << 16) | (data[4] << 24);
+        icmp.type = data[0]!;
+        icmp.code = data[1]!;
+        icmp.checksum = data[3]! | (data[2]! << 8);
+        icmp.rest = data[7]! | (data[6]! << 8) | (data[5]! << 16) | (data[4]! << 24);
 
         icmp.data = (len > 8) ? new Uint8Array(packet, offset + 8) : undefined;
 
@@ -41,7 +41,7 @@ export class ICMPPkt {
         packet[7] = (this.rest) & 0xFF;
         if (this.data && this.data.byteLength > 0) {
             for (let i = 0; i < this.data.length; i++) {
-                packet[8 + i] = this.data[i];
+                packet[8 + i] = this.data[i]!;
             }
         }
         this.checksum = computeChecksum(packet);

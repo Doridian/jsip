@@ -135,7 +135,7 @@ export class EthIPListener {
                 while (true) {
                     const p8 = new Uint8Array(curPiece.buffer, curPiece.offset);
                     for (let i = 0; i < p8.length; i++) {
-                        d8[curPiecePos + i] = p8[i];
+                        d8[curPiecePos + i] = p8[i]!;
                     }
                     if (!curPiece.ipHdr.mf) {
                         break;

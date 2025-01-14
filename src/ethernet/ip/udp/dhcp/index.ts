@@ -30,13 +30,13 @@ export class DHCPPkt {
         const data = new Uint8Array(packet, offset);
 
         const dhcp = new DHCPPkt();
-        dhcp.op = data[0];
-        dhcp.htype = data[1];
-        dhcp.hlen = data[2];
-        dhcp.hops = data[3];
-        dhcp.xid = data[7] | (data[6] << 8) | (data[5] << 16) | (data[4] << 24);
-        dhcp.secs = data[9] | (data[8] << 8);
-        dhcp.flags = data[11] | (data[10] << 8);
+        dhcp.op = data[0]!;
+        dhcp.htype = data[1]!;
+        dhcp.hlen = data[2]!;
+        dhcp.hops = data[3]!;
+        dhcp.xid = data[7]! | (data[6]! << 8) | (data[5]! << 16) | (data[4]! << 24);
+        dhcp.secs = data[9]! | (data[8]! << 8);
+        dhcp.flags = data[11]! | (data[10]! << 8);
         dhcp.ciaddr = IPAddr.fromByteArray(data, 12);
         dhcp.yiaddr = IPAddr.fromByteArray(data, 16);
         dhcp.siaddr = IPAddr.fromByteArray(data, 20);
@@ -53,13 +53,13 @@ export class DHCPPkt {
         let i = DHCP_MAGIC_OFFSET + 4;
         let gotEnd = false;
         while (i < data.byteLength) {
-            const optId = data[i];
+            const optId = data[i]!;
             if (optId === 0xFF) {
                 gotEnd = true;
                 break;
             }
 
-            const optLen = data[i + 1];
+            const optLen = data[i + 1]!;
             dhcp.options.set(optId, new Uint8Array(packet, offset + i + 2, optLen));
             i += optLen + 2;
         }
@@ -121,10 +121,10 @@ export class DHCPPkt {
         this.siaddr?.toBytes(packet, 20);
         this.giaddr?.toBytes(packet, 24);
         this.chaddr?.toBytes(packet, 28);
-        packet[DHCP_MAGIC_OFFSET] = DHCP_MAGIC[0];
-        packet[DHCP_MAGIC_OFFSET + 1] = DHCP_MAGIC[1];
-        packet[DHCP_MAGIC_OFFSET + 2] = DHCP_MAGIC[2];
-        packet[DHCP_MAGIC_OFFSET + 3] = DHCP_MAGIC[3];
+        packet[DHCP_MAGIC_OFFSET] = DHCP_MAGIC[0]!;
+        packet[DHCP_MAGIC_OFFSET + 1] = DHCP_MAGIC[1]!;
+        packet[DHCP_MAGIC_OFFSET + 2] = DHCP_MAGIC[2]!;
+        packet[DHCP_MAGIC_OFFSET + 3] = DHCP_MAGIC[3]!;
 
         let optPos = DHCP_MAGIC_OFFSET + 4;
         this.options.forEach((opt, optId) => {
@@ -132,7 +132,7 @@ export class DHCPPkt {
             packet[optPos] = optId;
             packet[optPos + 1] = optLen;
             for (let i = 0; i < optLen; i++) {
-                packet[optPos + 2 + i] = opt[i];
+                packet[optPos + 2 + i] = opt[i]!;
             }
             optPos += 2 + opt.byteLength;
         });

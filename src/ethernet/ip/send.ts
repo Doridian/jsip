@@ -118,7 +118,7 @@ function sendIPPacketInternal(ipHdr: IPHdr, payload: IPacket, iface: IInterface,
             ipHdr.toPacket(pktData, 0);
         }
         for (let j = 0; j < pieceLen; j++) {
-            p8[j + hdrLen] = r8[j + offset];
+            p8[j + hdrLen] = r8[j + offset]!;
         }
 
         iface.sendPacket(pktData);

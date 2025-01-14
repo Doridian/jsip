@@ -41,7 +41,7 @@ export class DNSAnswer {
     public write(packet: Uint8Array, pos: number) {
         const nameLbL = makeDNSLabel(this.name);
         for (let i = 0; i < nameLbL.byteLength; i++) {
-            packet[pos + i] = nameLbL[i];
+            packet[pos + i] = nameLbL[i]!;
         }
         pos += nameLbL.byteLength;
 
@@ -57,7 +57,7 @@ export class DNSAnswer {
 
         if (this.dataRaw) {
             for (let i = 0; i  < this.dataRaw.byteLength; i++) {
-                packet[pos + i] = this.dataRaw[i];
+                packet[pos + i] = this.dataRaw[i]!;
             }
             pos += this.dataRaw.byteLength;
         }

@@ -26,7 +26,7 @@ function parseDNSLabel(s: IDNSParseState) {
     let dataGood = false;
 
     while (s.pos < s.data.byteLength) {
-        const segLen = s.data[s.pos++];
+        const segLen = s.data[s.pos++]!;
         if (segLen > DNS_SEG_MAX) {
             if ((segLen & DNS_SEG_PTR) !== DNS_SEG_PTR) {
                 throw new Error(`Invalid DNS segment length ${segLen}`);
@@ -34,7 +34,7 @@ function parseDNSLabel(s: IDNSParseState) {
             if (lastPos === undefined) {
                 lastPos = s.pos + 1;
             }
-            s.pos = ((segLen & DNS_SEG_MAX) << 8) | s.data[s.pos];
+            s.pos = ((segLen & DNS_SEG_MAX) << 8) | s.data[s.pos]!;
             if (donePointers.has(s.pos)) {
                 throw new Error("Recursive pointers detected");
             }
@@ -70,13 +70,13 @@ function parseAnswerSection(count: number, state: IDNSParseState) {
         const a = new DNSAnswer();
 
         a.name = parseDNSLabel(state);
-        a.type = data[state.pos + 1] + (data[state.pos] << 8);
-        a.class = data[state.pos + 3] + (data[state.pos + 2] << 8);
-        a.ttl = data[state.pos + 7] +
-            (data[state.pos + 6] << 8) +
-            (data[state.pos + 5] << 16) +
-            (data[state.pos + 4] << 24);
-        const rdlength = data[state.pos + 9] + (data[state.pos + 8] << 8);
+        a.type = data[state.pos + 1]! + (data[state.pos]! << 8);
+        a.class = data[state.pos + 3]! + (data[state.pos + 2]! << 8);
+        a.ttl = data[state.pos + 7]! +
+            (data[state.pos + 6]! << 8) +
+            (data[state.pos + 5]! << 16) +
+            (data[state.pos + 4]! << 24);
+        const rdlength = data[state.pos + 9]! + (data[state.pos + 8]! << 8);
         state.pos += 10;
 
         const dataRaw = new Uint8Array(state.packet, state.offset + state.pos, rdlength);
@@ -104,10 +104,10 @@ export class DNSPkt {
         const data = new Uint8Array(packet, offset);
 
         const dns = new DNSPkt();
-        dns.id = data[1] + (data[0] << 8);
+        dns.id = data[1]! + (data[0]! << 8);
 
         // [2]
-        const flagData = data[2];
+        const flagData = data[2]!;
         dns.qr = (flagData & 0b10000000) !== 0;
         dns.opcode = (flagData >>> 3) & 0b1111;
         dns.aa = (flagData & 0b100) !== 0;
@@ -115,22 +115,22 @@ export class DNSPkt {
         dns.rd = (flagData & 0b1) !== 0;
 
         // [3]
-        const rData = data[3];
+        const rData = data[3]!;
         dns.ra = (rData & 0b10000000) !== 0;
         dns.rcode = rData & 0b1111;
 
-        const qdcount = data[5] + (data[4] << 8);
-        const ancount = data[7] + (data[6] << 8);
-        const nscount = data[9] + (data[8] << 8);
-        const arcount = data[11] + (data[10] << 8);
+        const qdcount = data[5]! + (data[4]! << 8);
+        const ancount = data[7]! + (data[6]! << 8);
+        const nscount = data[9]! + (data[8]! << 8);
+        const arcount = data[11]! + (data[10]! << 8);
 
         dns.questions = [];
         const state = { pos: 12, data, packet, offset };
         for (let i = 0; i < qdcount; i++) {
             const q = new DNSQuestion();
             q.name = parseDNSLabel(state);
-            q.type = data[state.pos + 1] + (data[state.pos] << 8);
-            q.class = data[state.pos + 3] + (data[state.pos + 2] << 8);
+            q.type = data[state.pos + 1]! + (data[state.pos]! << 8);
+            q.class = data[state.pos + 3]! + (data[state.pos + 2]! << 8);
             state.pos += 4;
             dns.questions.push(q);
         }
@@ -209,16 +209,16 @@ export class DNSPkt {
         let pos = 12;
 
         for (let i = 0; i < qdcount; i++) {
-            pos = this.questions[i].write(packet, pos);
+            pos = this.questions[i]!.write(packet, pos);
         }
         for (let i = 0; i < ancount; i++) {
-            pos = this.answers[i].write(packet, pos);
+            pos = this.answers[i]!.write(packet, pos);
         }
         for (let i = 0; i < nscount; i++) {
-            pos = this.authority[i].write(packet, pos);
+            pos = this.authority[i]!.write(packet, pos);
         }
         for (let i = 0; i < arcount; i++) {
-            pos = this.additional[i].write(packet, pos);
+            pos = this.additional[i]!.write(packet, pos);
         }
 
         return pos;

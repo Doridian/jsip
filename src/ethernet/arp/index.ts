@@ -16,11 +16,11 @@ export class ARPPkt {
     public static fromPacket(packet: ArrayBuffer, offset: number) {
         const arp = new ARPPkt();
         const data = new Uint8Array(packet, offset);
-        arp.htype = data[1] | (data[0] << 8);
-        arp.ptype = data[3] | (data[2] << 8);
-        arp.hlen = data[4];
-        arp.plen = data[5];
-        arp.operation = data[7] | (data[6] << 8);
+        arp.htype = data[1]! | (data[0]! << 8);
+        arp.ptype = data[3]! | (data[2]! << 8);
+        arp.hlen = data[4]!;
+        arp.plen = data[5]!;
+        arp.operation = data[7]! | (data[6]! << 8);
         arp.sha = MACAddr.fromByteArray(data, 8);
         arp.spa = IPAddr.fromByteArray(data, 14);
         arp.tha = MACAddr.fromByteArray(data, 18);

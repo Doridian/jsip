@@ -91,6 +91,7 @@ class HttpCheckpointStream extends CheckpointStream<HttpParseState> {
                 this.statusText = statusLine.substring(statusI2 + 1);
 
                 this.setState(HttpParseState.HeaderLine);
+                // fall through
             case HttpParseState.HeaderLine:
                 // Parse (next) HTTP header
                 const curHeader = this.readTrimmedLine();
@@ -149,11 +150,13 @@ class HttpCheckpointStream extends CheckpointStream<HttpParseState> {
                 }
 
                 this.setState(HttpParseState.BodyChunkData);
+                // fall through
             case HttpParseState.BodyChunkData:
                 // Parse chunked body (chunk data)
                 this.bodyChunks.push(this.read(this.nextReadLen));
 
                 this.setState(HttpParseState.BodyChunkEnd);
+                // fall through
             case HttpParseState.BodyChunkEnd:
                 // Parse chunked body (chunk terminating newline)
                 const lineEnd = this.readLine();
@@ -238,7 +241,7 @@ function httpPromise(options: IHTTPOptionsFilled, resolve: (res: IHTTPResult) =>
         const data = [`${options.method} ${url.pathname}${url.search} HTTP/1.1`];
         const headersMap = headers.getAll();
         for (const headerName of Object.keys(headersMap)) {
-            for (const header of headersMap[headerName]) {
+            for (const header of headersMap[headerName]!) {
                 data.push(`${headerName}: ${header}`);
             }
         }
