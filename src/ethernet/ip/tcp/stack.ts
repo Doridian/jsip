@@ -131,6 +131,7 @@ export class TCPConn extends EventEmitter {
 
   private state = TCP_STATE.CLOSED;
 
+  // eslint-disable-next-line unicorn/no-new-buffer
   private readonly wbuffer = new Buffer(); // Data write buffer
 
   private pbuffer: WPacket[] = []; // Packet sent buffer
