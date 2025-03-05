@@ -27,7 +27,7 @@
   },
   "homepage": "https://github.com/Doridian/jsip#readme",
   "devDependencies": {
-    "@types/chai": "5.0.1",
+    "@types/chai": "5.2.0",
     "rimraf": "6.0.1",
     "eslint": "^9.17.0",
     "eslint-config-prettier": "^10.0.0",
